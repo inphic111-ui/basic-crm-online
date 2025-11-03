@@ -25,4 +25,32 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+/**
+ * Customers table for CRM system.
+ * Stores customer information with priority levels and classification.
+ */
+export const customers = mysqlTable("customers", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 320 }),
+  phone: varchar("phone", { length: 20 }),
+  company: varchar("company", { length: 255 }),
+  priority: mysqlEnum("priority", [
+    "S級-確認待收款",
+    "A級-優質跟進客戶",
+    "B級-跟進客戶",
+    "C級-養成客戶",
+    "D級-低價值無效客戶",
+    "E級-永久無需求",
+    "聯繫名單失效",
+    "客戶要求拒絕往來",
+    "黑名單",
+  ]).default("B級-跟進客戶"),
+  classification: mysqlEnum("classification", ["鯨魚", "鯊魚", "小魚", "小蝦"]).default("小魚"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Customer = typeof customers.$inferSelect;
+export type InsertCustomer = typeof customers.$inferInsert;

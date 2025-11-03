@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, InsertCustomer, customers } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,45 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// Customer queries
+export async function getAllCustomers(limit: number = 10, offset: number = 0) {
+  const db = await getDb();
+  if (!db) return [];
+  const result = await db.select().from(customers).limit(limit).offset(offset);
+  return result;
+}
+
+export async function getCustomerCount() {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db
+    .select({ count: sql`COUNT(*)`.mapWith(Number) })
+    .from(customers);
+  return result[0]?.count || 0;
+}
+
+export async function getCustomerById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(customers).where(eq(customers.id, id)).limit(1);
+  return result[0];
+}
+
+export async function createCustomer(data: InsertCustomer) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(customers).values(data);
+  return result;
+}
+
+export async function updateCustomer(id: number, data: Partial<InsertCustomer>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(customers).set(data).where(eq(customers.id, id));
+}
+
+export async function deleteCustomer(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(customers).where(eq(customers.id, id));
+}
