@@ -995,71 +995,70 @@ function Customers() {
                       <span>{editFormData.telephone || '-'}</span>
                     )}
                   </div>
-                </div>
-              </div>
-
-              <div className="detail-section">
-                <h3>🎙️ 音檔上傳</h3>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
-                  <input 
-                    type="file" 
-                    accept="audio/*" 
-                    id="audio-upload"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const formData = new FormData();
-                        formData.append('file', file);
-                        formData.append('customerId', editFormData.id);
-                        
-                        fetch('/api/audio/upload', {
-                          method: 'POST',
-                          body: formData
-                        })
-                        .then(res => res.json())
-                        .then(data => {
-                          if (data.success) {
-                            alert('音檔上傳成功');
-                            setEditFormData({...editFormData, audioUrl: data.audioUrl});
-                          } else {
-                            alert('音檔上傳失敗: ' + data.error);
+                  <div className="detail-item">
+                    <label>音檔上傳:</label>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      <input 
+                        type="file" 
+                        accept="audio/*" 
+                        id="audio-upload"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            formData.append('customerId', editFormData.id);
+                            
+                            fetch('/api/audio/upload', {
+                              method: 'POST',
+                              body: formData
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                              if (data.success) {
+                                alert('音檔上傳成功');
+                                setEditFormData({...editFormData, audioUrl: data.audioUrl});
+                              } else {
+                                alert('音檔上傳失敗: ' + data.error);
+                              }
+                            })
+                            .catch(err => alert('上傳錯誤: ' + err.message));
                           }
-                        })
-                        .catch(err => alert('上傳錯誤: ' + err.message));
-                      }
-                    }}
-                    style={{ display: 'none' }}
-                  />
-                  <button 
-                    className="btn btn-primary"
-                    onClick={() => document.getElementById('audio-upload').click()}
-                    style={{ padding: '8px 16px', fontSize: '14px' }}
-                  >
-                    選擇音檔
-                  </button>
-                  {editFormData.audioUrl && (
-                    <>
-                      <audio controls style={{ height: '32px', flex: 1 }}>
-                        <source src={editFormData.audioUrl} />
-                        您的瀏覽器不支援音檔播放
-                      </audio>
-                      <button 
-                        className="btn btn-danger"
-                        onClick={() => {
-                          fetch(`/api/audio/delete/${editFormData.id}`, { method: 'DELETE' })
-                          .then(res => res.json())
-                          .then(data => {
-                            if (data.success) {
-                              setEditFormData({...editFormData, audioUrl: null});
-                            }
-                          });
                         }}
-                        style={{ padding: '8px 12px', fontSize: '12px' }}
+                        style={{ display: 'none' }}
+                      />
+                      <button 
+                        className="btn btn-primary"
+                        onClick={() => document.getElementById('audio-upload').click()}
+                        style={{ padding: '8px 16px', fontSize: '14px' }}
                       >
-                        刪除
+                        選擇音檔
                       </button>
-                    </>
-                  )}
+                      {editFormData.audioUrl && (
+                        <>
+                          <audio controls style={{ height: '32px', flex: 1 }}>
+                            <source src={editFormData.audioUrl} />
+                            您的瀏覽器不支援音檔播放
+                          </audio>
+                          <button 
+                            className="btn btn-danger"
+                            onClick={() => {
+                              fetch(`/api/audio/delete/${editFormData.id}`, { method: 'DELETE' })
+                              .then(res => res.json())
+                              .then(data => {
+                                if (data.success) {
+                                  setEditFormData({...editFormData, audioUrl: null});
+                                }
+                              });
+                            }}
+                            style={{ padding: '8px 12px', fontSize: '12px' }}
+                          >
+                            刪除
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
