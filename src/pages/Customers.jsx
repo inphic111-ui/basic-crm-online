@@ -266,9 +266,15 @@ function Customers() {
 
   // 打開詳細視窗（可編輯模式）
   const handleViewDetail = (customer) => {
-    console.log('打開編輯模式ⵟ客戶數據:', customer)
+    console.log('打開編輯模式：客戶數據:', customer)
     setSelectedCustomer(customer)
-    setEditFormData(customer)
+    // 確保 nfvp_score_n 和 nfvp_score_f 有預設值
+    const formData = {
+      ...customer,
+      nfvp_score_n: customer.nfvp_score_n || '',
+      nfvp_score_f: customer.nfvp_score_f || ''
+    }
+    setEditFormData(formData)
     setIsEditMode(true)
     setShowDetailModal(true)
   }
@@ -307,6 +313,8 @@ function Customers() {
       source: '',
       capital_amount: '',
       nfvp_score: '',
+      nfvp_score_n: '',
+      nfvp_score_f: '',
       cvi_score: '',
       notes: ''
     })
@@ -355,11 +363,15 @@ function Customers() {
       const cviValue = calculateCVI(editFormData.nfvp_score_n, editFormData.nfvp_score_f, vScore, pScore)
       
       // 更新表單數據以包含計算的值
+      // 注意：不發送 nfvp_score_n 和 nfvp_score_f，只發送計算後的 cvi_score
       const dataToSave = {
         ...editFormData,
         customer_type: customerType,
         cvi_score: cviValue
       }
+      // 移除 nfvp_score_n 和 nfvp_score_f，不發送給後端
+      delete dataToSave.nfvp_score_n
+      delete dataToSave.nfvp_score_f
       
       const response = await fetch(`/api/customers/${selectedCustomer.id}`, {
         method: 'PUT',

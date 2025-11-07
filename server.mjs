@@ -198,6 +198,7 @@ app.put('/api/customers/:id', async (req, res) => {
     let paramIndex = 1;
 
     // 支持的所有字段
+    // 注意：不接受 nfvp_score_n 和 nfvp_score_f，只接受 cvi_score
     const fieldMap = {
       'name': 'name',
       'email': 'email',
@@ -215,8 +216,6 @@ app.put('/api/customers/:id', async (req, res) => {
       'source': 'source',
       'capital_amount': 'capital_amount',
       'nfvp_score': 'nfvp_score',
-      'nfvp_score_n': 'nfvp_score_n',
-      'nfvp_score_f': 'nfvp_score_f',
       'cvi_score': 'cvi_score',
       'notes': 'notes',
       'status': 'status'

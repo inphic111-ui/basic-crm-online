@@ -201,3 +201,9 @@
   - [x] 删除重複的 GET /api/customers 端點
   - [x] 測試修改
   - [x] 推送到 GitHub 並驗證 Railway 部署
+
+### 客戶資料管理 - N/F 評分欄位修復（第十八階段）
+- [ ] 在 Railway PostgreSQL 中添加 nfvp_score_n 欄位
+- [ ] 在 Railway PostgreSQL 中添加 nfvp_score_f 欄位
+- [ ] 驗證欄位添加成功
+- [ ] 前端重新保存 N/F 評分並驗證成功
