@@ -312,7 +312,8 @@ function Customers() {
       customer_type: '',
       source: '',
       capital_amount: '',
-      nfvp_score: '',
+      // nfvp_score 是旧的評分，不再更新，不需要在表單中包含
+      // nfvp_score: '',
       nfvp_score_n: '',
       nfvp_score_f: '',
       cvi_score: '',
@@ -510,8 +511,8 @@ function Customers() {
               </thead>
               <tbody>
                 {customers.map(customer => {
-                  // 使用保存的客戶類型，如果沒有則基於 NFVP 分數計算
-                  const customerType = customer.customer_type || getCustomerType(customer.nfvp_score)
+                  // 使用保存的客戶類型（已經根據 V/P 評分計算）
+                  const customerType = customer.customer_type || 'unclassified'
                   
                   return (
                     <tr key={customer.id}>
@@ -970,8 +971,9 @@ function Customers() {
                   <input
                     type="number"
                     step="0.1"
-                    name="nfvp_score"
-                    value={formData.nfvp_score || ''}
+                    // nfvp_score 是旧的評分，不再更新
+                    // name="nfvp_score"
+                    // value={formData.nfvp_score || ''}
                     onChange={handleFormChange}
                     placeholder="輸入 NFVP 評分"
                   />
