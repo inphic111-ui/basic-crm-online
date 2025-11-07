@@ -198,7 +198,7 @@ app.put('/api/customers/:id', async (req, res) => {
     let paramIndex = 1;
 
     // 支持的所有字段
-    // 注意：不接受 nfvp_score_n 和 nfvp_score_f，只接受 cvi_score
+    // 注意：不接受 nfvp_score_n 和 nfvp_score_f，只接受 nfvp_score
     const fieldMap = {
       'name': 'name',
       'email': 'email',

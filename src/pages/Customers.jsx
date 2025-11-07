@@ -126,6 +126,19 @@ const getTypeLabel = (type) => {
   return labels[type] || '未分類'
 }
 
+// 根據 nfvp_score 產生中文分類描述
+const getNFVPDescription = (nfvpScore) => {
+  if (!nfvpScore) return ''
+  const score = parseFloat(nfvpScore)
+  
+  if (score >= 9.0) return '超級VIP'
+  if (score >= 8.0) return '高價值客戶'
+  if (score >= 7.0) return '優質客戶'
+  if (score >= 6.0) return '潛力客戶'
+  if (score >= 5.0) return '普通客戶'
+  return '低價值客戶'
+}
+
 // LOL 牌位勳章風格的評級徽章
 const getRatingBadge = (rating) => {
   const badgeStyles = {
@@ -268,11 +281,12 @@ function Customers() {
   const handleViewDetail = (customer) => {
     console.log('打開編輯模式：客戶數據:', customer)
     setSelectedCustomer(customer)
-    // 確保 nfvp_score_n 和 nfvp_score_f 有預設值
+      // 確保 nfvp_score_n 和 nfvp_score_f 有預設值
     const formData = {
       ...customer,
       nfvp_score_n: customer.nfvp_score_n || '',
-      nfvp_score_f: customer.nfvp_score_f || ''
+      nfvp_score_f: customer.nfvp_score_f || '',
+      nfvp_score: customer.nfvp_score || ''
     }
     setEditFormData(formData)
     setIsEditMode(true)
@@ -312,11 +326,9 @@ function Customers() {
       customer_type: '',
       source: '',
       capital_amount: '',
-      // nfvp_score 是旧的評分，不再更新，不需要在表單中包含
-      // nfvp_score: '',
+      nfvp_score: '',
       nfvp_score_n: '',
       nfvp_score_f: '',
-      cvi_score: '',
       notes: ''
     })
     setShowAddModal(true)
@@ -361,18 +373,20 @@ function Customers() {
       const vScore = calculateVScore(editFormData.price, editFormData.annual_consumption)
       const pScore = calculatePScore(editFormData.price)
       const customerType = getCustomerTypeByVP(vScore, pScore)
-      const cviValue = calculateCVI(editFormData.nfvp_score_n, editFormData.nfvp_score_f, vScore, pScore)
+      const nfvpValue = calculateCVI(editFormData.nfvp_score_n, editFormData.nfvp_score_f, vScore, pScore)
       
       // 更新表單數據以包含計算的值
-      // 注意：不發送 nfvp_score_n 和 nfvp_score_f，只發送計算後的 cvi_score
+      // 注意：不發送 nfvp_score_n 和 nfvp_score_f，只發送計算後的 nfvp_score 和 cvi_score（客戶分類類型）
       const dataToSave = {
         ...editFormData,
         customer_type: customerType,
-        cvi_score: cviValue
+        nfvp_score: nfvpValue,
+        cvi_score: customerType  // 保存客戶分類類型（shark/whale/grass/shrimp）
       }
       // 移除 nfvp_score_n 和 nfvp_score_f，不發送給後端
       delete dataToSave.nfvp_score_n
       delete dataToSave.nfvp_score_f
+      // 不自動覆蓋 notes，保留用戶的備註
       
       const response = await fetch(`/api/customers/${selectedCustomer.id}`, {
         method: 'PUT',
@@ -388,9 +402,10 @@ function Customers() {
 
       const updatedCustomer = await response.json()
       
-      // 添加計算後的字段到返回的客戶對象
+      // 添加計算侌的字段到返回的客戶對象
       updatedCustomer.customer_type = customerType
-      updatedCustomer.cvi_score = cviValue
+      updatedCustomer.nfvp_score = nfvpValue
+      updatedCustomer.cvi_score = customerType  // 客戶分類類型（shark/whale/grass/shrimp）
       updatedCustomer.v_score = vScore
       updatedCustomer.p_score = pScore
       
