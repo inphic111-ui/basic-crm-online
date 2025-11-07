@@ -347,12 +347,26 @@ function Customers() {
   const handleSaveEditCustomer = async () => {
     try {
       setSaving(true)
+      
+      // 在保存前計算新的評分和類型
+      const vScore = calculateVScore(editFormData.price, editFormData.annual_consumption)
+      const pScore = calculatePScore(editFormData.price)
+      const customerType = getCustomerTypeByVP(vScore, pScore)
+      const cviValue = calculateCVI(editFormData.nfvp_score_n, editFormData.nfvp_score_f, vScore, pScore)
+      
+      // 更新表單數據以包含計算的值
+      const dataToSave = {
+        ...editFormData,
+        customer_type: customerType,
+        cvi_score: cviValue
+      }
+      
       const response = await fetch(`/api/customers/${selectedCustomer.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(editFormData)
+        body: JSON.stringify(dataToSave)
       })
 
       if (!response.ok) {
@@ -360,6 +374,13 @@ function Customers() {
       }
 
       const updatedCustomer = await response.json()
+      
+      // 添加計算後的字段到返回的客戶對象
+      updatedCustomer.customer_type = customerType
+      updatedCustomer.cvi_score = cviValue
+      updatedCustomer.v_score = vScore
+      updatedCustomer.p_score = pScore
+      
       setCustomers(customers.map(c => c.id === updatedCustomer.id ? updatedCustomer : c))
       handleCloseDetailModal()
       alert('客戶已更新')
