@@ -256,6 +256,40 @@ function Customers() {
   const [isEditMode, setIsEditMode] = useState(false)
   const [editFormData, setEditFormData] = useState({})
   const [renderTrigger, setRenderTrigger] = useState(0)
+  
+  // 搜尋功能的 state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterStatus, setFilterStatus] = useState('')
+  const [filterResponsible, setFilterResponsible] = useState('')
+  const [responsiblePersons, setResponsiblePersons] = useState([])
+
+  // 生成隨機人名列表
+  const generateResponsiblePersons = () => {
+    const names = [
+      '王建宏', '李美玲', '陳芬芬', '黃家豪', '吳欣怡',
+      '林志偉', '劉思妤', '張家榕', '楊家誠', '何俊傑',
+      '賴建志', '曾郁涵', '許家豪', '鄭家慧', '郭家銘'
+    ]
+    setResponsiblePersons(names)
+  }
+
+  // 根據搜尋條件過濾客戶列表
+  const getFilteredCustomers = () => {
+    return customers.filter(customer => {
+      // 搜尋欄過濾（客戶編號或名稱）
+      const matchesSearch = !searchQuery || 
+        customer.customer_id?.toString().includes(searchQuery) ||
+        customer.name?.toLowerCase().includes(searchQuery.toLowerCase())
+      
+      // 狀態過濾
+      const matchesStatus = !filterStatus || customer.order_status === filterStatus
+      
+      // 負責人過濾（暫時不實現，因為數據中沒有負責人字段）
+      const matchesResponsible = !filterResponsible || true
+      
+      return matchesSearch && matchesStatus && matchesResponsible
+    })
+  }
 
   // 從 API 獲取客戶列表
   useEffect(() => {
@@ -278,6 +312,7 @@ function Customers() {
     }
 
     fetchCustomers()
+    generateResponsiblePersons()
   }, [])
 
   // 打開詳細視窗（可編輯模式）
@@ -506,6 +541,78 @@ function Customers() {
           </div>
         </div>
 
+        {/* 搜尋和篩選區域 */}
+        {!loading && customers.length > 0 && (
+          <div className="search-filter-area" style={{
+            padding: '16px',
+            backgroundColor: '#f5f5f5',
+            borderBottom: '1px solid #ddd',
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr 1fr',
+            gap: '12px',
+            alignItems: 'center'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <span style={{ marginRight: '8px', fontSize: '14px', fontWeight: '500' }}>搜尋:</span>
+              <input
+                type="text"
+                placeholder="輸入客戶編號或名稱..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <span style={{ marginRight: '8px', fontSize: '14px', fontWeight: '500' }}>狀態:</span>
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  fontSize: '14px'
+                }}
+              >
+                <option value="">全部狀態</option>
+                <option value="未處理">未處理</option>
+                <option value="追單">追單</option>
+                <option value="成交">成交</option>
+                <option value="售後">售後</option>
+                <option value="流失">流失</option>
+              </select>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <span style={{ marginRight: '8px', fontSize: '14px', fontWeight: '500' }}>負責人:</span>
+              <select
+                value={filterResponsible}
+                onChange={(e) => setFilterResponsible(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  fontSize: '14px'
+                }}
+              >
+                <option value="">全部負責人</option>
+                {responsiblePersons.map((person, index) => (
+                  <option key={index} value={person}>{person}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="loading-state">
             ⏳ 正在加載客戶數據...
@@ -535,7 +642,7 @@ function Customers() {
                 </tr>
               </thead>
               <tbody>
-                {customers.map(customer => {
+                {getFilteredCustomers().map(customer => {
                   // 使用保存的客戶類型（已經根據 V/P 評分計算）
                   const customerType = customer.customer_type || 'unclassified'
                   
