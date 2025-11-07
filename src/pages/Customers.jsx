@@ -198,7 +198,17 @@ const getRatingBadge = (rating) => {
     }
   }
   
+  const ratingNotes = {
+    'S': '確認待收款',
+    'A': '優質跟進客戶',
+    'B': '跟進客戶',
+    'C': '養成客戶',
+    'D': '低價值客戶',
+    'E': '黑名單/unknown'
+  }
+  
   const style = badgeStyles[rating] || badgeStyles['E']
+  const note = ratingNotes[rating] || ''
   
   return (
     <span style={{
@@ -211,8 +221,11 @@ const getRatingBadge = (rating) => {
       fontSize: '14px',
       fontWeight: 'bold',
       color: (rating === 'B' || rating === 'A') ? 'white' : 'white',
+      cursor: 'pointer',
       ...style
-    }}>
+    }}
+    title={note}
+    >
       {rating || '-'}
     </span>
   )
@@ -655,7 +668,7 @@ function Customers() {
                   <th>客戶編號</th>
                   <th>客戶名稱</th>
                   <th>公司名稱</th>
-                  <th>初始產品</th>
+                  <th>詢問產品</th>
                   <th>報價</th>
                   <th>預算</th>
                   <th>電話</th>
@@ -921,6 +934,18 @@ function Customers() {
                     )}
                   </div>
                   <div className="detail-item">
+                    <label>商品超連結:</label>
+                    {isEditMode ? (
+                      <input type="text" name="product_url" value={editFormData.product_url || ''} onChange={handleEditFormChange} placeholder="輸入商品連結 URL" />
+                    ) : (
+                      editFormData.product_url ? (
+                        <a href={editFormData.product_url} target="_blank" rel="noopener noreferrer" style={{color: '#0066FF', textDecoration: 'underline'}}>連結</a>
+                      ) : (
+                        <span>-</span>
+                      )
+                    )}
+                  </div>
+                  <div className="detail-item">
                     <label>訂單狀態:</label>
                     {isEditMode ? (
                       <select name="order_status" value={editFormData.order_status || ''} onChange={handleEditFormChange}>
@@ -977,88 +1002,94 @@ function Customers() {
               {/* 自動計算資訊區塊已移除 - 現在只在評分資訊部分顯示 V 評分和 P 評分 */}
 
               <div className="detail-section">
-                <h3>聯繫資訊</h3>
-                <div className="detail-grid">
-                  <div className="detail-item">
-                    <label>手機:</label>
-                    {isEditMode ? (
-                      <input type="text" name="phone" value={editFormData.phone || ''} onChange={handleEditFormChange} />
-                    ) : (
-                      <span>{editFormData.phone || '-'}</span>
-                    )}
-                  </div>
-                  <div className="detail-item">
-                    <label>市話:</label>
-                    {isEditMode ? (
-                      <input type="text" name="telephone" value={editFormData.telephone || ''} onChange={handleEditFormChange} />
-                    ) : (
-                      <span>{editFormData.telephone || '-'}</span>
-                    )}
-                  </div>
-                </div>
-                <div style={{ marginTop: '15px' }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>音檔上傳:</label>
-                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    <input 
-                      type="file" 
-                      accept="audio/*" 
-                      id="audio-upload"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const formData = new FormData();
-                          formData.append('file', file);
-                          formData.append('customerId', editFormData.id);
-                          
-                          fetch('/api/audio/upload', {
-                            method: 'POST',
-                            body: formData
-                          })
-                          .then(res => res.json())
-                          .then(data => {
-                            if (data.success) {
-                              alert('音檔上傳成功');
-                              setEditFormData({...editFormData, audioUrl: data.audioUrl});
-                            } else {
-                              alert('音檔上傳失敗: ' + data.error);
+                <div style={{ marginTop: '0px' }}>
+                  {isEditMode ? (
+                    <>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>\u97f3\u6a94\u4e0a\u50b3:</label>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <input 
+                          type="file" 
+                          accept="audio/*" 
+                          id="audio-upload"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const formData = new FormData();
+                              formData.append('file', file);
+                              formData.append('customerId', editFormData.id);
+                              
+                              fetch('/api/audio/upload', {
+                                method: 'POST',
+                                body: formData
+                              })
+                              .then(res => res.json())
+                              .then(data => {
+                                if (data.success) {
+                                  alert('\u97f3\u6a94\u4e0a\u50b3\u6210\u529f');
+                                  setEditFormData({...editFormData, audioUrl: data.audioUrl});
+                                } else {
+                                  alert('\u97f3\u6a94\u4e0a\u50b3\u5931\u6557: ' + data.error);
+                                }
+                              })
+                              .catch(err => alert('\u4e0a\u50b3\u932f\u8aa4: ' + err.message));
                             }
-                          })
-                          .catch(err => alert('上傳錯誤: ' + err.message));
-                        }
-                      }}
-                      style={{ display: 'none' }}
-                    />
-                    <button 
-                      className="btn btn-primary"
-                      onClick={() => document.getElementById('audio-upload').click()}
-                      style={{ padding: '8px 16px', fontSize: '14px' }}
-                    >
-                      選擇音檔
-                    </button>
-                    {editFormData.audioUrl && (
-                      <>
-                        <audio controls style={{ height: '32px', flex: 1 }}>
-                          <source src={editFormData.audioUrl} />
-                          您的瀏覽器不支援音檔播放
-                        </audio>
-                        <button 
-                          className="btn btn-danger"
-                          onClick={() => {
-                            fetch(`/api/audio/delete/${editFormData.id}`, { method: 'DELETE' })
-                            .then(res => res.json())
-                            .then(data => {
-                              if (data.success) {
-                                setEditFormData({...editFormData, audioUrl: null});
-                              }
-                            });
                           }}
-                          style={{ padding: '8px 12px', fontSize: '12px' }}
+                          style={{ display: 'none' }}
+                        />
+                        <button 
+                          className="btn btn-primary"
+                          onClick={() => document.getElementById('audio-upload').click()}
+                          style={{ padding: '8px 16px', fontSize: '14px' }}
                         >
-                          刪除
+                          \u9078\u64c7\u97f3\u6a94
                         </button>
-                      </>
-                    )}
-                  </div>
+                        {editFormData.audioUrl && (
+                          <>
+                            <audio controls style={{ height: '32px', flex: 1 }}>
+                              <source src={editFormData.audioUrl} />
+                              \u60a8\u7684\u700f\u89bd\u5668\u4e0d\u652f\u63f4\u97f3\u6a94\u64ad\u653e
+                            </audio>
+                            <button 
+                              className="btn btn-danger"
+                              onClick={() => {
+                                fetch(`/api/audio/delete/${editFormData.id}`, { method: 'DELETE' })
+                                .then(res => res.json())
+                                .then(data => {
+                                  if (data.success) {
+                                    setEditFormData({...editFormData, audioUrl: null});
+                                  }
+                                });
+                              }}
+                              style={{ padding: '8px 12px', fontSize: '12px' }}
+                            >
+                              \u522a\u9664
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {editFormData.audioUrl && (
+                        <>
+                          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>\ud83c\udd0a \u901a\u8a71\u7d00\u9304:</label>
+                          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                            <span style={{ fontSize: '24px', cursor: 'pointer' }} title="\u64ad\u653e\u97f3\u6a94">\ud83d\udd0a</span>
+                            <audio controls style={{ height: '32px', flex: 1 }}>
+                              <source src={editFormData.audioUrl} />
+                              \u60a8\u7684\u700f\u89bd\u5668\u4e0d\u652f\u63f4\u97f3\u6a94\u64ad\u653e
+                            </audio>
+                          </div>
+                          <div style={{ marginTop: '15px' }}>
+                            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>AI \u5206\u6790:</label>
+                            <div style={{ padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '4px', minHeight: '60px' }}>
+                              {editFormData.aiAnalysis || '\u6b62\u4e0d\u6709 AI \u5206\u6790\u8cc7\u6599'}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -1139,13 +1170,13 @@ function Customers() {
                 </div>
 
                 <div className="form-group">
-                  <label>初始產品</label>
+                  <label>詢問產品</label>
                   <input
                     type="text"
                     name="initial_product"
                     value={formData.initial_product || ''}
                     onChange={handleFormChange}
-                    placeholder="輸入初始產品"
+                    placeholder="輸入詢問產品"
                   />
                 </div>
 
