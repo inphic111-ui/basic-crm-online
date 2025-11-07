@@ -108,6 +108,85 @@ function createPool(env) {
 createPool('offline');
 createPool('online');
 
+// 自動初始化數據庫表（如果不存在）
+async function initializeDatabase() {
+  const pool = pools.online;
+  if (!pool) {
+    addLog('warn', '無法初始化數據庫：ONLINE 連接池未創建');
+    return;
+  }
+
+  try {
+    // 檢查 customers 表是否存在
+    const tableCheckResult = await pool.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_name = 'customers'
+      )
+    `);
+
+    if (!tableCheckResult.rows[0].exists) {
+      addLog('info', '檢測到 customers 表不存在，開始初始化...');
+      
+      // 創建表
+      await pool.query(`
+        CREATE TABLE customers (
+          id SERIAL PRIMARY KEY,
+          customer_id VARCHAR(20) UNIQUE NOT NULL,
+          name VARCHAR(255) NOT NULL,
+          company_name VARCHAR(255),
+          initial_product VARCHAR(255),
+          price NUMERIC(10, 2),
+          budget NUMERIC(10, 2),
+          phone VARCHAR(20),
+          telephone VARCHAR(20),
+          order_status VARCHAR(50),
+          total_consumption NUMERIC(15, 2),
+          annual_consumption NUMERIC(15, 2) DEFAULT 0,
+          customer_rating VARCHAR(10),
+          customer_type VARCHAR(50),
+          source VARCHAR(50),
+          capital_amount NUMERIC(15, 2),
+          nfvp_score NUMERIC(3, 1),
+          cvi_score NUMERIC(5, 2),
+          notes TEXT,
+          audio_url TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      addLog('info', 'customers 表已創建');
+      
+      // 創建索引
+      await pool.query('CREATE INDEX idx_customers_customer_id ON customers(customer_id)');
+      await pool.query('CREATE INDEX idx_customers_name ON customers(name)');
+      await pool.query('CREATE INDEX idx_customers_created_at ON customers(created_at)');
+      addLog('info', '索引已創建');
+      
+      // 插入示例數據
+      await pool.query(`
+        INSERT INTO customers (
+          customer_id, name, company_name, initial_product, price, budget,
+          phone, telephone, order_status, total_consumption, customer_rating,
+          customer_type, source, capital_amount, nfvp_score, cvi_score, notes
+        ) VALUES
+          ('20251106001', '林建宏', '智能科技有限公司', '軟件開發', 50000, 100000,
+           '0912345678', '0287654321', '成交', 250000, 'A', NULL, 'LINE', 5000000, NULL, 92.5, '待評估'),
+          ('20251106002', '陳怡君', '數位行銷集團', '網頁設計', 30000, 80000,
+           '0923456789', '0276543210', '成交', 500000, 'S', NULL, 'EMAIL', 8000000, 9.2, 95.3, '頂級VIP')
+      `);
+      addLog('info', '示例數據已插入');
+    } else {
+      addLog('info', 'customers 表已存在，跳過初始化');
+    }
+  } catch (err) {
+    addLog('error', '初始化數據庫失敗', err.message);
+  }
+}
+
+// 延遲初始化，等待連接池完全建立
+setTimeout(initializeDatabase, 1000);
+
 // ============ CRM 3.0 API 路由 ============
 
 // API: 儀表板統計數據 - 從 ONLINE 數據庫計算
@@ -172,13 +251,10 @@ app.get('/api/customers', async (req, res) => {
     }
 
     // 查詢 ONLINE 數據庫中的所有客戶
-    // 使用 PostgreSQL CAST 操作符 ::NUMERIC 將 money 類型轉換為 NUMERIC
+    // 使用 PostgreSQL COALESCE 和 CAST 將 annual_consumption 轉換為 NUMERIC
     const result = await pool.query(`
       SELECT *,
-        CASE 
-          WHEN annual_consumption IS NOT NULL THEN (annual_consumption)::NUMERIC
-          ELSE 0
-        END as annual_consumption_numeric
+        COALESCE(annual_consumption::NUMERIC, 0) as annual_consumption_numeric
       FROM customers 
       ORDER BY id ASC
     `);
