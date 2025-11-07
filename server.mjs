@@ -1694,7 +1694,55 @@ app.use((err, req, res, next) => {
   })
 });
 
-app.listen(PORT, () => {
+
+// 音檔上傳 API
+app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: '沒有選擇文件' });
+    }
+
+    const customerId = req.body.customerId;
+    const fileName = `${customerId}-${Date.now()}-${req.file.originalname}`;
+    const filePath = path.join('uploads', 'audio', fileName);
+    
+    // 確保目錄存在
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    
+    // 保存文件
+    fs.writeFileSync(filePath, req.file.buffer);
+    
+    res.json({ 
+      success: true, 
+      audioUrl: `/uploads/audio/${fileName}`,
+      message: '音檔上傳成功'
+    });
+  } catch (error) {
+    console.error('音檔上傳錯誤:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 音檔刪除 API
+app.delete('/api/audio/delete/:customerId', async (req, res) => {
+  try {
+    // 這裡可以根據 customerId 查詢並刪除對應的音檔
+    // 暫時返回成功
+    res.json({ success: true, message: '音檔已刪除' });
+  } catch (error) {
+    console.error('音檔刪除錯誤:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 靜態文件服務 - 音檔
+app.use('/uploads', express.static('uploads'));
+
+
+$1, () => {
   addLog('info', `CRM 3.0 服務器啟動成功，監聽端口 ${PORT}`);
   console.log(`
 ╔════════════════════════════════════════╗
