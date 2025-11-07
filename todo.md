@@ -189,3 +189,14 @@
 - [x] 為 F 評分選項添加精簡描述文字（10 個等級）
 - [x] 測試修改
 - [x] 推送到 GitHub 並驗證 Railway 部署
+
+### 客戶資料管理 - 關鍵問題修復（第十六階段）
+- [x] 修復年度消費額顯示「NT$非數值」問題
+  - [x] 在後端 GET /api/customers 端點中添加 annual_consumption 欄位
+  - [x] 前端已有正確的 NULL 值處理
+- [x] 修復修改報價後客戶類型沒有自動更新問題
+  - [x] 修改表格顯示邏輯，使用保存的 customer_type 字段
+  - [x] 驗證前端正確傳遞 customer_type 值
+  - [x] 在後端 PUT API 中添加新的支持字段
+  - [ ] 測試修改
+  - [ ] 推送到 GitHub 並驗證 Railway 部署

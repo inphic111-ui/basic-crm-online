@@ -193,11 +193,14 @@ app.put('/api/customers/:id', async (req, res) => {
       'telephone': 'telephone',
       'order_status': 'order_status',
       'total_consumption': 'total_consumption',
+      'annual_consumption': 'annual_consumption',
       'customer_rating': 'customer_rating',
       'customer_type': 'customer_type',
       'source': 'source',
       'capital_amount': 'capital_amount',
       'nfvp_score': 'nfvp_score',
+      'nfvp_score_n': 'nfvp_score_n',
+      'nfvp_score_f': 'nfvp_score_f',
       'cvi_score': 'cvi_score',
       'notes': 'notes',
       'status': 'status'
@@ -1327,7 +1330,7 @@ app.get('/api/customers', async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT id, customer_id, name, company_name, initial_product, price, budget, 
-             phone, telephone, order_status, total_consumption, customer_rating, 
+             phone, telephone, order_status, total_consumption, annual_consumption, customer_rating, 
              customer_type, source, created_at
       FROM customers
       ORDER BY created_at DESC

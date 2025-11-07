@@ -498,8 +498,8 @@ function Customers() {
               </thead>
               <tbody>
                 {customers.map(customer => {
-                  // 基於 NFVP 分數計算客戶類型
-                  const customerType = getCustomerType(customer.nfvp_score)
+                  // 使用保存的客戶類型，如果沒有則基於 NFVP 分數計算
+                  const customerType = customer.customer_type || getCustomerType(customer.nfvp_score)
                   
                   return (
                     <tr key={customer.id}>
