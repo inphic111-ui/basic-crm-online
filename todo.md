@@ -198,5 +198,6 @@
   - [x] 修改表格顯示邏輯，使用保存的 customer_type 字段
   - [x] 驗證前端正確傳遞 customer_type 值
   - [x] 在後端 PUT API 中添加新的支持字段
-  - [ ] 測試修改
-  - [ ] 推送到 GitHub 並驗證 Railway 部署
+  - [x] 删除重複的 GET /api/customers 端點
+  - [x] 測試修改
+  - [x] 推送到 GitHub 並驗證 Railway 部署

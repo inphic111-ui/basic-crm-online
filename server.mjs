@@ -1320,28 +1320,6 @@ app.get('*', (req, res) => {
 });
 
 
-// 獲取客戶列表
-app.get('/api/customers', async (req, res) => {
-  const pool = pools.online;
-  if (!pool) {
-    return res.status(500).json({ error: '數據庫未連接' });
-  }
-
-  try {
-    const result = await pool.query(`
-      SELECT id, customer_id, name, company_name, initial_product, price, budget, 
-             phone, telephone, order_status, total_consumption, annual_consumption, customer_rating, 
-             customer_type, source, created_at
-      FROM customers
-      ORDER BY created_at DESC
-    `);
-    res.json(result.rows);
-  } catch (err) {
-    addLog('error', '獲取客戶列表失敗', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // 獲取單個客戶詳細信息
 app.get('/api/customers/:id', async (req, res) => {
   const pool = pools.online;
