@@ -171,12 +171,21 @@ app.get('/api/customers', async (req, res) => {
     }
 
     // 查詢 ONLINE 數據庫中的所有客戶
-    const result = await pool.query('SELECT * FROM customers ORDER BY id ASC');
+    // 使用 PostgreSQL CAST 操作符 ::NUMERIC 將 money 類型轉換為 NUMERIC
+    const result = await pool.query(`
+      SELECT *,
+        CASE 
+          WHEN annual_consumption IS NOT NULL THEN (annual_consumption)::NUMERIC
+          ELSE 0
+        END as annual_consumption_numeric
+      FROM customers 
+      ORDER BY id ASC
+    `);
     
-    // 清理每個客戶的 annual_consumption 欄位
+    // 將轉換後的 annual_consumption_numeric 值覆蓋原始的 annual_consumption
     const cleanedRows = result.rows.map(row => ({
       ...row,
-      annual_consumption: cleanAnnualConsumption(row.annual_consumption)
+      annual_consumption: row.annual_consumption_numeric || 0
     }));
     
     addLog('info', `從 ONLINE 數據庫查詢客戶成功，共 ${result.rows.length} 筆`);
@@ -1377,16 +1386,25 @@ app.get('/api/customers/:id', async (req, res) => {
 
   try {
     const { id } = req.params;
-    const result = await pool.query('SELECT * FROM customers WHERE id = $1', [id]);
+    // 使用 PostgreSQL CAST 操作符 ::NUMERIC 將 money 類型轉換為 NUMERIC
+    const result = await pool.query(`
+      SELECT *,
+        CASE 
+          WHEN annual_consumption IS NOT NULL THEN (annual_consumption)::NUMERIC
+          ELSE 0
+        END as annual_consumption_numeric
+      FROM customers 
+      WHERE id = $1
+    `, [id]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: '客戶不存在' });
     }
 
-    // 清理 annual_consumption 欄位
+    // 將轉換後的 annual_consumption_numeric 值覆蓋原始的 annual_consumption
     const cleanedRow = {
       ...result.rows[0],
-      annual_consumption: cleanAnnualConsumption(result.rows[0].annual_consumption)
+      annual_consumption: result.rows[0].annual_consumption_numeric || 0
     };
 
     res.json(cleanedRow);
@@ -1441,53 +1459,23 @@ app.delete('/api/customers/:id', async (req, res) => {
 
   try {
     const { id } = req.params;
-    const result = await pool.query('DELETE FROM customers WHERE id = $1 RETURNING id', [id]);
+    // 使用 PostgreSQL CAST 操作符 ::NUMERIC 將 money 類型轉換為 NUMERIC
+    const result = await pool.query(`
+      SELECT *,
+        CASE 
+          WHEN annual_consumption IS NOT NULL THEN (annual_consumption)::NUMERIC
+          ELSE 0
+        END as annual_consumption_numeric
+      FROM customers 
+      WHERE id = $1
+    `, [id]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: '客戶不存在' });
     }
 
-    addLog('info', '客戶已刪除', { id });
-    res.json({ success: true, message: '客戶已刪除' });
-  } catch (err) {
-    addLog('error', '刪除客戶失敗', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// 錯誤處理
-app.use((err, req, res, next) => {
-  console.error(err.stack)
-  addLog('error', '伺服器錯誤', err.message);
-  res.status(500).json({
-    error: 'Internal Server Error',
-    message: err.message
-  })
-});
-
-app.listen(PORT, () => {
-  addLog('info', `CRM 3.0 服務器啟動成功，監聽端口 ${PORT}`);
-  console.log(`
-╔════════════════════════════════════════╗
-║     CRM 3.0 - 客戶關係管理系統         ║
-╚════════════════════════════════════════╝
-
-✅ 伺服器已啟動
-📍 地址: http://localhost:${PORT}
-🌐 環境: ${process.env.NODE_ENV || 'production'}
-⏰ 時間: ${new Date().toLocaleString('zh-TW')}
-
-準備好了！請訪問應用程序。
-  `);
-});
-
-// 優雅關閉
-process.on('SIGTERM', async () => {
-  addLog('info', '收到 SIGTERM，開始優雅關閉');
-  for (const pool of Object.values(pools)) {
-    if (pool) {
-      await pool.end();
-    }
-  }
-  process.exit(0);
-});
+    // 將轉換後的 annual_consumption_numeric 值覆蓋原始的 annual_consumption
+    const cleanedRow = {
+      ...result.rows[0],
+      annual_consumption: result.rows[0].annual_consumption_numeric || 0
+    };
