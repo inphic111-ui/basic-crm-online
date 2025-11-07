@@ -1,4 +1,5 @@
 import express from 'express';
+import multer from 'multer';
 import cors from 'cors';
 import { Pool } from 'pg';
 import path from 'path';
@@ -377,6 +378,146 @@ app.get('/api/customers/:id', async (req, res) => {
 });
 
 // API: 刪除客戶
+
+// 配置 multer 用於文件上傳
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 16 * 1024 * 1024 } // 16MB 限制
+});
+
+// 音檔上傳端點
+app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: '沒有選擇文件' });
+    }
+
+    const { customerId } = req.body;
+    if (!customerId) {
+      return res.status(400).json({ error: '缺少客戶 ID' });
+    }
+
+    // 生成唯一的文件名
+    const timestamp = Date.now();
+    const fileName = `audio_${customerId}_${timestamp}.${req.file.originalname.split('.').pop()}`;
+    
+    // 為了簡化，我們將音檔 URL 存儲為相對路徑
+    // 在實際應用中，應該上傳到 S3 或其他存儲服務
+    const audioUrl = `/uploads/${fileName}`;
+    
+    // 創建 uploads 目錄（如果不存在）
+    const uploadsDir = './uploads';
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    
+    // 保存文件
+    fs.writeFileSync(path.join(uploadsDir, fileName), req.file.buffer);
+    
+    // 更新數據庫中的 audio_url 字段
+    const pool = pools.online;
+    if (!pool) {
+      return res.status(500).json({ error: '數據庫未連接' });
+    }
+
+    // 首先檢查 audio_url 列是否存在
+    try {
+      await pool.query(
+        'UPDATE customers SET audio_url = $1 WHERE id = $2',
+        [audioUrl, customerId]
+      );
+    } catch (dbErr) {
+      // 如果列不存在，創建它
+      if (dbErr.message.includes('audio_url')) {
+        await pool.query('ALTER TABLE customers ADD COLUMN audio_url TEXT');
+        await pool.query(
+          'UPDATE customers SET audio_url = $1 WHERE id = $2',
+          [audioUrl, customerId]
+        );
+      } else {
+        throw dbErr;
+      }
+    }
+
+    addLog('info', '音檔上傳成功', { customerId, fileName });
+    res.json({ 
+      success: true, 
+      audio_url: audioUrl,
+      message: '音檔上傳成功' 
+    });
+  } catch (err) {
+    addLog('error', '音檔上傳失敗', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 音檔刪除端點
+app.delete('/api/audio/delete/:customerId', async (req, res) => {
+  try {
+    const { customerId } = req.params;
+    
+    const pool = pools.online;
+    if (!pool) {
+      return res.status(500).json({ error: '數據庫未連接' });
+    }
+
+    // 獲取當前的 audio_url
+    const result = await pool.query(
+      'SELECT audio_url FROM customers WHERE id = $1',
+      [customerId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: '客戶不存在' });
+    }
+
+    const audioUrl = result.rows[0].audio_url;
+    
+    // 刪除文件
+    if (audioUrl) {
+      const filePath = path.join('./uploads', path.basename(audioUrl));
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
+    // 更新數據庫，移除 audio_url
+    await pool.query(
+      'UPDATE customers SET audio_url = NULL WHERE id = $1',
+      [customerId]
+    );
+
+    addLog('info', '音檔已刪除', { customerId });
+    res.json({ success: true, message: '音檔已刪除' });
+  } catch (err) {
+    addLog('error', '音檔刪除失敗', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 音檔下載端點
+app.get('/uploads/:fileName', (req, res) => {
+  try {
+    const { fileName } = req.params;
+    const filePath = path.join('./uploads', fileName);
+    
+    // 安全檢查：防止目錄遍歷攻擊
+    if (!filePath.startsWith(path.resolve('./uploads'))) {
+      return res.status(403).json({ error: '禁止訪問' });
+    }
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: '文件不存在' });
+    }
+
+    res.download(filePath);
+  } catch (err) {
+    addLog('error', '音檔下載失敗', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 app.delete('/api/customers/:id', async (req, res) => {
   try {
     const { id } = req.params;

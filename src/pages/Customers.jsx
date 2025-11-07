@@ -291,6 +291,19 @@ function Customers() {
     })
   }
 
+  // 計算分頁數據
+  const getPaginatedCustomers = () => {
+    const filtered = getFilteredCustomers()
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return {
+      data: filtered.slice(startIndex, endIndex),
+      total: filtered.length,
+      totalPages: Math.ceil(filtered.length / itemsPerPage),
+      currentPage
+    }
+  }
+
   // 從 API 獲取客戶列表
   useEffect(() => {
     const fetchCustomers = async () => {
@@ -558,7 +571,10 @@ function Customers() {
                 type="text"
                 placeholder="輸入客戶編號或名稱..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                  setCurrentPage(1)
+                }}
                 style={{
                   flex: 1,
                   padding: '8px 12px',
@@ -573,7 +589,10 @@ function Customers() {
               <span style={{ marginRight: '8px', fontSize: '14px', fontWeight: '500' }}>狀態:</span>
               <select
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
+                onChange={(e) => {
+                  setFilterStatus(e.target.value)
+                  setCurrentPage(1)
+                }}
                 style={{
                   flex: 1,
                   padding: '8px 12px',
@@ -595,7 +614,10 @@ function Customers() {
               <span style={{ marginRight: '8px', fontSize: '14px', fontWeight: '500' }}>負責人:</span>
               <select
                 value={filterResponsible}
-                onChange={(e) => setFilterResponsible(e.target.value)}
+                onChange={(e) => {
+                  setFilterResponsible(e.target.value)
+                  setCurrentPage(1)
+                }}
                 style={{
                   flex: 1,
                   padding: '8px 12px',
@@ -642,7 +664,7 @@ function Customers() {
                 </tr>
               </thead>
               <tbody>
-                {getFilteredCustomers().map(customer => {
+                {getPaginatedCustomers().data.map(customer => {
                   // 使用保存的客戶類型（已經根據 V/P 評分計算）
                   const customerType = customer.customer_type || 'unclassified'
                   
@@ -679,6 +701,76 @@ function Customers() {
                 })}
               </tbody>
             </table>
+            
+            {/* 分頁控件 */}
+            {getPaginatedCustomers().totalPages > 1 && (
+              <div style={{
+                padding: '16px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                borderTop: '1px solid #ddd',
+                backgroundColor: '#f9f9f9'
+              }}>
+                <div style={{ fontSize: '14px', color: '#666' }}>
+                  顯示 {(currentPage - 1) * itemsPerPage + 1} 到 {Math.min(currentPage * itemsPerPage, getPaginatedCustomers().total)} 筆，共 {getPaginatedCustomers().total} 筆
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    style={{
+                      padding: '8px 12px',
+                      backgroundColor: currentPage === 1 ? '#ccc' : '#2196F3',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    上一頁
+                  </button>
+                  
+                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                    {Array.from({ length: getPaginatedCustomers().totalPages }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        style={{
+                          padding: '6px 10px',
+                          backgroundColor: page === currentPage ? '#2196F3' : '#e0e0e0',
+                          color: page === currentPage ? 'white' : '#333',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: page === currentPage ? 'bold' : 'normal'
+                        }}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(getPaginatedCustomers().totalPages, prev + 1))}
+                    disabled={currentPage === getPaginatedCustomers().totalPages}
+                    style={{
+                      padding: '8px 12px',
+                      backgroundColor: currentPage === getPaginatedCustomers().totalPages ? '#ccc' : '#2196F3',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: currentPage === getPaginatedCustomers().totalPages ? 'not-allowed' : 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    下一頁
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
