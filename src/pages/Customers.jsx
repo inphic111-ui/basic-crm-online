@@ -374,14 +374,15 @@ function Customers() {
       const pScore = calculatePScore(editFormData.price)
       const customerType = getCustomerTypeByVP(vScore, pScore)
       const nfvpValue = calculateCVI(editFormData.nfvp_score_n, editFormData.nfvp_score_f, vScore, pScore)
+      const customerTypeLabel = getTypeLabel(customerType)  // 轉換為中文描述
       
       // 更新表單數據以包含計算的值
       // 注意：不發送 nfvp_score_n 和 nfvp_score_f，只發送計算後的 nfvp_score 和 cvi_score（客戶分類類型）
       const dataToSave = {
         ...editFormData,
-        customer_type: customerType,
+        customer_type: customerTypeLabel,  // 保存中文描述（鯊魚客戶、鯨魚客戶等）
         nfvp_score: nfvpValue,
-        cvi_score: customerType  // 保存客戶分類類型（shark/whale/grass/shrimp）
+        cvi_score: customerType  // 保存英文代碼作為備用
       }
       // 移除 nfvp_score_n 和 nfvp_score_f，不發送給後端
       delete dataToSave.nfvp_score_n
@@ -403,9 +404,9 @@ function Customers() {
       const updatedCustomer = await response.json()
       
       // 添加計算侌的字段到返回的客戶對象
-      updatedCustomer.customer_type = customerType
+      updatedCustomer.customer_type = customerTypeLabel  // 中文描述
       updatedCustomer.nfvp_score = nfvpValue
-      updatedCustomer.cvi_score = customerType  // 客戶分類類型（shark/whale/grass/shrimp）
+      updatedCustomer.cvi_score = customerType  // 英文代碼
       updatedCustomer.v_score = vScore
       updatedCustomer.p_score = pScore
       
