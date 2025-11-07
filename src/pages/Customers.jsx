@@ -527,9 +527,6 @@ function Customers() {
             <button onClick={handleOpenAddModal} className="btn btn-primary">
               + 新增客戶
             </button>
-            <button onClick={handleInitTable} className="btn btn-secondary">
-              初始化表
-            </button>
           </div>
         </div>
 
