@@ -28,7 +28,6 @@ const calculateVScore = (price, annualConsumption = 0) => {
   const p = parseFloat(price) || 0
   const ac = parseFloat(annualConsumption) || 0
   const total = p + ac
-  console.log('calculateVScore called with price:', p, 'annualConsumption:', ac, 'total:', total)
   if (total >= 1000000) return 10 // V = 10：總額 ≥ 100 萬
   if (total >= 500000) return 8   // V = 8：50 萬 ≤ 總額 < 100 萬
   if (total >= 300000) return 6   // V = 6：30 萬 ≤ 總額 < 50 萬
@@ -78,14 +77,12 @@ const getFScoreDescription = (score) => {
 
 // 計算 CVI 評分：客戶價值指數
 const calculateCVI = (nScore, fScore, vScore, pScore) => {
-  console.log('calculateCVI called with:', { nScore, fScore, vScore, pScore })
   const n = parseFloat(nScore) || 0
   const f = parseFloat(fScore) || 0
   const v = parseFloat(vScore) || 0
   const p = parseFloat(pScore) || 0
   
   const cvi = (n * 0.4) + (f * 0.3) + (v * 0.2) + (p * 0.1)
-  console.log('calculated CVI:', cvi)
   return parseFloat(cvi.toFixed(2))
 }
 
@@ -283,25 +280,8 @@ function Customers() {
     fetchCustomers()
   }, [])
 
-  // 初始化客戶表
-  const handleInitTable = async () => {
-    try {
-      const response = await fetch('/api/customers/init-table', {
-        method: 'POST'
-      })
-      if (!response.ok) {
-        throw new Error(`初始化失敗: ${response.status}`)
-      }
-      alert('客戶表已初始化')
-      window.location.reload()
-    } catch (err) {
-      alert(`初始化失敗: ${err.message}`)
-    }
-  }
-
   // 打開詳細視窗（可編輯模式）
   const handleViewDetail = (customer) => {
-    console.log('打開編輯模式：客戶數據:', customer)
     setSelectedCustomer(customer)
       // 確保 nfvp_score_n 和 nfvp_score_f 有預設值，並清理 annual_consumption
     const formData = {
@@ -380,14 +360,11 @@ function Customers() {
   // 更新編輯表單字段
   const handleEditFormChange = (e) => {
     const { name, value } = e.target
-    console.log(`編輯表單變化: ${name} = ${value}`)
-    console.log('Before update, editFormData.budget:', editFormData.budget)
     setEditFormData(prev => {
       const updated = {
         ...prev,
         [name]: value
       }
-      console.log('After update, updated.budget:', updated.budget)
       return updated
     })
   }
@@ -424,7 +401,6 @@ function Customers() {
       dataToSave.cvi_score = nfvpValue  // 保存 CVI 分數（數值），不是文字描述
       dataToSave.customer_type = customerType  // 保存計算後的客戶類型
       
-      console.log('Saving customer with data:', dataToSave)
       
       const response = await fetch(`/api/customers/${selectedCustomer.id}`, {
         method: 'PUT',
@@ -701,7 +677,6 @@ function Customers() {
                     <span>
                       {(() => {
                         const cviValue = calculateCVI(editFormData.nfvp_score_n, editFormData.nfvp_score_f, calculateVScore(editFormData.price, editFormData.annual_consumption), calculatePScore(editFormData.price))
-                        console.log('CVI 評分渲染:', cviValue, 'editFormData:', editFormData)
                         return cviValue
                       })()}
                     </span>

@@ -242,8 +242,6 @@ app.put('/api/customers/:id', async (req, res) => {
       'status': 'status'
     };
 
-    addLog('info', `更新客戶 ${id}，請求体：${JSON.stringify(body)}`);
-
     // 遍歷所有支持的字段
     for (const [key, dbField] of Object.entries(fieldMap)) {
       if (body[key] !== undefined) {
@@ -278,10 +276,6 @@ app.put('/api/customers/:id', async (req, res) => {
     // 添加 id 到 values
     values.push(id);
     const updateQuery = `UPDATE customers SET ${updates.join(', ')}, updated_at = NOW() WHERE id = $${paramIndex} RETURNING *`;
-
-    addLog('info', `SQL Query: ${updateQuery}`);
-    addLog('info', `SQL Values: ${JSON.stringify(values)}`);
-
     const result = await pool.query(updateQuery, values);
 
     if (result.rows.length === 0) {
