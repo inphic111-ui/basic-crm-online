@@ -217,3 +217,12 @@
 - [ ] 驗證 Railway 部署完成
 - [ ] 在 Railway 數據庫中更新現有的「不買」為「流失」
 - [ ] 測試修改
+
+### 客戶資料管理 - 年度消費欄位修複（第二十階段）
+- [x] 診斷年度消費欄位顯示「NT$非數値」的問題
+- [x] 檢查後端 GET API 返回的 annual_consumption 數據
+- [x] 檢查 PostgreSQL 中 annual_consumption 欄位的數據類型和值
+- [x] 修複後端數據轉換邏輯
+- [x] 修複前端顯示邏輯
+- [x] 測試修改
+- [ ] 推送到 GitHub 並驗證 Railway 部署

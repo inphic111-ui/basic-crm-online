@@ -23,6 +23,27 @@ app.use(express.static(path.join(__dirname, 'client')));
 const logs = [];
 const MAX_LOGS = 1000;
 
+// 清理和轉換 annual_consumption 欄位
+function cleanAnnualConsumption(value) {
+  if (value === null || value === undefined || value === '') {
+    return 0;
+  }
+  
+  // 如果是字符串，移除 'NT$' 前綴和其他非數字字符
+  if (typeof value === 'string') {
+    const cleaned = value.replace(/[^0-9.]/g, '');
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+  
+  // 如果是數字，直接返回
+  if (typeof value === 'number') {
+    return isNaN(value) ? 0 : value;
+  }
+  
+  return 0;
+}
+
 // 添加日誌
 function addLog(level, message, data = null) {
   const logEntry = {
@@ -152,8 +173,14 @@ app.get('/api/customers', async (req, res) => {
     // 查詢 ONLINE 數據庫中的所有客戶
     const result = await pool.query('SELECT * FROM customers ORDER BY id ASC');
     
+    // 清理每個客戶的 annual_consumption 欄位
+    const cleanedRows = result.rows.map(row => ({
+      ...row,
+      annual_consumption: cleanAnnualConsumption(row.annual_consumption)
+    }));
+    
     addLog('info', `從 ONLINE 數據庫查詢客戶成功，共 ${result.rows.length} 筆`);
-    res.json(result.rows);
+    res.json(cleanedRows);
   } catch (err) {
     addLog('error', '查詢客戶失敗', err.message);
     res.status(500).json({
@@ -1356,7 +1383,13 @@ app.get('/api/customers/:id', async (req, res) => {
       return res.status(404).json({ error: '客戶不存在' });
     }
 
-    res.json(result.rows[0]);
+    // 清理 annual_consumption 欄位
+    const cleanedRow = {
+      ...result.rows[0],
+      annual_consumption: cleanAnnualConsumption(result.rows[0].annual_consumption)
+    };
+
+    res.json(cleanedRow);
   } catch (err) {
     addLog('error', '獲取客戶詳細信息失敗', err.message);
     res.status(500).json({ error: err.message });

@@ -1,6 +1,27 @@
 import React, { useState, useEffect } from 'react'
 import '../styles/customers.css'
 
+// 清理和轉換 annual_consumption 欄位
+const cleanAnnualConsumption = (value) => {
+  if (value === null || value === undefined || value === '') {
+    return 0;
+  }
+  
+  // 如果是字符串，移除 'NT$' 前綴和其他非數字字符
+  if (typeof value === 'string') {
+    const cleaned = value.replace(/[^0-9.]/g, '');
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+  
+  // 如果是數字，直接返回
+  if (typeof value === 'number') {
+    return isNaN(value) ? 0 : value;
+  }
+  
+  return 0;
+}
+
 // 根據採購量計算 V 評分
 // 採購量範圍：每年採購總額（包含下限，不包含上限）
 const calculateVScore = (price, annualConsumption = 0) => {
@@ -282,9 +303,10 @@ function Customers() {
   const handleViewDetail = (customer) => {
     console.log('打開編輯模式：客戶數據:', customer)
     setSelectedCustomer(customer)
-      // 確保 nfvp_score_n 和 nfvp_score_f 有預設值
+      // 確保 nfvp_score_n 和 nfvp_score_f 有預設值，並清理 annual_consumption
     const formData = {
       ...customer,
+      annual_consumption: cleanAnnualConsumption(customer.annual_consumption),
       nfvp_score_n: customer.nfvp_score_n || '',
       nfvp_score_f: customer.nfvp_score_f || '',
       nfvp_score: customer.nfvp_score || ''
@@ -297,7 +319,12 @@ function Customers() {
   // 打開詳細視窗（只讀模式）
   const handleViewDetailReadOnly = (customer) => {
     setSelectedCustomer(customer)
-    setEditFormData(customer)
+    // 清理 annual_consumption
+    const cleanedCustomer = {
+      ...customer,
+      annual_consumption: cleanAnnualConsumption(customer.annual_consumption)
+    }
+    setEditFormData(cleanedCustomer)
     setIsEditMode(false)
     setShowDetailModal(true)
   }
