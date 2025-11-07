@@ -150,17 +150,7 @@ app.get('/api/customers', async (req, res) => {
     }
 
     // 查詢 ONLINE 數據庫中的所有客戶
-    let result;
-    try {
-      result = await pool.query('SELECT *, COALESCE(annual_consumption, 0) as annual_consumption FROM customers ORDER BY id ASC');
-    } catch (e) {
-      // 如果 annual_consumption 欄位不存在，則使用沒有該欄位的查詢
-      if (e.message.includes('column') || e.message.includes('does not exist')) {
-        result = await pool.query('SELECT *, 0 as annual_consumption FROM customers ORDER BY id ASC');
-      } else {
-        throw e;
-      }
-    }
+    const result = await pool.query('SELECT * FROM customers ORDER BY id ASC');
     addLog('info', `從 ONLINE 數據庫查詢客戶成功，共 ${result.rows.length} 筆`);
     res.json(result.rows);
   } catch (err) {
@@ -316,17 +306,7 @@ app.get('/api/customers/:id', async (req, res) => {
       return res.status(500).json({ error: 'ONLINE 數據庫未連接' });
     }
 
-    let result;
-    try {
-      result = await pool.query('SELECT *, COALESCE(annual_consumption, 0) as annual_consumption FROM customers WHERE id = $1', [id]);
-    } catch (e) {
-      // 如果 annual_consumption 欄位不存在，則使用沒有該欄位的查詢
-      if (e.message.includes('column') || e.message.includes('does not exist')) {
-        result = await pool.query('SELECT *, 0 as annual_consumption FROM customers WHERE id = $1', [id]);
-      } else {
-        throw e;
-      }
-    }
+    const result = await pool.query('SELECT * FROM customers WHERE id = $1', [id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: '客戶不存在' });
@@ -1368,12 +1348,12 @@ app.get('/api/customers/:id', async (req, res) => {
 
   try {
     const { id } = req.params;
-    const result = await pool.query('SELECT *, COALESCE(annual_consumption, 0) as annual_consumption FROM customers WHERE id = $1', [id]);
+    const result = await pool.query('SELECT * FROM customers WHERE id = $1', [id]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: '客戶不存在' });
     }
-    
+
     res.json(result.rows[0]);
   } catch (err) {
     addLog('error', '獲取客戶詳細信息失敗', err.message);
