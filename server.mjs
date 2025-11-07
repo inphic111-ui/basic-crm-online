@@ -150,7 +150,7 @@ app.get('/api/customers', async (req, res) => {
     }
 
     // 查詢 ONLINE 數據庫中的所有客戶
-    const result = await pool.query('SELECT * FROM customers ORDER BY id ASC');
+    const result = await pool.query('SELECT *, COALESCE(annual_consumption, 0) as annual_consumption FROM customers ORDER BY id ASC');
     addLog('info', `從 ONLINE 數據庫查詢客戶成功，共 ${result.rows.length} 筆`);
     res.json(result.rows);
   } catch (err) {
@@ -306,7 +306,7 @@ app.get('/api/customers/:id', async (req, res) => {
       return res.status(500).json({ error: 'ONLINE 數據庫未連接' });
     }
 
-    const result = await pool.query('SELECT * FROM customers WHERE id = $1', [id]);
+    const result = await pool.query('SELECT *, COALESCE(annual_consumption, 0) as annual_consumption FROM customers WHERE id = $1', [id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: '客戶不存在' });
@@ -1348,7 +1348,7 @@ app.get('/api/customers/:id', async (req, res) => {
 
   try {
     const { id } = req.params;
-    const result = await pool.query('SELECT * FROM customers WHERE id = $1', [id]);
+    const result = await pool.query('SELECT *, COALESCE(annual_consumption, 0) as annual_consumption FROM customers WHERE id = $1', [id]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: '客戶不存在' });
