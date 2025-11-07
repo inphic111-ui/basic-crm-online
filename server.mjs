@@ -150,9 +150,25 @@ app.get('/api/customers', async (req, res) => {
     }
 
     // 查詢 ONLINE 數據庫中的所有客戶
-    const result = await pool.query('SELECT * FROM customers ORDER BY id ASC');
-    addLog('info', `從 ONLINE 數據庫查詢客戶成功，共 ${result.rows.length} 筆`);
-    res.json(result.rows);
+    // 將 money 類型轉換為 NUMERIC 以便正確序列化為 JSON
+    const result = await pool.query(`
+      SELECT *,
+        CASE 
+          WHEN annual_consumption IS NOT NULL THEN (annual_consumption)::NUMERIC
+          ELSE 0
+        END as annual_consumption_numeric
+      FROM customers 
+      ORDER BY id ASC
+    `);
+    
+    // 處理返回的數據，確保 annual_consumption 是數字
+    const processedRows = result.rows.map(row => ({
+      ...row,
+      annual_consumption: row.annual_consumption_numeric || 0
+    }));
+    
+    addLog('info', `從 ONLINE 數據庫查詢客戶成功，共 ${processedRows.length} 筆`);
+    res.json(processedRows);
   } catch (err) {
     addLog('error', '查詢客戶失敗', err.message);
     res.status(500).json({
