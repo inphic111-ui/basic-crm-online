@@ -203,10 +203,11 @@ const getRatingBadge = (rating) => {
 // 訂單狀態標籤
 const getOrderStatusTag = (status) => {
   const statusMap = {
+    '未處理': { color: '#999999', label: '未處理' },
     '追單': { color: '#FF9800', label: '追單' },
     '成交': { color: '#4CAF50', label: '成交' },
     '售後': { color: '#2196F3', label: '售後' },
-    '不買': { color: '#F44336', label: '不買' }
+    '流失': { color: '#F44336', label: '流失' }
   }
   
   const statusInfo = statusMap[status] || { color: '#999', label: status || '-' }
@@ -376,18 +377,27 @@ function Customers() {
       const nfvpValue = calculateCVI(editFormData.nfvp_score_n, editFormData.nfvp_score_f, vScore, pScore)
       const customerTypeLabel = getTypeLabel(customerType)  // 轉換為中文描述
       
-      // 更新表單數據以包含計算的值
-      // 注意：不發送 nfvp_score_n 和 nfvp_score_f，只發送計算後的 nfvp_score 和 cvi_score（客戶分類類型）
-      const dataToSave = {
-        ...editFormData,
-        nfvp_score: nfvpValue,  // 保存計算後的 CVI 分數（數值）
-        cvi_score: customerTypeLabel  // 保存客戶分類中文描述（鯊魚客戶、鯨魚客戶等）
+      // 只發送數據庫中存在的字段
+      const allowedFields = [
+        'name', 'email', 'phone', 'company_name', 'initial_product', 'price', 'budget',
+        'telephone', 'order_status', 'total_consumption', 'annual_consumption',
+        'customer_rating', 'customer_type', 'source', 'capital_amount',
+        'nfvp_score', 'cvi_score', 'notes', 'status'
+      ]
+      
+      const dataToSave = {}
+      for (const field of allowedFields) {
+        if (editFormData.hasOwnProperty(field)) {
+          dataToSave[field] = editFormData[field]
+        }
       }
-      // 移除 nfvp_score_n 和 nfvp_score_f，不發送給後端
-      delete dataToSave.nfvp_score_n
-      delete dataToSave.nfvp_score_f
-      // 不動 customer_type 和 notes
-      delete dataToSave.customer_type
+      
+      // 添加計算的值
+      dataToSave.nfvp_score = nfvpValue  // 保存計算後的 CVI 分數（數值）
+      dataToSave.cvi_score = nfvpValue  // 保存 CVI 分數（數值），不是文字描述
+      dataToSave.customer_type = customerType  // 保存計算後的客戶類型
+      
+      console.log('Saving customer with data:', dataToSave)
       
       const response = await fetch(`/api/customers/${selectedCustomer.id}`, {
         method: 'PUT',
@@ -713,10 +723,11 @@ function Customers() {
                     {isEditMode ? (
                       <select name="order_status" value={editFormData.order_status || ''} onChange={handleEditFormChange}>
                         <option value="">-- 選擇 --</option>
+                        <option value="未處理">未處理</option>
                         <option value="追單">追單</option>
                         <option value="成交">成交</option>
-                        <option value="不買">不買</option>
                         <option value="售後">售後</option>
+                        <option value="流失">流失</option>
                       </select>
                     ) : (
                       <span>{getOrderStatusTag(editFormData.order_status)}</span>
@@ -924,10 +935,11 @@ function Customers() {
                     onChange={handleFormChange}
                   >
                     <option value="">-- 選擇 --</option>
+                    <option value="未處理">未處理</option>
                     <option value="追單">追單</option>
                     <option value="成交">成交</option>
                     <option value="售後">售後</option>
-                    <option value="不買">不買</option>
+                    <option value="流失">流失</option>
                   </select>
                 </div>
 

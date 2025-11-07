@@ -241,12 +241,12 @@ app.put('/api/customers/:id', async (req, res) => {
 
     // 添加 id 到 values
     values.push(id);
-    const updateQuery = `UPDATE customers SET ${updates.join(', ')}, updated_at = NOW() WHERE id = $${paramIndex} RETURNING *`;
+    const updateQuery = `UPDATE customers SET ${updates.join(', ')}, updated_at = NOW() WHERE id = $${paramIndex}`;
 
-    addLog('info', `SQL Query: ${updateQuery}`);
+    addLog('info', `SQL Query: ${query}`);
     addLog('info', `SQL Values: ${JSON.stringify(values)}`);
 
-    const result = await pool.query(updateQuery, values);
+    const updateResult = await pool.query(updateQuery, values);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
