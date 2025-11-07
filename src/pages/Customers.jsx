@@ -380,14 +380,14 @@ function Customers() {
       // 注意：不發送 nfvp_score_n 和 nfvp_score_f，只發送計算後的 nfvp_score 和 cvi_score（客戶分類類型）
       const dataToSave = {
         ...editFormData,
-        customer_type: customerTypeLabel,  // 保存中文描述（鯊魚客戶、鯨魚客戶等）
-        nfvp_score: nfvpValue,
-        cvi_score: customerType  // 保存英文代碼作為備用
+        nfvp_score: nfvpValue,  // 保存計算後的 CVI 分數（數值）
+        cvi_score: customerTypeLabel  // 保存客戶分類中文描述（鯊魚客戶、鯨魚客戶等）
       }
       // 移除 nfvp_score_n 和 nfvp_score_f，不發送給後端
       delete dataToSave.nfvp_score_n
       delete dataToSave.nfvp_score_f
-      // 不自動覆蓋 notes，保留用戶的備註
+      // 不動 customer_type 和 notes
+      delete dataToSave.customer_type
       
       const response = await fetch(`/api/customers/${selectedCustomer.id}`, {
         method: 'PUT',
@@ -404,9 +404,8 @@ function Customers() {
       const updatedCustomer = await response.json()
       
       // 添加計算侌的字段到返回的客戶對象
-      updatedCustomer.customer_type = customerTypeLabel  // 中文描述
-      updatedCustomer.nfvp_score = nfvpValue
-      updatedCustomer.cvi_score = customerType  // 英文代碼
+      updatedCustomer.nfvp_score = nfvpValue  // CVI 分數
+      updatedCustomer.cvi_score = customerTypeLabel  // 客戶分類中文
       updatedCustomer.v_score = vScore
       updatedCustomer.p_score = pScore
       
