@@ -1741,8 +1741,7 @@ app.delete('/api/audio/delete/:customerId', async (req, res) => {
 // 靜態文件服務 - 音檔
 app.use('/uploads', express.static('uploads'));
 
-
-$1, () => {
+app.listen(PORT, () => {
   addLog('info', `CRM 3.0 服務器啟動成功，監聽端口 ${PORT}`);
   console.log(`
 ╔════════════════════════════════════════╗
