@@ -153,6 +153,8 @@ async function initializeDatabase() {
           audio_url TEXT,
           product_url TEXT,
           ai_analysis TEXT,
+          audio_file TEXT,
+          ai_analysis_history JSON DEFAULT '[]',
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -179,7 +181,28 @@ async function initializeDatabase() {
       `);
       addLog('info', '示例數據已插入');
     } else {
-      addLog('info', 'customers 表已存在，跳過初始化');
+      addLog('info', 
+      // 檢查並添加 audio_file 欄位
+      try {
+        await pool.query('ALTER TABLE customers ADD COLUMN audio_file TEXT');
+        addLog('info', 'audio_file 欄位已添加');
+      } catch (err) {
+        if (!err.message.includes('already exists')) {
+          addLog('warn', 'audio_file 欄位添加失敗: ' + err.message);
+        }
+      }
+
+      // 檢查並添加 ai_analysis_history 欄位
+      try {
+        await pool.query('ALTER TABLE customers ADD COLUMN ai_analysis_history JSON DEFAULT \'[]\'');
+        addLog('info', 'ai_analysis_history 欄位已添加');
+      } catch (err) {
+        if (!err.message.includes('already exists')) {
+          addLog('warn', 'ai_analysis_history 欄位添加失敗: ' + err.message);
+        }
+      }
+
+      'customers 表已存在，跳過初始化');
     }
   } catch (err) {
     addLog('error', '初始化數據庫失敗', err.message);
@@ -1748,6 +1771,239 @@ app.delete('/api/audio/delete/:customerId', async (req, res) => {
 });
 
 // AI 分析 API
+
+// 帶有 AI 分析的客戶更新端點
+app.post('/api/customers/:id/update-with-analysis', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const body = req.body;
+    
+    const pool = pools.online;
+    if (!pool) {
+      return res.status(500).json({ error: 'ONLINE 數據庫未連接' });
+    }
+
+    // 第一步：更新客戶信息
+    const updates = [];
+    const values = [];
+    let paramIndex = 1;
+
+    const fieldMap = {
+      'name': 'name',
+      'email': 'email',
+      'phone': 'phone',
+      'company_name': 'company_name',
+      'initial_product': 'initial_product',
+      'price': 'price',
+      'budget': 'budget',
+      'telephone': 'telephone',
+      'order_status': 'order_status',
+      'total_consumption': 'total_consumption',
+      'annual_consumption': 'annual_consumption',
+      'customer_rating': 'customer_rating',
+      'customer_type': 'customer_type',
+      'source': 'source',
+      'capital_amount': 'capital_amount',
+      'nfvp_score': 'nfvp_score',
+      'cvi_score': 'cvi_score',
+      'notes': 'notes',
+      'product_url': 'product_url',
+      'n_score': 'n_score',
+      'f_score': 'f_score'
+    };
+
+    for (const [key, dbField] of Object.entries(fieldMap)) {
+      if (body[key] !== undefined) {
+        let value = body[key];
+        if (['price', 'budget', 'total_consumption', 'annual_consumption', 'capital_amount', 'nfvp_score'].includes(dbField)) {
+          if (value !== null && value !== '') {
+            value = parseFloat(value);
+            if (isNaN(value)) value = null;
+          } else {
+            value = null;
+          }
+        }
+        updates.push(`${dbField} = $${paramIndex}`);
+        values.push(value);
+        paramIndex++;
+      }
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: '沒有提供任何更新字段' });
+    }
+
+    // 第二步：獲取客戶當前信息（用於 AI 分析）
+    const customerResult = await pool.query('SELECT * FROM customers WHERE id = $1', [id]);
+    if (customerResult.rows.length === 0) {
+      return res.status(404).json({ error: '客戶不存在' });
+    }
+
+    const customer = customerResult.rows[0];
+    
+    // 第三步：調用 AI 分析
+    let analysisResult = null;
+    let audioTranscription = null;
+    
+    if (process.env.OPENAI_API_KEY) {
+      // 如果有音檔，先進行轉錄
+      if (body.audio_url || customer.audio_url) {
+        const audioUrl = body.audio_url || customer.audio_url;
+        try {
+          const audioResponse = await fetch(audioUrl);
+          if (audioResponse.ok) {
+            const audioBuffer = await audioResponse.arrayBuffer();
+            const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
+            
+            const formData = new FormData();
+            formData.append('file', audioBlob, 'audio.mp3');
+            formData.append('model', 'whisper-1');
+            formData.append('language', 'zh');
+            
+            const transcribeResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` },
+              body: formData
+            });
+            
+            if (transcribeResponse.ok) {
+              const transcribeData = await transcribeResponse.json();
+              audioTranscription = transcribeData.text;
+            }
+          }
+        } catch (err) {
+          console.error('音檔轉錄失敗:', err);
+        }
+      }
+
+      // 構建 AI 分析提示詞
+      const nScore = body.n_score !== undefined ? body.n_score : customer.n_score || 0;
+      const fScore = body.f_score !== undefined ? body.f_score : customer.f_score || 0;
+      const vScore = customer.v_score || 0;
+      const pScore = customer.p_score || 0;
+      const budget = body.budget !== undefined ? body.budget : customer.budget || 0;
+      const hasAudio = !!(body.audio_url || customer.audio_url);
+
+      let prompt = `根據以下客戶信息進行銷售分析：
+
+客戶名稱：${body.name || customer.name}
+公司名稱：${body.company_name || customer.company_name}
+詢問產品：${body.initial_product || customer.initial_product}
+預算：${budget}
+資本額：${body.capital_amount || customer.capital_amount || '未提供'}
+年度消費：${body.annual_consumption || customer.annual_consumption || '未提供'}
+總消費：${body.total_consumption || customer.total_consumption || '未提供'}
+
+評分指標：
+- N評分（需求度）：${nScore}
+- F評分（資金能力）：${fScore}
+- V評分（採購量）：${vScore}
+- P評分（報價額）：${pScore}`;
+
+      if (audioTranscription) {
+        prompt += `
+
+客戶通話記錄：
+${audioTranscription}`;
+      }
+
+      prompt += `
+
+請根據上述信息分析成交機率和建議行動。`;
+
+      // 調用 OpenAI API
+      try {
+        const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o',
+            messages: [
+              {
+                role: 'system',
+                content: '你是一位專業的銷售顧問師。你的回答必須一字一字遵從下列格式，不要有任何其他內容:\n\n成交機率：(XX%)\n建議行動：\n- 建議一\n- 建議二\n- 建議三\n- 建議四\n\n不要添加任何其他文字、數字或符號。'
+              },
+              {
+                role: 'user',
+                content: prompt
+              }
+            ],
+            temperature: 0.7,
+            max_tokens: 500
+          })
+        });
+
+        if (aiResponse.ok) {
+          const aiData = await aiResponse.json();
+          analysisResult = aiData.choices[0].message.content;
+        }
+      } catch (err) {
+        console.error('AI 分析失敗:', err);
+      }
+    }
+
+    // 第四步：更新 ai_analysis_history_JSON
+    let historyJson = [];
+    if (customer.ai_analysis_history_json) {
+      try {
+        historyJson = JSON.parse(customer.ai_analysis_history_json);
+        if (!Array.isArray(historyJson)) {
+          historyJson = [];
+        }
+      } catch (err) {
+        historyJson = [];
+      }
+    }
+
+    if (analysisResult) {
+      // 提取成交機率
+      const probabilityMatch = analysisResult.match(/成交機率：\((\d+)%\)/);
+      const probability = probabilityMatch ? parseInt(probabilityMatch[1]) : null;
+
+      historyJson.push({
+        timestamp: new Date().toISOString(),
+        probability: probability,
+        recommendations: analysisResult,
+        has_audio: !!(body.audio_url || customer.audio_url),
+        audio_transcription: audioTranscription || null
+      });
+    }
+
+    // 第五步：保存更新
+    values.push(id);
+    updates.push(`ai_analysis_history_json = $${paramIndex}`);
+    values.splice(values.length - 1, 0, JSON.stringify(historyJson));
+    paramIndex++;
+
+    if (analysisResult) {
+      updates.push(`ai_analysis = $${paramIndex}`);
+      values.splice(values.length - 1, 0, analysisResult);
+      paramIndex++;
+    }
+
+    const updateQuery = `UPDATE customers SET ${updates.join(', ')}, updated_at = NOW() WHERE id = $${paramIndex} RETURNING *`;
+    const result = await pool.query(updateQuery, values);
+
+    addLog('info', `客戶 ${id} 信息已更新並進行了 AI 分析`);
+    res.json({
+      success: true,
+      customer: result.rows[0],
+      analysis: analysisResult,
+      history: historyJson
+    });
+  } catch (err) {
+    addLog('error', '更新客戶失敗', err.message);
+    res.status(500).json({
+      error: '更新客戶失敗',
+      message: err.message
+    });
+  }
+});
+
+
 app.post('/api/analyze-customer', async (req, res) => {
   try {
     const { customerId, prompt } = req.body;

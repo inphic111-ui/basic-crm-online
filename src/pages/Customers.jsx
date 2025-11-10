@@ -144,6 +144,30 @@ const getTypeLabel = (type) => {
   return labels[type] || '未分類'
 }
 
+// 解析 AI 分析歷史 JSON 並提取成交機率
+const parseAnalysisHistory = (historyJson) => {
+  try {
+    if (!historyJson) return null
+    const history = typeof historyJson === 'string' ? JSON.parse(historyJson) : historyJson
+    if (!history.analyses || history.analyses.length === 0) return null
+    return history.analyses
+  } catch (err) {
+    console.error('解析分析歷史失敗:', err)
+    return null
+  }
+}
+
+// 從 AI 分析文本中提取成交機率（百分比）
+const extractProbability = (analysisText) => {
+  if (!analysisText) return null
+  // 尋找 "成交機率：XX%" 或 "成交機率: XX%" 的模式
+  const match = analysisText.match(/成交機率[：:](\s*)([0-9]+)%/)
+  if (match) {
+    return parseInt(match[2], 10)
+  }
+  return null
+}
+
 // 根據 nfvp_score 產生中文分類描述
 const getNFVPDescription = (nfvpScore) => {
   if (!nfvpScore) return ''
@@ -470,7 +494,7 @@ function Customers() {
       dataToSave.customer_type = customerType  // 保存計算後的客戶類型
       
       
-      const response = await fetch(`/api/customers/${selectedCustomer.id}`, {
+      const response = await fetch(`/api/customers/${selectedCustomer.id}/update-with-analysis`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -1169,28 +1193,41 @@ function Customers() {
 
               <div className="detail-section">
                 <h3>AI 分析</h3>
-                {isEditMode ? (
-                  <div>
-                    <textarea name="ai_analysis" value={editFormData.ai_analysis || ''} onChange={handleEditFormChange} style={{width: '100%', minHeight: '100px'}} />
-                    <button className="btn btn-small" onClick={() => handleGenerateAIAnalysis(selectedCustomer)} style={{marginTop: '10px'}}>
-                      生成 AI 分析
-                    </button>
-                    {!editFormData.audio_file && (
-                      <div style={{marginTop: '10px', padding: '10px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', borderRadius: '4px', color: '#856404'}}>
-                        建議上傳音檔 - 上傳客戶通話錄音可獲得更完整的 AI 分析結果
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="notes-box">
-                    {editFormData.ai_analysis || '無 AI 分析'}
-                    {!editFormData.audio_file && editFormData.ai_analysis && (
-                      <div style={{marginTop: '10px', padding: '10px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', borderRadius: '4px', color: '#856404', fontSize: '14px'}}>
-                        建議上傳音檔 - 上傳客戶通話錄音可獲得更完整的 AI 分析結果
-                      </div>
-                    )}
-                  </div>
-                )}
+                <div className="notes-box">
+                  {editFormData.ai_analysis || '無 AI 分析'}
+                  
+                  {/* 成交機率對比顯示 */}
+                  {(() => {
+                    const history = parseAnalysisHistory(editFormData.ai_analysis_history_json)
+                    if (history && history.length >= 2) {
+                      const latestAnalysis = history[history.length - 1]
+                      const previousAnalysis = history[history.length - 2]
+                      const currentProb = extractProbability(latestAnalysis.probability || latestAnalysis.recommendations || '')
+                      const previousProb = extractProbability(previousAnalysis.probability || previousAnalysis.recommendations || '')
+                      
+                      if (currentProb !== null && previousProb !== null) {
+                        const diff = currentProb - previousProb
+                        const arrow = diff > 0 ? '⬆️' : diff < 0 ? '⬇️' : '→'
+                        const diffText = diff > 0 ? `+${diff}%` : `${diff}%`
+                        const latestDate = new Date(latestAnalysis.timestamp).toLocaleString('zh-TW')
+                        const previousDate = new Date(previousAnalysis.timestamp).toLocaleString('zh-TW')
+                        
+                        return (
+                          <div style={{marginTop: '10px', padding: '10px', backgroundColor: '#e3f2fd', border: '1px solid #2196f3', borderRadius: '4px', color: '#1565c0', fontSize: '14px'}}>
+                            成交機率變化: {previousProb}% ({previousDate}) → {currentProb}% ({latestDate}) {arrow} {diffText}
+                          </div>
+                        )
+                      }
+                    }
+                    return null
+                  })()}
+                  
+                  {!editFormData.audio_file && editFormData.ai_analysis && (
+                    <div style={{marginTop: '10px', padding: '10px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', borderRadius: '4px', color: '#856404', fontSize: '14px'}}>
+                      建議上傳音檔 - 上傳客戶通話錄音可獲得更完整的 AI 分析結果
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="detail-section">
