@@ -451,7 +451,7 @@ function Customers() {
         'name', 'email', 'phone', 'company_name', 'initial_product', 'price', 'budget',
         'telephone', 'order_status', 'total_consumption', 'annual_consumption',
         'customer_rating', 'customer_type', 'source', 'capital_amount',
-        'nfvp_score', 'cvi_score', 'notes', 'status'
+        'nfvp_score', 'cvi_score', 'notes', 'status', 'product_url'
       ]
       
       const dataToSave = {}
@@ -1175,6 +1175,17 @@ function Customers() {
                     value={formData.initial_product || ''}
                     onChange={handleFormChange}
                     placeholder="輸入詢問產品"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>商品超連結</label>
+                  <input
+                    type="text"
+                    name="product_url"
+                    value={formData.product_url || ''}
+                    onChange={handleFormChange}
+                    placeholder="輸入商品連結 URL"
                   />
                 </div>
 
