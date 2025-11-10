@@ -364,10 +364,12 @@ function Customers() {
   // 打開詳細視窗（只讀模式）
   const handleViewDetailReadOnly = (customer) => {
     setSelectedCustomer(customer)
-    // 清理 annual_consumption
+    // 清理 annual_consumption 並確保 nfvp_score_n 和 nfvp_score_f 有值
     const cleanedCustomer = {
       ...customer,
-      annual_consumption: cleanAnnualConsumption(customer.annual_consumption)
+      annual_consumption: cleanAnnualConsumption(customer.annual_consumption),
+      nfvp_score_n: customer.nfvp_score_n || '',
+      nfvp_score_f: customer.nfvp_score_f || ''
     }
     setEditFormData(cleanedCustomer)
     setIsEditMode(false)
@@ -939,18 +941,12 @@ function Customers() {
                       <span>{selectedCustomer.initial_product || '-'}</span>
                     )}
                   </div>
-                  <div className="detail-item">
-                    <label>商品超連結:</label>
-                    {isEditMode ? (
+                  {isEditMode && (
+                    <div className="detail-item">
+                      <label>商品超連結:</label>
                       <input type="text" name="product_url" value={editFormData.product_url || ''} onChange={handleEditFormChange} placeholder="輸入商品連結 URL" />
-                    ) : (
-                      selectedCustomer.product_url ? (
-                        <a href={selectedCustomer.product_url} target="_blank" rel="noopener noreferrer" style={{color: '#0066FF', textDecoration: 'underline'}}>連結</a>
-                      ) : (
-                        <span>-</span>
-                      )
-                    )}
-                  </div>
+                    </div>
+                  )}
                   <div className="detail-item">
                     <label>訂單狀態:</label>
                     {isEditMode ? (
