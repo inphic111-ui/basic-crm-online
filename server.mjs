@@ -1768,7 +1768,7 @@ app.post('/api/analyze-customer', async (req, res) => {
         messages: [
           {
             role: 'system',
-            content: '你是一位專業的销售顾問師。請提供具体、实用的分析和建議。'
+            content: '你是一位專業的銷售顧問師。請以簡潔的格式提供分析，只需要以下兩部分：\n1. 成交機率：(估計百分比)\n2. 建議行動：(3-5條簡短建議，每條一行)\n不要包含其他內容。'
           },
           {
             role: 'user',
@@ -1776,7 +1776,7 @@ app.post('/api/analyze-customer', async (req, res) => {
           }
         ],
         temperature: 0.7,
-        max_tokens: 1000
+        max_tokens: 500
       })
     });
     
