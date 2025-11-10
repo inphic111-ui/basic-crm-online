@@ -1768,15 +1768,15 @@ app.post('/api/analyze-customer', async (req, res) => {
         messages: [
           {
             role: 'system',
-            content: '你是一位專業的銷售顧問師。請以簡潔的格式提供分析，只需要以下兩部分：\n1. 成交機率：(估計百分比)\n2. 建議行動：(3-5條簡短建議，每條一行)\n不要包含其他內容。'
+            content: '你是一位專業的銷售顧問師。你的回答必須一字一字遵從下列格式，不要有任何其他內容:\n\n成交機率：(XX%)\n建議行動：\n- 建議一\n- 建議二\n- 建議三\n- 建議四\n\n不要添加任何其他文字、數字或符號。'
           },
           {
             role: 'user',
             content: prompt
           }
         ],
-        temperature: 0.7,
-        max_tokens: 500
+        temperature: 0.3,
+        max_tokens: 300
       })
     });
     
