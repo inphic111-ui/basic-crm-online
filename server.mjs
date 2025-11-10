@@ -151,7 +151,6 @@ async function initializeDatabase() {
           cvi_score NUMERIC(5, 2),
           notes TEXT,
           audio_url TEXT,
-          product_url TEXT,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -660,8 +659,6 @@ app.post('/api/customers/init-table', async (req, res) => {
         nfvp_score NUMERIC(3, 1),
         cvi_score NUMERIC(5, 2),
         notes TEXT,
-        audio_url TEXT,
-        product_url TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
