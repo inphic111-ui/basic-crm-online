@@ -149,8 +149,19 @@ const parseAnalysisHistory = (historyJson) => {
   try {
     if (!historyJson) return null
     const history = typeof historyJson === 'string' ? JSON.parse(historyJson) : historyJson
-    if (!history.analyses || history.analyses.length === 0) return null
-    return history.analyses
+    
+    // 支持两种数据结构：
+    // 1. { analyses: [...] } - 前端构造的结构
+    // 2. [...] - 后端直接返回的数组
+    let analyses = null
+    if (Array.isArray(history)) {
+      analyses = history
+    } else if (history.analyses && Array.isArray(history.analyses)) {
+      analyses = history.analyses
+    }
+    
+    if (!analyses || analyses.length === 0) return null
+    return analyses
   } catch (err) {
     console.error('解析分析歷史失敗:', err)
     return null
