@@ -1258,7 +1258,7 @@ function Customers() {
                     return null
                   })()}
                   
-                  {!editFormData.audio_file && editFormData.ai_analysis && (
+                  {editFormData.ai_analysis && !editFormData.audio_url && (
                     <div style={{marginTop: '10px', padding: '10px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', borderRadius: '4px', color: '#856404', fontSize: '14px'}}>
                       建議上傳音檔 - 上傳客戶通話錄音可獲得更完整的 AI 分析結果
                     </div>
