@@ -928,7 +928,7 @@ function Customers() {
                     {isEditMode ? (
                       <input type="text" name="initial_product" value={editFormData.initial_product || ''} onChange={handleEditFormChange} />
                     ) : (
-                      <span>{editFormData.initial_product || '-'}</span>
+                      <span>{selectedCustomer.initial_product || '-'}</span>
                     )}
                   </div>
                   <div className="detail-item">
@@ -936,8 +936,8 @@ function Customers() {
                     {isEditMode ? (
                       <input type="text" name="product_url" value={editFormData.product_url || ''} onChange={handleEditFormChange} placeholder="輸入商品連結 URL" />
                     ) : (
-                      editFormData.product_url ? (
-                        <a href={editFormData.product_url} target="_blank" rel="noopener noreferrer" style={{color: '#0066FF', textDecoration: 'underline'}}>連結</a>
+                      selectedCustomer.product_url ? (
+                        <a href={selectedCustomer.product_url} target="_blank" rel="noopener noreferrer" style={{color: '#0066FF', textDecoration: 'underline'}}>連結</a>
                       ) : (
                         <span>-</span>
                       )
@@ -955,7 +955,7 @@ function Customers() {
                         <option value="流失">流失</option>
                       </select>
                     ) : (
-                      <span>{getOrderStatusTag(editFormData.order_status)}</span>
+                      <span>{getOrderStatusTag(selectedCustomer.order_status)}</span>
                     )}
                   </div>
                   <div className="detail-item">
@@ -1068,20 +1068,20 @@ function Customers() {
                     </>
                   ) : (
                     <>
-                      {editFormData.audioUrl && (
+                      {selectedCustomer.audioUrl && (
                         <>
                           <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>\ud83c\udd0a \u901a\u8a71\u7d00\u9304:</label>
                           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                             <span style={{ fontSize: '24px', cursor: 'pointer' }} title="\u64ad\u653e\u97f3\u6a94">\ud83d\udd0a</span>
                             <audio controls style={{ height: '32px', flex: 1 }}>
-                              <source src={editFormData.audioUrl} />
-您的瀏覽器不支援音檔播放
+                              <source src={selectedCustomer.audioUrl} />
+\u60a8\u7684\u700f\u89bd\u5668\u4e0d\u652f\u63f4\u97f3\u6a94\u64ad\u653e
                             </audio>
                           </div>
                           <div style={{ marginTop: '15px' }}>
                             <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>AI \u5206\u6790:</label>
                             <div style={{ padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '4px', minHeight: '60px' }}>
-                              {editFormData.aiAnalysis || '\u6b62\u4e0d\u6709 AI \u5206\u6790\u8cc7\u6599'}
+                              {selectedCustomer.aiAnalysis || '\u6b62\u4e0d\u6709 AI \u5206\u6790\u8cc7\u6599'}
                             </div>
                           </div>
                         </>
