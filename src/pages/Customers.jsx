@@ -451,7 +451,7 @@ function Customers() {
         'name', 'email', 'phone', 'company_name', 'initial_product', 'price', 'budget',
         'telephone', 'order_status', 'total_consumption', 'annual_consumption',
         'customer_rating', 'customer_type', 'source', 'capital_amount',
-        'nfvp_score', 'cvi_score', 'notes', 'status', 'product_url'
+        'nfvp_score', 'cvi_score', 'notes', 'status', 'product_url', 'ai_analysis'
       ]
       
       const dataToSave = {}
@@ -669,7 +669,6 @@ function Customers() {
                   <th>客戶名稱</th>
                   <th>公司名稱</th>
                   <th>詢問產品</th>
-                  <th>商品網址</th>
                   <th>報價</th>
                   <th>預算</th>
                   <th>訂單狀態</th>
@@ -692,14 +691,15 @@ function Customers() {
                       </td>
                       <td>{customer.name}</td>
                       <td>{customer.company_name || '-'}</td>
-                      <td>{customer.initial_product || '-'}</td>
                       <td>
-                        {customer.product_url ? (
-                          <a href={customer.product_url} target="_blank" rel="noopener noreferrer" style={{color: '#0066FF', textDecoration: 'underline'}}>連結</a>
+                        {customer.product_url && customer.initial_product ? (
+                          <a href={customer.product_url} target="_blank" rel="noopener noreferrer" style={{color: '#0066FF', textDecoration: 'underline', cursor: 'pointer'}}>
+                            {customer.initial_product}
+                          </a>
                         ) : (
-                          '-'
-                        )}
-                      </td>
+                          customer.initial_product || '-'
+                        )
+                      }</td>
                       <td>NT${parseFloat(customer.price || 0).toLocaleString()}</td>
                       <td>NT${parseFloat(customer.budget || 0).toLocaleString()}</td>
                       <td>{getOrderStatusTag(customer.order_status)}</td>

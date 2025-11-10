@@ -151,11 +151,13 @@ async function initializeDatabase() {
           cvi_score NUMERIC(5, 2),
           notes TEXT,
           audio_url TEXT,
+          product_url TEXT,
+          ai_analysis TEXT,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
-      addLog('info', 'customers 表已創建');
+      addLog('info', 'customers 表已創建');;
       
       // 創建索引
       await pool.query('CREATE INDEX idx_customers_customer_id ON customers(customer_id)');
@@ -296,7 +298,7 @@ app.put('/api/customers/:id', async (req, res) => {
     let paramIndex = 1;
 
     // 支持的所有字段
-    // 注意：不接受 nfvp_score_n 和 nfvp_score_f，只接受 nfvp_score
+    // 註權：不接受 nfvp_score_n 和 nfvp_score_f，只接受 nfvp_score
     const fieldMap = {
       'name': 'name',
       'email': 'email',
@@ -316,7 +318,9 @@ app.put('/api/customers/:id', async (req, res) => {
       'nfvp_score': 'nfvp_score',
       'cvi_score': 'cvi_score',
       'notes': 'notes',
-      'status': 'status'
+      'status': 'status',
+      'product_url': 'product_url',
+      'ai_analysis': 'ai_analysis'
     };
 
     // 遍歷所有支持的字段
@@ -659,6 +663,9 @@ app.post('/api/customers/init-table', async (req, res) => {
         nfvp_score NUMERIC(3, 1),
         cvi_score NUMERIC(5, 2),
         notes TEXT,
+        audio_url TEXT,
+        product_url TEXT,
+        ai_analysis TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
