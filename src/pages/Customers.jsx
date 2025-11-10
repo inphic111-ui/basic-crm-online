@@ -867,7 +867,11 @@ function Customers() {
                       </select>
                     ) : (
                       <span>
-                        {String(editFormData.n_score).match(/^\d+/) ? String(editFormData.n_score).match(/^\d+/)[0] : '-'}
+                        {(() => {
+                          const scoreStr = String(editFormData.n_score || '');
+                          const firstChar = scoreStr.charAt(0);
+                          return (firstChar >= '0' && firstChar <= '9') ? scoreStr.split(' ')[0] : '-';
+                        })()}
                       </span>
                     )}
                   </div>
@@ -885,7 +889,11 @@ function Customers() {
                       </select>
                     ) : (
                       <span>
-                        {String(editFormData.f_score).match(/^\d+/) ? String(editFormData.f_score).match(/^\d+/)[0] : '-'}
+                        {(() => {
+                          const scoreStr = String(editFormData.f_score || '');
+                          const firstChar = scoreStr.charAt(0);
+                          return (firstChar >= '0' && firstChar <= '9') ? scoreStr.split(' ')[0] : '-';
+                        })()}
                       </span>
                     )}
                   </div>
