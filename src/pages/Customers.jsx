@@ -866,12 +866,8 @@ function Customers() {
                         <option value="10">10 - 立即採購 | 已確認規格數量，僅待報價/下單</option>
                       </select>
                     ) : (
-                      <span 
-                        style={{ color: '#0066cc', cursor: 'pointer', textDecoration: 'underline' }}
-                        title={getNScoreDescription(editFormData.n_score)}
-                        onClick={() => setIsEditMode(true)}
-                      >
-                        {String(editFormData.n_score).split(' - ')[0] || '-'}
+                      <span>
+                        {String(editFormData.n_score).match(/^\d+/) ? String(editFormData.n_score).match(/^\d+/)[0] : '-'}
                       </span>
                     )}
                   </div>
@@ -888,12 +884,8 @@ function Customers() {
                         <option value="10">10 - 充足預算 | 預算已確認，可直接支付</option>
                       </select>
                     ) : (
-                      <span 
-                        style={{ color: '#0066cc', cursor: 'pointer', textDecoration: 'underline' }}
-                        title={getFScoreDescription(editFormData.f_score)}
-                        onClick={() => setIsEditMode(true)}
-                      >
-                        {String(editFormData.f_score).split(' - ')[0] || '-'}
+                      <span>
+                        {String(editFormData.f_score).match(/^\d+/) ? String(editFormData.f_score).match(/^\d+/)[0] : '-'}
                       </span>
                     )}
                   </div>
