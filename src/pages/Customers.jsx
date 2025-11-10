@@ -453,7 +453,8 @@ function Customers() {
         'name', 'email', 'phone', 'company_name', 'initial_product', 'price', 'budget',
         'telephone', 'order_status', 'total_consumption', 'annual_consumption',
         'customer_rating', 'customer_type', 'source', 'capital_amount',
-        'nfvp_score', 'cvi_score', 'notes', 'status', 'product_url', 'ai_analysis'
+        'nfvp_score', 'cvi_score', 'notes', 'status', 'product_url', 'ai_analysis',
+        'nfvp_score_n', 'nfvp_score_f'
       ]
       
       const dataToSave = {}
