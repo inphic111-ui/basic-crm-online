@@ -382,6 +382,8 @@ app.put('/api/customers/:id', async (req, res) => {
     // 添加 id 到 values
     values.push(id);
     const updateQuery = `UPDATE customers SET ${updates.join(', ')}, updated_at = NOW() WHERE id = $${paramIndex} RETURNING *`;
+    console.log('Update Query:', updateQuery);
+    console.log('Values:', values);
     const result = await pool.query(updateQuery, values);
 
     if (result.rows.length === 0) {
@@ -1972,18 +1974,18 @@ ${audioTranscription}`;
       });
     }
 
-    // 第五步：保存更新
-    values.push(id);
+    // u7b2c五步：u4fdd存更新
     updates.push(`ai_analysis_history_json = $${paramIndex}`);
-    values.splice(values.length - 1, 0, JSON.stringify(historyJson));
+    values.push(JSON.stringify(historyJson));
     paramIndex++;
 
     if (analysisResult) {
       updates.push(`ai_analysis = $${paramIndex}`);
-      values.splice(values.length - 1, 0, analysisResult);
+      values.push(analysisResult);
       paramIndex++;
     }
 
+    values.push(id);
     const updateQuery = `UPDATE customers SET ${updates.join(', ')}, updated_at = NOW() WHERE id = $${paramIndex} RETURNING *`;
     const result = await pool.query(updateQuery, values);
 

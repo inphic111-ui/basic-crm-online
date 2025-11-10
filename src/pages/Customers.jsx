@@ -1215,13 +1215,9 @@ function Customers() {
                 </div>
               </div>
 
+              {!isEditMode && (
               <div className="detail-section">
                 <h3>AI 分析</h3>
-                {isEditMode ? (
-                  <div className="notes-box">
-                    {editFormData.ai_analysis || '無 AI 分析'}
-                  </div>
-                ) : (
                 <div className="notes-box">
                   {editFormData.ai_analysis || '無 AI 分析'}
                   
@@ -1257,8 +1253,8 @@ function Customers() {
                     </div>
                   )}
                 </div>
-                )}
               </div>
+              )}
 
               <div className="detail-section">
                 <h3>備註</h3>
