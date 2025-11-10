@@ -456,6 +456,21 @@ function Customers() {
         ...prev,
         [name]: value
       }
+      
+      // 当 N 评分、F 评分、价格、年度消费变化时，实时计算 CVI 评分和客户类型
+      if (['n_score', 'f_score', 'price', 'annual_consumption'].includes(name)) {
+        const vScore = calculateVScore(updated.price || prev.price, updated.annual_consumption || prev.annual_consumption)
+        const pScore = calculatePScore(updated.price || prev.price)
+        const cviValue = calculateCVI(updated.n_score || prev.n_score, updated.f_score || prev.f_score, vScore, pScore)
+        const customerType = getCustomerTypeByVP(vScore, pScore)
+        
+        updated.v_score = vScore
+        updated.p_score = pScore
+        updated.nfvp_score = cviValue
+        updated.cvi_score = cviValue
+        updated.customer_type = customerType
+      }
+      
       return updated
     })
   }
@@ -506,13 +521,22 @@ function Customers() {
         throw new Error(`保存失敗: ${response.status}`)
       }
 
-      const updatedCustomer = await response.json()
+      const responseData = await response.json()
+      const updatedCustomer = responseData.customer || responseData
       
-      // 添加計算侌的字段到返回的客戶對象
+      // 添加計算的字段到返回的客戶對象
       updatedCustomer.nfvp_score = nfvpValue  // CVI 分數
       updatedCustomer.cvi_score = customerTypeLabel  // 客戶分類中文
       updatedCustomer.v_score = vScore
       updatedCustomer.p_score = pScore
+      
+      // 如果後端返回了 ai_analysis 和 ai_analysis_history_json，也設置到 updatedCustomer
+      if (responseData.analysis) {
+        updatedCustomer.ai_analysis = responseData.analysis
+      }
+      if (responseData.history) {
+        updatedCustomer.ai_analysis_history_json = JSON.stringify({ analyses: responseData.history })
+      }
       
       setCustomers(customers.map(c => c.id === updatedCustomer.id ? updatedCustomer : c))
       handleCloseDetailModal()
@@ -1193,6 +1217,11 @@ function Customers() {
 
               <div className="detail-section">
                 <h3>AI 分析</h3>
+                {isEditMode ? (
+                  <div className="notes-box">
+                    {editFormData.ai_analysis || '無 AI 分析'}
+                  </div>
+                ) : (
                 <div className="notes-box">
                   {editFormData.ai_analysis || '無 AI 分析'}
                   
@@ -1228,6 +1257,7 @@ function Customers() {
                     </div>
                   )}
                 </div>
+                )}
               </div>
 
               <div className="detail-section">
