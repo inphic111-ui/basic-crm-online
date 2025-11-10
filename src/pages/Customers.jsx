@@ -866,7 +866,7 @@ function Customers() {
                         <option value="10">10 - 立即採購 | 已確認規格數量，僅待報價/下單</option>
                       </select>
                     ) : (
-                      <span>{getNScoreDescription(editFormData.n_score) || '-'}</span>
+                      <span>{editFormData.n_score || '-'}</span>
                     )}
                   </div>
                   <div className="detail-item">
@@ -882,7 +882,7 @@ function Customers() {
                         <option value="10">10 - 充足預算 | 預算已確認，可直接支付</option>
                       </select>
                     ) : (
-                      <span>{getFScoreDescription(editFormData.f_score) || '-'}</span>
+                      <span>{editFormData.f_score || '-'}</span>
                     )}
                   </div>
 
