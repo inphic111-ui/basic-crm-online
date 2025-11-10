@@ -501,6 +501,61 @@ function Customers() {
     }
   }
 
+  // 生成 AI 分析
+  const handleGenerateAIAnalysis = async (customer) => {
+    try {
+      setSaving(true)
+      
+      // 準備分析所需的客戶信息
+      const analysisPrompt = `你是一位專業的销售顾問師。請根據以下客戶信息進行綜合分析。
+客戶信息:
+- 客戶名稱: ${customer.name}
+- 公司名稱: ${customer.company_name}
+- 詢問產品: ${customer.initial_product}
+- N 計分: ${customer.n_score}
+- F 計分: ${customer.f_score}
+- V 計分: ${customer.v_score}
+- P 計分: ${customer.p_score}
+- 預算: NT$${customer.price}
+- 預算: NT$${customer.budget}
+- 詢問產品: ${customer.initial_product}
+
+請提供:
+1. 客戶需求分析
+2. 下一步建議的行動(例如:提供報價單、確認收款等)
+3. 成交概率估計(%)
+4. 其他建議`
+      
+      const response = await fetch('/api/analyze-customer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          customerId: customer.id,
+          prompt: analysisPrompt
+        })
+      })
+      
+      if (!response.ok) {
+        throw new Error(`分析失敗: ${response.status}`)
+      }
+      
+      const result = await response.json()
+      setEditFormData(prev => ({
+        ...prev,
+        ai_analysis: result.analysis
+      }))
+      
+      alert('AI 分析完成')
+    } catch (err) {
+      console.error('AI 分析失敗:', err)
+      alert(`AI 分析失敗: ${err.message}`)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   // 保存新客戶
   const handleSaveCustomer = async () => {
     try {
@@ -695,14 +750,18 @@ function Customers() {
                       <td>{customer.name}</td>
                       <td>{customer.company_name || '-'}</td>
                       <td>
-                        {customer.product_url && customer.initial_product ? (
-                          <a href={customer.product_url} target="_blank" rel="noopener noreferrer" style={{color: '#0066FF', textDecoration: 'underline', cursor: 'pointer'}}>
-                            {customer.initial_product}
-                          </a>
+                        {customer.initial_product ? (
+                          customer.product_url ? (
+                            <a href={customer.product_url} target="_blank" rel="noopener noreferrer" style={{color: '#0066FF', textDecoration: 'underline'}}>
+                              {customer.initial_product}
+                            </a>
+                          ) : (
+                            customer.initial_product
+                          )
                         ) : (
-                          customer.initial_product || '-'
-                        )
-                      }</td>
+                          '-'
+                        )}
+                      </td>
                       <td>NT${parseFloat(customer.price || 0).toLocaleString()}</td>
                       <td>NT${parseFloat(customer.budget || 0).toLocaleString()}</td>
                       <td>{getOrderStatusTag(customer.order_status)}</td>
@@ -1106,6 +1165,22 @@ function Customers() {
                     </>
                   )}
                 </div>
+              </div>
+
+              <div className="detail-section">
+                <h3>AI 分析</h3>
+                {isEditMode ? (
+                  <div>
+                    <textarea name="ai_analysis" value={editFormData.ai_analysis || ''} onChange={handleEditFormChange} style={{width: '100%', minHeight: '100px'}} />
+                    <button className="btn btn-small" onClick={() => handleGenerateAIAnalysis(selectedCustomer)} style={{marginTop: '10px'}}>
+                      生成 AI 分析
+                    </button>
+                  </div>
+                ) : (
+                  <div className="notes-box">
+                    {editFormData.ai_analysis || '無 AI 分析'}
+                  </div>
+                )}
               </div>
 
               <div className="detail-section">

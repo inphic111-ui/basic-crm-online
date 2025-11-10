@@ -1747,7 +1747,58 @@ app.delete('/api/audio/delete/:customerId', async (req, res) => {
   }
 });
 
-/// 靜態文件服務 - 音檔
+// AI 分析 API
+app.post('/api/analyze-customer', async (req, res) => {
+  try {
+    const { customerId, prompt } = req.body;
+    
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(400).json({ success: false, error: 'OpenAI API Key 未設置' });
+    }
+    
+    // 調用 OpenAI API
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: '你是一位專業的销售顾問師。請提供具体、实用的分析和建議。'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 1000
+      })
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(`OpenAI API 错誤: ${error.error?.message || response.statusText}`);
+    }
+    
+    const data = await response.json();
+    const analysis = data.choices[0].message.content;
+    
+    res.json({ 
+      success: true, 
+      analysis: analysis
+    });
+  } catch (error) {
+    console.error('AI 分析错誤:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/// 静态文件服勑 - 音檔
 app.use('/uploads', express.static('uploads'));
 
 app.listen(PORT, () => {
