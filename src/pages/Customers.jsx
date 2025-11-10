@@ -348,12 +348,12 @@ function Customers() {
   // 打開詳細視窗（可編輯模式）
   const handleViewDetail = (customer) => {
     setSelectedCustomer(customer)
-      // 確保 nfvp_score_n 和 nfvp_score_f 有預設值，並清理 annual_consumption
+      // 確保 n_score 和 f_score 有預設值，並清理 annual_consumption
     const formData = {
       ...customer,
       annual_consumption: cleanAnnualConsumption(customer.annual_consumption),
-      nfvp_score_n: customer.nfvp_score_n || '',
-      nfvp_score_f: customer.nfvp_score_f || '',
+      n_score: customer.n_score || '',
+      f_score: customer.f_score || '',
       nfvp_score: customer.nfvp_score || ''
     }
     setEditFormData(formData)
@@ -364,12 +364,12 @@ function Customers() {
   // 打開詳細視窗（只讀模式）
   const handleViewDetailReadOnly = (customer) => {
     setSelectedCustomer(customer)
-    // 清理 annual_consumption 並確保 nfvp_score_n 和 nfvp_score_f 有值
+    // 清理 annual_consumption 並確保 n_score 和 f_score 有值
     const cleanedCustomer = {
       ...customer,
       annual_consumption: cleanAnnualConsumption(customer.annual_consumption),
-      nfvp_score_n: customer.nfvp_score_n || '',
-      nfvp_score_f: customer.nfvp_score_f || ''
+      n_score: customer.n_score || '',
+      f_score: customer.f_score || ''
     }
     setEditFormData(cleanedCustomer)
     setIsEditMode(false)
@@ -402,8 +402,8 @@ function Customers() {
       source: '',
       capital_amount: '',
       nfvp_score: '',
-      nfvp_score_n: '',
-      nfvp_score_f: '',
+      n_score: '',
+      f_score: '',
       notes: ''
     })
     setShowAddModal(true)
@@ -445,7 +445,7 @@ function Customers() {
       const vScore = calculateVScore(editFormData.price, editFormData.annual_consumption)
       const pScore = calculatePScore(editFormData.price)
       const customerType = getCustomerTypeByVP(vScore, pScore)
-      const nfvpValue = calculateCVI(editFormData.nfvp_score_n, editFormData.nfvp_score_f, vScore, pScore)
+      const nfvpValue = calculateCVI(editFormData.n_score, editFormData.f_score, vScore, pScore)
       const customerTypeLabel = getTypeLabel(customerType)  // 轉換為中文描述
       
       // 只發送數據庫中存在的字段
@@ -454,7 +454,7 @@ function Customers() {
         'telephone', 'order_status', 'total_consumption', 'annual_consumption',
         'customer_rating', 'customer_type', 'source', 'capital_amount',
         'nfvp_score', 'cvi_score', 'notes', 'status', 'product_url', 'ai_analysis',
-        'nfvp_score_n', 'nfvp_score_f'
+        'n_score', 'f_score'
       ]
       
       const dataToSave = {}
@@ -856,7 +856,7 @@ function Customers() {
                   <div className="detail-item">
                     <label>N 評分:</label>
                     {isEditMode ? (
-                      <select name="nfvp_score_n" value={editFormData.nfvp_score_n || ''} onChange={handleEditFormChange}>
+                      <select name="n_score" value={editFormData.n_score || ''} onChange={handleEditFormChange}>
                         <option value="">-- 選擇 --</option>
                         <option value="0">0 - 無需求 | 完全沒有需求或明確拒絕</option>
                         <option value="2">2 - 潛在需求 | 對產品有興趣，長期培養客戶</option>
@@ -866,13 +866,13 @@ function Customers() {
                         <option value="10">10 - 立即採購 | 已確認規格數量，僅待報價/下單</option>
                       </select>
                     ) : (
-                      <span>{getNScoreDescription(editFormData.nfvp_score_n) || '-'}</span>
+                      <span>{getNScoreDescription(editFormData.n_score) || '-'}</span>
                     )}
                   </div>
                   <div className="detail-item">
                     <label>F 評分:</label>
                     {isEditMode ? (
-                      <select name="nfvp_score_f" value={editFormData.nfvp_score_f || ''} onChange={handleEditFormChange}>
+                      <select name="f_score" value={editFormData.f_score || ''} onChange={handleEditFormChange}>
                         <option value="">-- 選擇 --</option>
                         <option value="0">0 - 完全無資金 | 無法支付</option>
                         <option value="2">2 - 可能無預算 | 對價格敵感，難以接受報價</option>
@@ -882,7 +882,7 @@ function Customers() {
                         <option value="10">10 - 充足預算 | 預算已確認，可直接支付</option>
                       </select>
                     ) : (
-                      <span>{getFScoreDescription(editFormData.nfvp_score_f) || '-'}</span>
+                      <span>{getFScoreDescription(editFormData.f_score) || '-'}</span>
                     )}
                   </div>
 
@@ -901,7 +901,7 @@ function Customers() {
                     <label>CVI 評分:</label>
                     <span>
                       {(() => {
-                        const cviValue = calculateCVI(editFormData.nfvp_score_n, editFormData.nfvp_score_f, calculateVScore(editFormData.price, editFormData.annual_consumption), calculatePScore(editFormData.price))
+                        const cviValue = calculateCVI(editFormData.n_score, editFormData.f_score, calculateVScore(editFormData.price, editFormData.annual_consumption), calculatePScore(editFormData.price))
                         return cviValue
                       })()}
                     </span>

@@ -125,6 +125,3 @@
 - [ ] 檢查後端 API 是否正確處理 nfvp_score_n 和 nfvp_score_f
 - [ ] 確保前端正確發送這兩個欄位的值
 - [ ] 修復編輯後保存不顯示的問題
-
-### 前端 allowedFields 修復
-- [x] 添加 nfvp_score_n 和 nfvp_score_f 到前端 allowedFields
