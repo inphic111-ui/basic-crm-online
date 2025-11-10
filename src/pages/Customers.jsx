@@ -546,7 +546,7 @@ function Customers() {
         updatedCustomer.ai_analysis = responseData.analysis
       }
       if (responseData.history) {
-        updatedCustomer.ai_analysis_history_json = JSON.stringify({ analyses: responseData.history })
+        updatedCustomer.ai_analysis_history_json = JSON.stringify(responseData.history)
       }
       
       setCustomers(customers.map(c => c.id === updatedCustomer.id ? updatedCustomer : c))
