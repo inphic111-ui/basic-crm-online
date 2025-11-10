@@ -120,3 +120,8 @@
 - [x] 檢查數據庫中 nfvp_score_n 和 nfvp_score_f 的數據
 - [x] 修改只讀模式下 N 評分和 F 評分的顯示邏輯，顯示選項描述而不是「-」
 - [x] 確保編輯後保存的值能正確顯示
+
+### N 評分和 F 評分保存問題修複
+- [x] 檢查後端 API 是否正確处理 nfvp_score_n 和 nfvp_score_f
+- [x] 確保前端正確發送 nfvp_score_n 和 nfvp_score_f 值
+- [x] 修複編輯後保存不顯示的問題

@@ -320,7 +320,9 @@ app.put('/api/customers/:id', async (req, res) => {
       'notes': 'notes',
       'status': 'status',
       'product_url': 'product_url',
-      'ai_analysis': 'ai_analysis'
+      'ai_analysis': 'ai_analysis',
+      'nfvp_score_n': 'nfvp_score_n',
+      'nfvp_score_f': 'nfvp_score_f'
     };
 
     // 遍歷所有支持的字段
