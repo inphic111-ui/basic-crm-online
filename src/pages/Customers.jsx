@@ -865,7 +865,7 @@ function Customers() {
                         <option value="10">10 - 立即採購 | 已確認規格數量，僅待報價/下單</option>
                       </select>
                     ) : (
-                      <span>{editFormData.nfvp_score_n || '-'}</span>
+                      <span>{getNScoreDescription(editFormData.nfvp_score_n) || '-'}</span>
                     )}
                   </div>
                   <div className="detail-item">
@@ -874,14 +874,14 @@ function Customers() {
                       <select name="nfvp_score_f" value={editFormData.nfvp_score_f || ''} onChange={handleEditFormChange}>
                         <option value="">-- 選擇 --</option>
                         <option value="0">0 - 完全無資金 | 無法支付</option>
-                        <option value="2">2 - 可能無預算 | 對價格敏感，難以接受報價</option>
+                        <option value="2">2 - 可能無預算 | 對價格敵感，難以接受報價</option>
                         <option value="4">4 - 需籌措資金 | 有意願但需融資</option>
                         <option value="6">6 - 需內部審批 | 預算待內部核准</option>
                         <option value="8">8 - 高預算確定 | 預算接近標準，可能需分期</option>
                         <option value="10">10 - 充足預算 | 預算已確認，可直接支付</option>
                       </select>
                     ) : (
-                      <span>{editFormData.nfvp_score_f || '-'}</span>
+                      <span>{getFScoreDescription(editFormData.nfvp_score_f) || '-'}</span>
                     )}
                   </div>
 
