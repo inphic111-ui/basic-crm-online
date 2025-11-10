@@ -1954,12 +1954,30 @@ ${audioTranscription}`;
       const probabilityMatch = analysisResult.match(/成交機率：\((\d+)%\)/);
       const probability = probabilityMatch ? parseInt(probabilityMatch[1]) : null;
 
+      // 生成時間軸文字
+      const timestamp = new Date();
+      const timeStr = timestamp.toLocaleString('zh-TW');
+      let timelineText = `${timeStr} | 成交率：${probability}%`;
+      
+      // 如果有前一條記錄，計算變化
+      if (historyJson.length > 0) {
+        const previousRecord = historyJson[historyJson.length - 1];
+        const previousProb = previousRecord.probability;
+        if (previousProb !== null && probability !== null) {
+          const diff = probability - previousProb;
+          const arrow = diff > 0 ? '⬆️' : diff < 0 ? '⬇️' : '→';
+          const diffText = diff > 0 ? `+${diff}%` : `${diff}%`;
+          timelineText += ` | ${arrow} ${diffText}`;
+        }
+      }
+
       historyJson.push({
-        timestamp: new Date().toISOString(),
+        timestamp: timestamp.toISOString(),
         probability: probability,
         recommendations: analysisResult,
         has_audio: !!(body.audio_url || customer.audio_url),
-        audio_transcription: audioTranscription || null
+        audio_transcription: audioTranscription || null,
+        timeline_text: timelineText
       });
     }
 

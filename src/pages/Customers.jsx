@@ -1259,6 +1259,24 @@ function Customers() {
                     return null
                   })()}
                   
+                  {/* 分析歷史時間軸 */}
+                  {(() => {
+                    const history = parseAnalysisHistory(editFormData.ai_analysis_history_json)
+                    if (history && history.length > 0) {
+                      return (
+                        <div style={{marginTop: '15px', padding: '10px', backgroundColor: '#f5f5f5', border: '1px solid #ddd', borderRadius: '4px', fontSize: '13px', lineHeight: '1.8'}}>
+                          <div style={{fontWeight: 'bold', marginBottom: '8px', color: '#333'}}>分析歷史時間軸</div>
+                          {history.map((record, idx) => (
+                            <div key={idx} style={{padding: '5px 0', borderBottom: idx < history.length - 1 ? '1px solid #e0e0e0' : 'none', color: '#666'}}>
+                              {record.timeline_text || `${new Date(record.timestamp).toLocaleString('zh-TW')} | 成交率：${record.probability}%`}
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    }
+                    return null
+                  })()}
+                  
                   {editFormData.ai_analysis && !editFormData.audio_url && (
                     <div style={{marginTop: '10px', padding: '10px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', borderRadius: '4px', color: '#856404', fontSize: '14px'}}>
                       建議上傳音檔 - 上傳客戶通話錄音可獲得更完整的 AI 分析結果
