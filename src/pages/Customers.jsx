@@ -1238,8 +1238,9 @@ function Customers() {
                     if (history && history.length >= 2) {
                       const latestAnalysis = history[history.length - 1]
                       const previousAnalysis = history[history.length - 2]
-                      const currentProb = extractProbability(latestAnalysis.probability || latestAnalysis.recommendations || '')
-                      const previousProb = extractProbability(previousAnalysis.probability || previousAnalysis.recommendations || '')
+                      // probability 字段已經是數字，直接使用
+                      const currentProb = latestAnalysis.probability
+                      const previousProb = previousAnalysis.probability
                       
                       if (currentProb !== null && previousProb !== null) {
                         const diff = currentProb - previousProb
