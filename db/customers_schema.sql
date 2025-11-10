@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS customers (
   nfvp_score NUMERIC(3, 1),                  -- NFVP 評分（0-10）
   cvi_score NUMERIC(5, 2),                   -- CVI 評分（客戶價值指數）
   notes TEXT,                                -- 處理紀錄（備註）
+  product_url VARCHAR(500),                  -- 商品超連結
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT chk_nfvp_score CHECK (nfvp_score >= 0 AND nfvp_score <= 10),

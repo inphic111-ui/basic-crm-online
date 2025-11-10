@@ -671,7 +671,6 @@ function Customers() {
                   <th>詢問產品</th>
                   <th>報價</th>
                   <th>預算</th>
-                  <th>電話</th>
                   <th>訂單狀態</th>
                   <th>總消費</th>
                   <th>評級</th>
@@ -695,7 +694,6 @@ function Customers() {
                       <td>{customer.initial_product || '-'}</td>
                       <td>NT${parseFloat(customer.price || 0).toLocaleString()}</td>
                       <td>NT${parseFloat(customer.budget || 0).toLocaleString()}</td>
-                      <td>{customer.phone || '-'}</td>
                       <td>{getOrderStatusTag(customer.order_status)}</td>
                       <td>NT${parseFloat(customer.total_consumption || 0).toLocaleString()}</td>
                       <td>{getRatingBadge(customer.customer_rating)}</td>
@@ -1005,7 +1003,7 @@ function Customers() {
                 <div style={{ marginTop: '0px' }}>
                   {isEditMode ? (
                     <>
-                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>\u97f3\u6a94\u4e0a\u50b3:</label>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>音檔上傳:</label>
                       <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                         <input 
                           type="file" 
@@ -1025,13 +1023,13 @@ function Customers() {
                               .then(res => res.json())
                               .then(data => {
                                 if (data.success) {
-                                  alert('\u97f3\u6a94\u4e0a\u50b3\u6210\u529f');
+                                  alert('音檔上傳成功');
                                   setEditFormData({...editFormData, audioUrl: data.audioUrl});
                                 } else {
-                                  alert('\u97f3\u6a94\u4e0a\u50b3\u5931\u6557: ' + data.error);
+                                  alert('音檔上傳失敗: ' + data.error);
                                 }
                               })
-                              .catch(err => alert('\u4e0a\u50b3\u932f\u8aa4: ' + err.message));
+                              .catch(err => alert('上傳錯誤: ' + err.message));
                             }
                           }}
                           style={{ display: 'none' }}
@@ -1041,13 +1039,13 @@ function Customers() {
                           onClick={() => document.getElementById('audio-upload').click()}
                           style={{ padding: '8px 16px', fontSize: '14px' }}
                         >
-                          \u9078\u64c7\u97f3\u6a94
+選擇音檔
                         </button>
                         {editFormData.audioUrl && (
                           <>
                             <audio controls style={{ height: '32px', flex: 1 }}>
                               <source src={editFormData.audioUrl} />
-                              \u60a8\u7684\u700f\u89bd\u5668\u4e0d\u652f\u63f4\u97f3\u6a94\u64ad\u653e
+您的瀏覽器不支援音檔播放
                             </audio>
                             <button 
                               className="btn btn-danger"
@@ -1062,7 +1060,7 @@ function Customers() {
                               }}
                               style={{ padding: '8px 12px', fontSize: '12px' }}
                             >
-                              \u522a\u9664
+刪除
                             </button>
                           </>
                         )}
@@ -1077,7 +1075,7 @@ function Customers() {
                             <span style={{ fontSize: '24px', cursor: 'pointer' }} title="\u64ad\u653e\u97f3\u6a94">\ud83d\udd0a</span>
                             <audio controls style={{ height: '32px', flex: 1 }}>
                               <source src={editFormData.audioUrl} />
-                              \u60a8\u7684\u700f\u89bd\u5668\u4e0d\u652f\u63f4\u97f3\u6a94\u64ad\u653e
+您的瀏覽器不支援音檔播放
                             </audio>
                           </div>
                           <div style={{ marginTop: '15px' }}>
