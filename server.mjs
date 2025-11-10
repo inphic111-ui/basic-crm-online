@@ -181,7 +181,7 @@ async function initializeDatabase() {
       `);
       addLog('info', '示例數據已插入');
     } else {
-      addLog('info', 
+      
       // 檢查並添加 audio_file 欄位
       try {
         await pool.query('ALTER TABLE customers ADD COLUMN audio_file TEXT');
@@ -202,7 +202,7 @@ async function initializeDatabase() {
         }
       }
 
-      'customers 表已存在，跳過初始化');
+      addLog('info', 'customers 表已存在，跳過初始化');
     }
   } catch (err) {
     addLog('error', '初始化數據庫失敗', err.message);
@@ -1773,7 +1773,7 @@ app.delete('/api/audio/delete/:customerId', async (req, res) => {
 // AI 分析 API
 
 // 帶有 AI 分析的客戶更新端點
-app.post('/api/customers/:id/update-with-analysis', async (req, res) => {
+app.put('/api/customers/:id/update-with-analysis', async (req, res) => {
   try {
     const { id } = req.params;
     const body = req.body;
