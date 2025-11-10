@@ -1175,10 +1175,20 @@ function Customers() {
                     <button className="btn btn-small" onClick={() => handleGenerateAIAnalysis(selectedCustomer)} style={{marginTop: '10px'}}>
                       生成 AI 分析
                     </button>
+                    {!editFormData.audio_file && (
+                      <div style={{marginTop: '10px', padding: '10px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', borderRadius: '4px', color: '#856404'}}>
+                        建議上傳音檔 - 上傳客戶通話錄音可獲得更完整的 AI 分析結果
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="notes-box">
                     {editFormData.ai_analysis || '無 AI 分析'}
+                    {!editFormData.audio_file && editFormData.ai_analysis && (
+                      <div style={{marginTop: '10px', padding: '10px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', borderRadius: '4px', color: '#856404', fontSize: '14px'}}>
+                        建議上傳音檔 - 上傳客戶通話錄音可獲得更完整的 AI 分析結果
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
