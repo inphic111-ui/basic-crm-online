@@ -1235,31 +1235,7 @@ function Customers() {
                 <div className="notes-box">
                   {editFormData.ai_analysis || '無 AI 分析'}
                   
-                  {/* 成交機率對比顯示 */}
-                  {(() => {
-                    const history = parseAnalysisHistory(editFormData.ai_analysis_history)
-                    if (history && history.length >= 2) {
-                      const latestAnalysis = history[history.length - 1]
-                      const previousAnalysis = history[history.length - 2]
-                      const currentProb = latestAnalysis.probability
-                      const previousProb = previousAnalysis.probability
-                      
-                      if (currentProb !== null && previousProb !== null) {
-                        const diff = currentProb - previousProb
-                        const arrow = diff > 0 ? '⬆️' : diff < 0 ? '⬇️' : '→'
-                        const diffText = diff > 0 ? `+${diff}%` : `${diff}%`
-                        const latestDate = new Date(latestAnalysis.timestamp).toLocaleString('zh-TW')
-                        const previousDate = new Date(previousAnalysis.timestamp).toLocaleString('zh-TW')
-                        
-                        return (
-                          <div style={{marginTop: '10px', padding: '10px', backgroundColor: '#e3f2fd', border: '1px solid #2196f3', borderRadius: '4px', color: '#1565c0', fontSize: '14px'}}>
-                            成交機率變化: {previousProb}% ({previousDate}) → {currentProb}% ({latestDate}) {arrow} {diffText}
-                          </div>
-                        )
-                      }
-                    }
-                    return null
-                  })()}
+                  {/* 成交機率對比顯示已移除 */}}
                   
                   {/* 分析歷史時間軸 */}
                   {(() => {
@@ -1270,11 +1246,17 @@ function Customers() {
                       return (
                         <div style={{marginTop: '15px', padding: '10px', backgroundColor: '#f5f5f5', border: '1px solid #ddd', borderRadius: '4px', fontSize: '13px', lineHeight: '1.8'}}>
                           <div style={{fontWeight: 'bold', marginBottom: '8px', color: '#333'}}>分析歷史時間軸</div>
-                          {history.map((record, idx) => (
-                            <div key={idx} style={{padding: '5px 0', borderBottom: idx < history.length - 1 ? '1px solid #e0e0e0' : 'none', color: '#666'}}>
-                              {record.timeline_text || `${new Date(record.timestamp).toLocaleString('zh-TW')} | 成交率：${record.probability}%`}
-                            </div>
-                          ))}
+                          {[...history].reverse().map((record, idx) => {
+                            // 轉換為 GMT+8 時間
+                            const date = new Date(record.timestamp);
+                            const gmt8Time = new Date(date.getTime() + (8 - date.getTimezoneOffset() / 60) * 60 * 60 * 1000).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
+                            const timelineText = record.timeline_text ? record.timeline_text.replace(/\d{4}\/\d{1,2}\/\d{1,2}\s+\d{1,2}:\d{2}:\d{2}/, gmt8Time) : `${gmt8Time} | 成交率：${record.probability}%`;
+                            return (
+                              <div key={idx} style={{padding: '5px 0', borderBottom: idx < history.length - 1 ? '1px solid #e0e0e0' : 'none', color: '#666'}}>
+                                {timelineText}
+                              </div>
+                            );
+                          })}
                         </div>
                       )
                     }
