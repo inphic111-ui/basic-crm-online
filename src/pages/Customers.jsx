@@ -504,7 +504,7 @@ function Customers() {
         'telephone', 'order_status', 'total_consumption', 'annual_consumption',
         'customer_rating', 'customer_type', 'source', 'capital_amount',
         'nfvp_score', 'cvi_score', 'notes', 'status', 'product_url', 'ai_analysis',
-        'n_score', 'f_score'
+        'n_score', 'f_score', 'ai_analysis_history'
       ]
       
       const dataToSave = {}
