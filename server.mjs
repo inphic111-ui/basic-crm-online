@@ -1938,6 +1938,7 @@ ${audioTranscription}`;
 
     // 第四步：更新 ai_analysis_history_JSON
     let historyJson = [];
+    console.log('[DEBUG] 客戶現有的 ai_analysis_history_json:', customer.ai_analysis_history_json);
     if (customer.ai_analysis_history_json) {
       try {
         historyJson = JSON.parse(customer.ai_analysis_history_json);
@@ -1945,9 +1946,12 @@ ${audioTranscription}`;
           historyJson = [];
         }
       } catch (err) {
+        console.error('[DEBUG] JSON 解析失敗:', err.message);
         historyJson = [];
       }
     }
+    console.log('[DEBUG] 解析後的 historyJson 長度:', historyJson.length);
+    console.log('[DEBUG] 解析後的 historyJson 內容:', JSON.stringify(historyJson, null, 2));
 
     if (analysisResult) {
       // 提取成交機率
@@ -1976,6 +1980,7 @@ ${audioTranscription}`;
         probability: probability,
         recommendations: analysisResult,
         has_audio: !!(body.audio_url || customer.audio_url),
+      console.log('[DEBUG] 添加新記錄後的 historyJson 長度:', historyJson.length);
         audio_transcription: audioTranscription || null,
         timeline_text: timelineText
       });

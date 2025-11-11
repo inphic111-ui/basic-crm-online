@@ -411,13 +411,13 @@ function Customers() {
     setShowDetailModal(true)
   }
 
-  // 關閉詳細視窗
-  const handleCloseDetailModal = () => {
-    setShowDetailModal(false)
-    setSelectedCustomer(null)
-    setIsEditMode(false)
-    setEditFormData({})
-  }
+      // 關閉詳細視窗
+      const handleCloseDetailModal = () => {
+        setShowDetailModal(false)
+        // 不清空 editFormData，保留最新的數據
+        // setEditFormData({}) // 已註釋 - 保留最新的客戶數據
+        setIsEditMode(false)
+      }
 
   // 打開新增客戶表單
   const handleOpenAddModal = () => {
@@ -550,6 +550,9 @@ function Customers() {
       }
       
       setCustomers(customers.map(c => c.id === updatedCustomer.id ? updatedCustomer : c))
+      // 更新 editFormData 以反映最新的數據（包括更新後的 ai_analysis_history_json）
+      setEditFormData(updatedCustomer)
+      setSelectedCustomer(updatedCustomer)
       handleCloseDetailModal()
       alert('客戶已更新')
     } catch (err) {
@@ -1238,9 +1241,8 @@ function Customers() {
                     if (history && history.length >= 2) {
                       const latestAnalysis = history[history.length - 1]
                       const previousAnalysis = history[history.length - 2]
-                      // probability 字段已經是數字，直接使用
-                      const currentProb = latestAnalysis.probability
-                      const previousProb = previousAnalysis.probability
+                      const currentProb = extractProbability(latestAnalysis.probability || latestAnalysis.recommendations || '')
+                      const previousProb = extractProbability(previousAnalysis.probability || previousAnalysis.recommendations || '')
                       
                       if (currentProb !== null && previousProb !== null) {
                         const diff = currentProb - previousProb
@@ -1261,7 +1263,9 @@ function Customers() {
                   
                   {/* 分析歷史時間軸 */}
                   {(() => {
+                    console.log('[DEBUG-Frontend] editFormData.ai_analysis_history_json:', editFormData.ai_analysis_history_json);
                     const history = parseAnalysisHistory(editFormData.ai_analysis_history_json)
+                    console.log('[DEBUG-Frontend] parseAnalysisHistory 返回的 history:', history);
                     if (history && history.length > 0) {
                       return (
                         <div style={{marginTop: '15px', padding: '10px', backgroundColor: '#f5f5f5', border: '1px solid #ddd', borderRadius: '4px', fontSize: '13px', lineHeight: '1.8'}}>
