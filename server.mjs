@@ -1964,9 +1964,9 @@ ${audioTranscription}`;
       const probabilityMatch = analysisResult.match(/成交機率：\((\d+)%\)/);
       const probability = probabilityMatch ? parseInt(probabilityMatch[1]) : null;
 
-      // 生成時間軸文字
+      // 生成時間軸文字（GMT+8）
       const timestamp = new Date();
-      const timeStr = timestamp.toLocaleString('zh-TW');
+      const timeStr = timestamp.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
       let timelineText = `${timeStr} | 成交率：${probability}%`;
       
       // 如果有前一條記錄，計算變化
