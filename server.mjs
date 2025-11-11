@@ -153,7 +153,7 @@ async function initializeDatabase() {
           audio_url TEXT,
           product_url TEXT,
           ai_analysis TEXT,
-          ai_analysis_history_json TEXT,
+          ai_analysis_history TEXT,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -181,13 +181,13 @@ async function initializeDatabase() {
       addLog('info', '示例數據已插入');
     } else {
       
-      // 檢查並添加 ai_analysis_history_json 欄位
+      // 檢查並添加 ai_analysis_history 欄位
       try {
-        await pool.query('ALTER TABLE customers ADD COLUMN ai_analysis_history_json TEXT');
-        addLog('info', 'ai_analysis_history_json 欄位已添加');
+        await pool.query('ALTER TABLE customers ADD COLUMN ai_analysis_history TEXT');
+        addLog('info', 'ai_analysis_history 欄位已添加');
       } catch (err) {
         if (!err.message.includes('already exists')) {
-          addLog('warn', 'ai_analysis_history_json 欄位添加失敗: ' + err.message);
+          addLog('warn', 'ai_analysis_history 欄位添加失敗: ' + err.message);
         }
       }
 
