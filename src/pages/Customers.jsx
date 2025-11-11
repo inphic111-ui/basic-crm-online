@@ -1240,17 +1240,26 @@ function Customers() {
                   {/* 分析歷史時間軸 */}
                   {(() => {
                     console.log('[DEBUG-Frontend] editFormData.ai_analysis_history:', editFormData.ai_analysis_history);
-                    const history = parseAnalysisHistory(editFormData.ai_analysis_history)
-                    console.log('[DEBUG-Frontend] parseAnalysisHistory 返回的 history:', history);
-                    if (history && history.length > 0) {
+                    let history = null;
+                    try {
+                      if (editFormData.ai_analysis_history) {
+                        if (typeof editFormData.ai_analysis_history === 'string') {
+                          history = JSON.parse(editFormData.ai_analysis_history);
+                        } else {
+                          history = editFormData.ai_analysis_history;
+                        }
+                      }
+                    } catch (err) {
+                      console.error('[DEBUG-Frontend] 解析 ai_analysis_history 失敗:', err);
+                    }
+                    console.log('[DEBUG-Frontend] 解析後的 history:', history);
+                    if (history && Array.isArray(history) && history.length > 0) {
                       return (
                         <div style={{marginTop: '15px', padding: '10px', backgroundColor: '#f5f5f5', border: '1px solid #ddd', borderRadius: '4px', fontSize: '13px', lineHeight: '1.8'}}>
                           <div style={{fontWeight: 'bold', marginBottom: '8px', color: '#333'}}>分析歷史時間軸</div>
                           {[...history].reverse().map((record, idx) => {
-                            // 轉換為 GMT+8 時間
-                            const date = new Date(record.timestamp);
-                            const gmt8Time = new Date(date.getTime() + (8 - date.getTimezoneOffset() / 60) * 60 * 60 * 1000).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
-                            const timelineText = record.timeline_text ? record.timeline_text.replace(/\d{4}\/\d{1,2}\/\d{1,2}\s+\d{1,2}:\d{2}:\d{2}/, gmt8Time) : `${gmt8Time} | 成交率：${record.probability}%`;
+                            // 直接使用 timeline_text（已經是 GMT+8 格式）
+                            const timelineText = record.timeline_text || `${new Date(record.timestamp).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })} | 成交率：${record.probability}%`;
                             return (
                               <div key={idx} style={{padding: '5px 0', borderBottom: idx < history.length - 1 ? '1px solid #e0e0e0' : 'none', color: '#666'}}>
                                 {timelineText}
