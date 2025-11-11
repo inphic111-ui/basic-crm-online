@@ -1936,12 +1936,12 @@ ${audioTranscription}`;
       }
     }
 
-    // 第四步：更新 ai_analysis_history_JSON
+    // 第四步：更新 ai_analysis_history
     let historyJson = [];
-    console.log('[DEBUG] 客戶現有的 ai_analysis_history_json:', customer.ai_analysis_history_json);
-    if (customer.ai_analysis_history_json) {
+    console.log('[DEBUG] 客戶現有的 ai_analysis_history:', customer.ai_analysis_history);
+    if (customer.ai_analysis_history) {
       try {
-        historyJson = JSON.parse(customer.ai_analysis_history_json);
+        historyJson = JSON.parse(customer.ai_analysis_history);
         if (!Array.isArray(historyJson)) {
           historyJson = [];
         }
@@ -1980,14 +1980,15 @@ ${audioTranscription}`;
         probability: probability,
         recommendations: analysisResult,
         has_audio: !!(body.audio_url || customer.audio_url),
-      console.log('[DEBUG] 添加新記錄後的 historyJson 長度:', historyJson.length);
         audio_transcription: audioTranscription || null,
         timeline_text: timelineText
       });
+      console.log('[DEBUG] 添加新記錄後的 historyJson 長度:', historyJson.length);
+      console.log('[DEBUG] 添加新記錄後的 historyJson 內容:', JSON.stringify(historyJson, null, 2));
     }
 
-    // u7b2c五步：u4fdd存更新
-    updates.push(`ai_analysis_history_json = $${paramIndex}`);
+    // 第五步：保存更新
+    updates.push(`ai_analysis_history = $${paramIndex}`);
     values.push(JSON.stringify(historyJson));
     paramIndex++;
 

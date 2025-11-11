@@ -546,7 +546,7 @@ function Customers() {
         updatedCustomer.ai_analysis = responseData.analysis
       }
       if (responseData.history) {
-        updatedCustomer.ai_analysis_history_json = JSON.stringify(responseData.history)
+        updatedCustomer.ai_analysis_history = JSON.stringify(responseData.history)
       }
       
       setCustomers(customers.map(c => c.id === updatedCustomer.id ? updatedCustomer : c))
@@ -1237,12 +1237,12 @@ function Customers() {
                   
                   {/* 成交機率對比顯示 */}
                   {(() => {
-                    const history = parseAnalysisHistory(editFormData.ai_analysis_history_json)
+                    const history = parseAnalysisHistory(editFormData.ai_analysis_history)
                     if (history && history.length >= 2) {
                       const latestAnalysis = history[history.length - 1]
                       const previousAnalysis = history[history.length - 2]
-                      const currentProb = extractProbability(latestAnalysis.probability || latestAnalysis.recommendations || '')
-                      const previousProb = extractProbability(previousAnalysis.probability || previousAnalysis.recommendations || '')
+                      const currentProb = latestAnalysis.probability
+                      const previousProb = previousAnalysis.probability
                       
                       if (currentProb !== null && previousProb !== null) {
                         const diff = currentProb - previousProb
@@ -1263,8 +1263,8 @@ function Customers() {
                   
                   {/* 分析歷史時間軸 */}
                   {(() => {
-                    console.log('[DEBUG-Frontend] editFormData.ai_analysis_history_json:', editFormData.ai_analysis_history_json);
-                    const history = parseAnalysisHistory(editFormData.ai_analysis_history_json)
+                    console.log('[DEBUG-Frontend] editFormData.ai_analysis_history:', editFormData.ai_analysis_history);
+                    const history = parseAnalysisHistory(editFormData.ai_analysis_history)
                     console.log('[DEBUG-Frontend] parseAnalysisHistory 返回的 history:', history);
                     if (history && history.length > 0) {
                       return (
