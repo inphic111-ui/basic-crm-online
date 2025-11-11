@@ -1800,10 +1800,14 @@ app.put('/api/customers/:id/update-with-analysis', async (req, res) => {
       'notes': 'notes',
       'product_url': 'product_url',
       'n_score': 'n_score',
-      'f_score': 'f_score'
+      'f_score': 'f_score',
+      'ai_analysis_history': 'ai_analysis_history'
     };
 
     for (const [key, dbField] of Object.entries(fieldMap)) {
+      // 跳過 ai_analysis_history，它會在合併邏輯中單獨處理
+      if (key === 'ai_analysis_history') continue;
+      
       if (body[key] !== undefined) {
         let value = body[key];
         if (['price', 'budget', 'total_consumption', 'annual_consumption', 'capital_amount', 'nfvp_score'].includes(dbField)) {
@@ -1938,10 +1942,12 @@ ${audioTranscription}`;
 
     // 第四步：更新 ai_analysis_history
     let historyJson = [];
-    console.log('[DEBUG] 客戶現有的 ai_analysis_history:', customer.ai_analysis_history);
-    if (customer.ai_analysis_history) {
+    // 優先使用 body 中的 ai_analysis_history（前端發送的最新值），如果沒有則使用數據庫中的舊值
+    const aiAnalysisHistoryStr = body.ai_analysis_history || customer.ai_analysis_history;
+    console.log('[DEBUG] 客戶現有的 ai_analysis_history:', aiAnalysisHistoryStr);
+    if (aiAnalysisHistoryStr) {
       try {
-        historyJson = JSON.parse(customer.ai_analysis_history);
+        historyJson = JSON.parse(aiAnalysisHistoryStr);
         if (!Array.isArray(historyJson)) {
           historyJson = [];
         }
