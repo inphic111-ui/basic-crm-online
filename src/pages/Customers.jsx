@@ -1229,13 +1229,12 @@ function Customers() {
                 </div>
               </div>
 
-              {!isEditMode && (
               <div className="detail-section">
                 <h3>AI 分析</h3>
                 <div className="notes-box">
                   {editFormData.ai_analysis || '無 AI 分析'}
                   
-                  {/* 成交機率對比顯示已移除 */}}
+                  {/* 成交機率對比顯示已移除 */}
                   
                   {/* 分析歷史時間軸 */}
                   {(() => {
@@ -1279,7 +1278,6 @@ function Customers() {
                   )}
                 </div>
               </div>
-              )}
 
               <div className="detail-section">
                 <h3>備註</h3>
