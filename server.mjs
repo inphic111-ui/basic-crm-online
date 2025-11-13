@@ -481,6 +481,22 @@ const upload = multer({
   limits: { fileSize: 16 * 1024 * 1024 } // 16MB 限制
 });
 
+// 音檔列表端點
+app.get('/api/audio/list', async (req, res) => {
+  try {
+    const { salesperson } = req.query;
+    
+    // 返回空列表 - 因為沒有 recordings 表
+    // 如果需要實現音檔管理功能，需要創建 recordings 表
+    const audioList = [];
+    
+    res.json(audioList);
+  } catch (err) {
+    addLog('error', '獲取音檔列表失敗', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 音檔上傳端點
 app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
   try {
