@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { InsertUser, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -9,7 +10,10 @@ let _db: ReturnType<typeof drizzle> | null = null;
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      const client = postgres(process.env.DATABASE_URL, {
+        ssl: process.env.NODE_ENV === 'production' ? 'require' : false,
+      });
+      _db = drizzle(client);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -68,7 +72,9 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
+    // PostgreSQL 使用 ON CONFLICT 而不是 onDuplicateKeyUpdate
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.openId,
       set: updateSet,
     });
   } catch (error) {
@@ -105,8 +111,8 @@ export async function createRecording(data: {
   if (!db) throw new Error("Database not available");
   
   const { recordings } = await import("../drizzle/schema");
-  const result = await db.insert(recordings).values(data);
-  return result;
+  const result = await db.insert(recordings).values(data).returning();
+  return result[0];
 }
 
 // 取得用戶的音檔列表
@@ -134,7 +140,7 @@ export async function updateRecordingStatus(recordingId: number, status: "pendin
   if (!db) throw new Error("Database not available");
   
   const { recordings } = await import("../drizzle/schema");
-  return db.update(recordings).set({ status }).where(eq(recordings.id, recordingId));
+  return db.update(recordings).set({ status }).where(eq(recordings.id, recordingId)).returning();
 }
 
 // 創建轉錄記錄
@@ -150,7 +156,8 @@ export async function createTranscription(data: {
   if (!db) throw new Error("Database not available");
   
   const { transcriptions } = await import("../drizzle/schema");
-  return db.insert(transcriptions).values(data);
+  const result = await db.insert(transcriptions).values(data).returning();
+  return result[0];
 }
 
 // 取得轉錄記錄
@@ -175,7 +182,7 @@ export async function updateTranscription(recordingId: number, data: Partial<{
   if (!db) throw new Error("Database not available");
   
   const { transcriptions } = await import("../drizzle/schema");
-  return db.update(transcriptions).set(data).where(eq(transcriptions.recordingId, recordingId));
+  return db.update(transcriptions).set(data).where(eq(transcriptions.recordingId, recordingId)).returning();
 }
 
 // 創建 AI 分析記錄
@@ -190,7 +197,8 @@ export async function createAiAnalysis(data: {
   if (!db) throw new Error("Database not available");
   
   const { aiAnalyses } = await import("../drizzle/schema");
-  return db.insert(aiAnalyses).values(data);
+  const result = await db.insert(aiAnalyses).values(data).returning();
+  return result[0];
 }
 
 // 取得音檔的所有分析
@@ -213,7 +221,8 @@ export async function createAnalysisHistory(data: {
   if (!db) throw new Error("Database not available");
   
   const { analysisHistory } = await import("../drizzle/schema");
-  return db.insert(analysisHistory).values(data);
+  const result = await db.insert(analysisHistory).values(data).returning();
+  return result[0];
 }
 
 // 取得音檔的分析歷史
