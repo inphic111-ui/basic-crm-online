@@ -89,4 +89,140 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+/**
+ * 音檔管理數據庫查詢函數
+ */
+
+// 建立音檔記錄
+export async function createRecording(data: {
+  userId: number;
+  fileName: string;
+  fileSize: number;
+  filePath: string;
+  duration?: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const { recordings } = await import("../drizzle/schema");
+  const result = await db.insert(recordings).values(data);
+  return result;
+}
+
+// 取得用戶的音檔列表
+export async function getUserRecordings(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const { recordings } = await import("../drizzle/schema");
+  return db.select().from(recordings).where(eq(recordings.userId, userId));
+}
+
+// 取得单個音檔
+export async function getRecording(recordingId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const { recordings } = await import("../drizzle/schema");
+  const result = await db.select().from(recordings).where(eq(recordings.id, recordingId)).limit(1);
+  return result[0];
+}
+
+// 更新音檔狀态
+export async function updateRecordingStatus(recordingId: number, status: "pending" | "transcribing" | "completed" | "failed") {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const { recordings } = await import("../drizzle/schema");
+  return db.update(recordings).set({ status }).where(eq(recordings.id, recordingId));
+}
+
+// 創建轉錄記錄
+export async function createTranscription(data: {
+  recordingId: number;
+  text?: string;
+  language?: string;
+  confidence?: number;
+  status: "pending" | "processing" | "completed" | "failed";
+  errorMessage?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const { transcriptions } = await import("../drizzle/schema");
+  return db.insert(transcriptions).values(data);
+}
+
+// 取得轉錄記錄
+export async function getTranscription(recordingId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const { transcriptions } = await import("../drizzle/schema");
+  const result = await db.select().from(transcriptions).where(eq(transcriptions.recordingId, recordingId)).limit(1);
+  return result[0];
+}
+
+// 更新轉錄記錄
+export async function updateTranscription(recordingId: number, data: Partial<{
+  text: string;
+  language: string;
+  confidence: number;
+  status: "pending" | "processing" | "completed" | "failed";
+  errorMessage: string;
+}>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const { transcriptions } = await import("../drizzle/schema");
+  return db.update(transcriptions).set(data).where(eq(transcriptions.recordingId, recordingId));
+}
+
+// 創建 AI 分析記錄
+export async function createAiAnalysis(data: {
+  transcriptionId: number;
+  analysisType: string;
+  result?: string;
+  status: "pending" | "processing" | "completed" | "failed";
+  errorMessage?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const { aiAnalyses } = await import("../drizzle/schema");
+  return db.insert(aiAnalyses).values(data);
+}
+
+// 取得音檔的所有分析
+export async function getRecordingAnalyses(recordingId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const { aiAnalyses, transcriptions } = await import("../drizzle/schema");
+  return db.select().from(aiAnalyses)
+    .innerJoin(transcriptions, eq(aiAnalyses.transcriptionId, transcriptions.id))
+    .where(eq(transcriptions.recordingId, recordingId));
+}
+
+// 創建分析歷史記錄
+export async function createAnalysisHistory(data: {
+  recordingId: number;
+  analysisData: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const { analysisHistory } = await import("../drizzle/schema");
+  return db.insert(analysisHistory).values(data);
+}
+
+// 取得音檔的分析歷史
+export async function getAnalysisHistory(recordingId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const { analysisHistory } = await import("../drizzle/schema");
+  return db.select().from(analysisHistory).where(eq(analysisHistory.recordingId, recordingId)).orderBy((t) => t.timestamp);
+}
+
+// TODO: add more feature queries here as your schema grows.
