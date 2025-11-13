@@ -52,10 +52,9 @@ export default function Recordings() {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(audio =>
-        audio.filename?.toLowerCase().includes(query) ||
-        audio.original_filename?.toLowerCase().includes(query) ||
+        audio.id?.toString().toLowerCase().includes(query) ||
         audio.customer_name?.toLowerCase().includes(query) ||
-        audio.salesperson_name?.toLowerCase().includes(query) ||
+        audio.business_name?.toLowerCase().includes(query) ||
         audio.product_name?.toLowerCase().includes(query)
       )
     }
@@ -65,20 +64,18 @@ export default function Recordings() {
 
   // 格式化日期和時間
   const formatCallDateTime = (callDate, callTime) => {
-    if (!callDate || !callTime) return '-'
-    try {
-      return `${callDate} ${callTime}`
-    } catch {
-      return '-'
-    }
+    if (!callDate && !callTime) return '-'
+    const date = callDate || ''
+    const time = callTime || ''
+    return `${date} ${time}`.trim() || '-'
   }
 
-  // 格式化時長
-  const formatDuration = (seconds) => {
-    if (!seconds) return '-'
-    const mins = Math.floor(seconds / 60)
-    const secs = Math.floor(seconds % 60)
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  // 格式化時長（從 created_at 計算，或返回 '-'）
+  const formatDuration = (createdAt) => {
+    if (!createdAt) return '-'
+    // 如果需要實際時長，需要從音檔信息中獲取
+    // 暫時返回 '-'
+    return '-'
   }
 
   // 播放音檔
@@ -112,10 +109,20 @@ export default function Recordings() {
     setSelectedTranscription(null)
   }
 
-  // 解析 AI 標籤
-  const parseAiTags = (tagsString) => {
-    if (!tagsString) return []
-    return tagsString.split(',').filter(tag => tag.trim()).slice(0, 3)
+  // 獲取轉錄狀態顯示
+  const getTranscriptionStatusDisplay = (status) => {
+    if (!status) return '⏳待轉錄'
+    if (status === 'completed' || status === 'done') return '✅已轉錄'
+    if (status === 'pending' || status === 'processing') return '⏳轉錄中'
+    return status
+  }
+
+  // 獲取分析狀態顯示
+  const getAnalysisStatusDisplay = (status) => {
+    if (!status) return '⏳待分析'
+    if (status === 'completed' || status === 'done') return '✅已分析'
+    if (status === 'pending' || status === 'processing') return '⏳分析中'
+    return status
   }
 
   return (
@@ -136,7 +143,7 @@ export default function Recordings() {
         <input
           type="text"
           className="search-input"
-          placeholder="搜尋檔名、客戶、業務、產品..."
+          placeholder="搜尋客戶、業務、產品..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
@@ -146,7 +153,7 @@ export default function Recordings() {
           value={selectedSalesperson}
           onChange={(e) => setSelectedSalesperson(e.target.value)}
         >
-          <option value="">業務員</option>
+          <option value="">業務</option>
           {SALESPERSONS.map(person => (
             <option key={person} value={person}>
               {person}
@@ -182,12 +189,12 @@ export default function Recordings() {
                 <th className="play-col">播放</th>
                 <th className="filename-col">檔名</th>
                 <th className="customer-col">客戶</th>
-                <th className="salesperson-col">業務員</th>
+                <th className="salesperson-col">業務</th>
                 <th className="product-col">產品</th>
-                <th className="time-col">時間長度</th>
-                <th className="transcription-col">轉錄文本</th>
-                <th className="ai-tags-col">AI 標籤</th>
-                <th className="summary-col">分析摘要</th>
+                <th className="time-col">時間</th>
+                <th className="duration-col">長度</th>
+                <th className="transcription-col">轉錄狀態</th>
+                <th className="analysis-col">分析狀態</th>
               </tr>
             </thead>
             <tbody>
@@ -205,36 +212,26 @@ export default function Recordings() {
                       ▶️
                     </button>
                   </td>
-                  <td className="filename-col" title={audio.original_filename}>
-                    {audio.filename || '-'}
+                  <td className="filename-col" title={audio.id}>
+                    {audio.id || '-'}
                   </td>
                   <td className="customer-col">{audio.customer_name || '-'}</td>
-                  <td className="salesperson-col">{audio.salesperson_name || '-'}</td>
+                  <td className="salesperson-col">{audio.business_name || '-'}</td>
                   <td className="product-col">{audio.product_name || '-'}</td>
                   <td className="time-col">
-                    {formatDuration(audio.duration)}
+                    {formatCallDateTime(audio.call_date, audio.call_time)}
+                  </td>
+                  <td className="duration-col">
+                    {formatDuration(audio.created_at)}
                   </td>
                   <td className="transcription-col">
-                    <button
-                      className="transcription-button"
-                      onClick={() => handleViewTranscription(audio)}
-                      title="查看轉錄文本"
-                    >
-                      📄 查看
-                    </button>
+                    <span className="status-badge">
+                      {getTranscriptionStatusDisplay(audio.transcription_status)}
+                    </span>
                   </td>
-                  <td className="ai-tags-col">
-                    <div className="tags-container">
-                      {parseAiTags(audio.ai_tags).map((tag, idx) => (
-                        <span key={idx} className="tag-badge">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="summary-col">
-                    <span className="summary-text" title={audio.summary}>
-                      {audio.summary ? audio.summary.substring(0, 30) + (audio.summary.length > 30 ? '...' : '') : '-'}
+                  <td className="analysis-col">
+                    <span className="status-badge">
+                      {getAnalysisStatusDisplay(audio.analysis_status)}
                     </span>
                   </td>
                 </tr>
@@ -256,9 +253,10 @@ export default function Recordings() {
             </div>
             <div className="modal-body">
               <div className="transcription-info">
-                <p><strong>檔名：</strong> {selectedTranscription.original_filename}</p>
+                <p><strong>ID：</strong> {selectedTranscription.id}</p>
                 <p><strong>客戶：</strong> {selectedTranscription.customer_name}</p>
-                <p><strong>業務：</strong> {selectedTranscription.salesperson_name}</p>
+                <p><strong>業務：</strong> {selectedTranscription.business_name}</p>
+                <p><strong>產品：</strong> {selectedTranscription.product_name}</p>
                 <p><strong>時間：</strong> {formatCallDateTime(selectedTranscription.call_date, selectedTranscription.call_time)}</p>
               </div>
               <div className="transcription-text">
