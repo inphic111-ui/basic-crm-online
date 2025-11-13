@@ -1,9 +1,0 @@
-{
-  "query": "SELECT id, name, ai_analysis_history FROM customers WHERE ai_analysis_history IS NOT NULL LIMIT 5;",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 29rDkMc4estG6xm.4c132c16006a --database WrczB9FbLtLbFuhmSGfDzu --execute SELECT id, name, ai_analysis_history FROM customers WHERE ai_analysis_history IS NOT NULL LIMIT 5;",
-  "rows": [],
-  "messages": [],
-  "stdout": "",
-  "stderr": "",
-  "execution_time_ms": 1631
-}
