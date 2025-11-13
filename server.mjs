@@ -2145,8 +2145,8 @@ app.get('/api/init-test-data', async (req, res) => {
         INSERT INTO audio_recordings 
         (customer_id, business_name, product_name, call_date, call_time, audio_url, 
          transcription_text, transcription_status, analysis_summary, analysis_status, 
-         overall_status, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
+         ai_tags, overall_status, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
       `;
       
       const values = [
@@ -2160,6 +2160,7 @@ app.get('/api/init-test-data', async (req, res) => {
         data.transcription_status,
         data.analysis_summary,
         data.analysis_status,
+        data.ai_tags || '[]',
         data.overall_status
       ];
       
