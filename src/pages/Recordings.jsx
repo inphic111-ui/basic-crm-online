@@ -182,7 +182,7 @@ export default function Recordings() {
                 <th className="play-col">播放</th>
                 <th className="filename-col">檔名</th>
                 <th className="customer-col">客戶</th>
-                <th className="salesperson-col">業務</th>
+                <th className="salesperson-col">業務員</th>
                 <th className="product-col">產品</th>
                 <th className="time-col">時間長度</th>
                 <th className="transcription-col">轉錄文本</th>
