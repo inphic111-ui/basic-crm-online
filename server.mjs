@@ -2160,7 +2160,7 @@ app.get('/api/init-test-data', async (req, res) => {
         data.transcription_status,
         data.analysis_summary,
         data.analysis_status,
-        data.ai_tags || '[]',
+        data.ai_tags ? JSON.stringify(data.ai_tags) : '[]',
         data.overall_status
       ];
       
