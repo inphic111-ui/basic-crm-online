@@ -1,0 +1,85 @@
+{
+  "query": "SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name = 'customers' ORDER BY ordinal_position;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 29rDkMc4estG6xm.4c132c16006a --database WrczB9FbLtLbFuhmSGfDzu --execute SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name = 'customers' ORDER BY ordinal_position;",
+  "rows": [
+    {
+      "column_name": "id",
+      "data_type": "int",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "name",
+      "data_type": "varchar",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "email",
+      "data_type": "varchar",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "phone",
+      "data_type": "varchar",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "company",
+      "data_type": "varchar",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "priority",
+      "data_type": "enum",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "classification",
+      "data_type": "enum",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "notes",
+      "data_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "createdAt",
+      "data_type": "timestamp",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "updatedAt",
+      "data_type": "timestamp",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "annual_consumption",
+      "data_type": "decimal",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "product_url",
+      "data_type": "varchar",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "ai_analysis",
+      "data_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "nfvp_score_n",
+      "data_type": "varchar",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "nfvp_score_f",
+      "data_type": "varchar",
+      "is_nullable": "YES"
+    }
+  ],
+  "messages": [],
+  "stdout": "column_name\tdata_type\tis_nullable\nid\tint\tNO\nname\tvarchar\tNO\nemail\tvarchar\tYES\nphone\tvarchar\tYES\ncompany\tvarchar\tYES\npriority\tenum\tYES\nclassification\tenum\tYES\nnotes\ttext\tYES\ncreatedAt\ttimestamp\tNO\nupdatedAt\ttimestamp\tNO\nannual_consumption\tdecimal\tYES\nproduct_url\tvarchar\tYES\nai_analysis\ttext\tYES\nnfvp_score_n\tvarchar\tYES\nnfvp_score_f\tvarchar\tYES\n",
+  "stderr": "",
+  "execution_time_ms": 1545
+}
