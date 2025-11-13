@@ -22,6 +22,13 @@
       "when": 1763016934856,
       "tag": "0002_curly_luminals",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1763017602813,
+      "tag": "0003_plain_stingray",
+      "breakpoints": true
     }
   ]
 }
