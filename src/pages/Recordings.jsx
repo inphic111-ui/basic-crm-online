@@ -191,10 +191,10 @@ export default function Recordings() {
                 <th className="customer-col">客戶</th>
                 <th className="salesperson-col">業務</th>
                 <th className="product-col">產品</th>
-                <th className="time-col">時間</th>
-                <th className="duration-col">長度</th>
-                <th className="transcription-col">轉錄狀態</th>
-                <th className="analysis-col">分析狀態</th>
+                <th className="time-col">時間長度</th>
+                <th className="transcription-col">轉錄文本</th>
+                <th className="ai-tags-col">AI標籤</th>
+                <th className="analysis-col">分析總結</th>
               </tr>
             </thead>
             <tbody>
@@ -221,18 +221,24 @@ export default function Recordings() {
                   <td className="time-col">
                     {formatCallDateTime(audio.call_date, audio.call_time)}
                   </td>
-                  <td className="duration-col">
-                    {formatDuration(audio.created_at)}
-                  </td>
                   <td className="transcription-col">
-                    <span className="status-badge">
-                      {getTranscriptionStatusDisplay(audio.transcription_status)}
-                    </span>
+                    <button
+                      className="transcription-link"
+                      onClick={() => handleShowTranscription(audio)}
+                      title="查看轉錄文本"
+                    >
+                      {audio.transcription_text ? '查看' : '-'}
+                    </button>
+                  </td>
+                  <td className="ai-tags-col">
+                    {audio.ai_tags && audio.ai_tags.length > 0
+                      ? audio.ai_tags.slice(0, 3).map((tag, i) => (
+                          <span key={i} className="ai-tag">{tag}</span>
+                        ))
+                      : '-'}
                   </td>
                   <td className="analysis-col">
-                    <span className="status-badge">
-                      {getAnalysisStatusDisplay(audio.analysis_status)}
-                    </span>
+                    {audio.analysis_summary || '-'}
                   </td>
                 </tr>
               ))}
