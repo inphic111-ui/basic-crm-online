@@ -502,6 +502,7 @@ app.get('/api/audio/list', async (req, res) => {
         transcription_status,
         analysis_summary,
         analysis_status,
+        ai_tags,
         overall_status,
         created_at,
         updated_at
