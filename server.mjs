@@ -732,8 +732,20 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: '沒有選擇文件' });
     }
 
-    // 使用原始檔名
-    const fileName = req.file.originalname;
+    // 使用原始檔名，並進行 URL 編碼以支持中文字符
+    let fileName = req.file.originalname;
+    
+    // 對文件名進行 URL 編碼，以正確處理中文和特殊字符
+    // 保留字母、數字、下劃線、連字符、點，其他字符進行 URL 編碼
+    const encodedFileName = fileName
+      .split('')
+      .map(char => {
+        if (/[a-zA-Z0-9_\-.]/.test(char)) {
+          return char;
+        }
+        return encodeURIComponent(char);
+      })
+      .join('');
     
     // 從 req.body.data 中解析出客戶信息
     let parsedData = {};
@@ -748,7 +760,7 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
     // 第一步：直接上傳到 R2（不依賴數據庫）
     // 使用時間戳作為 recordingId（如果數據庫連接失敗）
     const timestamp = Date.now();
-    const fileKey = `inphic-crm/audio_recordings/${timestamp}/${fileName}`;
+    const fileKey = `inphic-crm/audio_recordings/${timestamp}/${encodedFileName}`;
     let audioUrl = '';
     let recordingId = timestamp;
     
