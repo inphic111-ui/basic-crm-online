@@ -19,7 +19,7 @@ export default function AudioUpload({ onUploadSuccess }) {
   const [parsedData, setParsedData] = useState(null);
 
   // 處理文件選擇
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const selectedFile = e.target.files[0];
     if (selectedFile) {
       setFile(selectedFile);
@@ -29,6 +29,9 @@ export default function AudioUpload({ onUploadSuccess }) {
       try {
         const parsed = parseAudioFilename(selectedFile.name);
         setParsedData(parsed);
+        
+        // 自動上傳文件
+        await uploadFile(selectedFile, parsed);
       } catch (err) {
         setError(`檔名解析失敗: ${err.message}`);
         setParsedData(null);
@@ -37,19 +40,14 @@ export default function AudioUpload({ onUploadSuccess }) {
   };
 
   // 上傳文件到 R2
-  const handleUpload = async () => {
-    if (!file) {
-      setError('請選擇音檔文件');
-      return;
-    }
-
+  const uploadFile = async (fileToUpload, parsedData) => {
     setUploading(true);
     setError(null);
     setUploadProgress(0);
 
     try {
       const formData = new FormData();
-      formData.append('audio', file);
+      formData.append('audio', fileToUpload);
 
       // 模擬上傳進度
       const uploadInterval = setInterval(() => {
@@ -84,7 +82,7 @@ export default function AudioUpload({ onUploadSuccess }) {
         // 調用回調函數，傳遞上傳的數據和解析的數據
         if (onUploadSuccess) {
           onUploadSuccess({
-            ...uploadedData,
+            ...result.data,
             ...parsedData,
             audio_url: result.data.url,
           });
@@ -99,6 +97,8 @@ export default function AudioUpload({ onUploadSuccess }) {
       setUploading(false);
     }
   };
+
+
 
   // 重置表單
   const handleReset = () => {
@@ -194,13 +194,6 @@ export default function AudioUpload({ onUploadSuccess }) {
 
         {/* 按鈕 */}
         <div className="button-group">
-          <button
-            onClick={handleUpload}
-            disabled={!file || uploading}
-            className="btn-upload"
-          >
-            {uploading ? '上傳中...' : '上傳到 R2'}
-          </button>
           <button
             onClick={handleReset}
             disabled={uploading}
