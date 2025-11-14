@@ -224,7 +224,7 @@ export default function Recordings() {
                   <td className="transcription-col">
                     <button
                       className="transcription-link"
-                      onClick={() => handleShowTranscription(audio)}
+                      onClick={() => handleViewTranscription(audio)}
                       title="查看轉錄文本"
                     >
                       {audio.transcription_text ? '查看' : '-'}
