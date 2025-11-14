@@ -756,7 +756,8 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
     let recordingId = Date.now();
 
     // 🔵 先上傳 R2（不依賴資料庫）
-    const fileKey = `audio-recordings/${recordingId}/${fileName}`;
+    // 使用一層目錄結構：audio-recordings/filename
+    const fileKey = `audio-recordings/${fileName}`;
     let audioUrl = "";
 
     try {
@@ -774,7 +775,7 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
       const baseUrl = process.env.R2_PUBLIC_URL || process.env.R2_ENDPOINT;
       audioUrl = `${baseUrl}/${fileKey}`;
 
-      addLog("info", "✅ 上傳 R2 成功", { audioUrl });
+      addLog("info", "✅ 上傳 R2 成功（一層目錄）", { audioUrl });
     } catch (err) {
       addLog("error", "❌ R2 上傳失敗", err.message);
       return res.status(500).json({ error: "R2 上傳失敗：" + err.message });
@@ -803,9 +804,9 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
 
         // 使用 DB 自己的 recordingId
         recordingId = insert.rows[0].id;
-        addLog("info", "✅ 寫入 DB 成功", { recordingId });
+        addLog("info", "✅ 寫入 DB 成功（一層目錄）", { recordingId });
       } else {
-        addLog("warn", "⚠️ 資料庫未連接，僅上傳 R2");
+        addLog("warn", "⚠️ 資料庫未連接，僅上傳 R2（一層目錄）");
       }
     } catch (dbErr) {
       addLog("warn", "⚠️ DB 寫入失敗（不影響 R2 上傳）", dbErr.message);
