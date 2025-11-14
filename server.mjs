@@ -758,8 +758,9 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
 
     // 🔵 先上傳 R2（不依賴資料庫）
     // 使用一層目錄結構：audio-recordings/filename
-    // 直接使用原始檔名（包括中文），R2 支援 UTF-8
-    const fileKey = `audio-recordings/${fileName}`;
+    // R2 使用 URL 編碼存儲（以避免 UTF-8 中文亂碼），數據庫保存原始檔名
+    const encodedFileName = encodeURIComponent(fileName);
+    const fileKey = `audio-recordings/${encodedFileName}`;
     let audioUrl = "";
 
     try {
@@ -770,16 +771,16 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
         ContentType: req.file.mimetype,
       });
 
-      addLog("info", "開始上傳到 R2", { fileKey });
+      addLog("info", "開始上傳到 R2", { fileKey, encodedFileName, originalFileName: fileName });
       await r2Client.send(uploadCommand);
 
       // 公開 URL
       const baseUrl = process.env.R2_PUBLIC_URL || process.env.R2_ENDPOINT;
       audioUrl = `${baseUrl}/${fileKey}`;
 
-      addLog("info", "✅ 上傳 R2 成功（一層目錄，原始中文檔名）", { audioUrl, fileName });
+      addLog("info", "✅ 上傳 R2 成功（一層目錄，數據庫保存原始檔名）", { audioUrl, fileName, encodedFileName });
     } catch (err) {
-      addLog("error", "❌ R2 上傳失敗", { message: err.message, fileName, fileKey, stack: err.stack });
+      addLog("error", "❌ R2 上傳失敗", { message: err.message, fileName, encodedFileName, fileKey, stack: err.stack });
       return res.status(500).json({ error: "R2 上傳失敗：" + err.message });
     }
 
@@ -811,7 +812,7 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
         if (insert.rows && insert.rows.length > 0) {
           // 使用 DB 自己的 recordingId
           recordingId = insert.rows[0].id;
-          addLog("info", "✅ 寫入 DB 成功（原始中文檔名）", { recordingId, fileName });
+          addLog("info", "✅ 寫入 DB 成功（原始檔名）", { recordingId, fileName, encodedFileName });
         } else {
           addLog("error", "❌ DB 插入失敗：沒有返回記錄", { fileName, audioUrl });
         }
@@ -819,11 +820,11 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
         addLog("warn", "⚠️ 資料庫未連接，僅上傳 R2（一層目錄）", { fileName });
       }
     } catch (dbErr) {
-      addLog("error", "❌ DB 寫入失敗（原始中文檔名）", { message: dbErr.message, fileName, audioUrl, stack: dbErr.stack });
+      addLog("error", "❌ DB 寫入失敗（原始檔名）", { message: dbErr.message, fileName, encodedFileName, audioUrl, stack: dbErr.stack });
     }
 
     // 回傳成功
-    addLog("info", "✅ 上傳完成，回傳給前端（原始中文檔名）", { recordingId, audioUrl, fileName });
+    addLog("info", "✅ 上傳完成，回傳給前端（原始檔名）", { recordingId, audioUrl, fileName, encodedFileName });
     return res.json({
       success: true,
       recording_id: recordingId,
@@ -834,7 +835,7 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
-    addLog("error", "❌ 音檔上傳發生例外（原始中文檔名）", { message: err.message, stack: err.stack });
+    addLog("error", "❌ 音檔上傳發生例外（原始檔名）", { message: err.message, stack: err.stack });
     res.status(500).json({ error: err.message });
   }
 });
