@@ -742,33 +742,71 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
       }
     }
 
-    const customerId = parsedData.customer_id;
-    if (!customerId) {
-      return res.status(400).json({ error: '缺少客戶 ID' });
+    const customerNumber = parsedData.customer_id;
+    if (!customerNumber) {
+      return res.status(400).json({ error: '缺少客戶編號' });
     }
 
-    // 生成唯一的文件名
-    const timestamp = Date.now();
-    const fileName = `audio_${customerId}_${timestamp}.${req.file.originalname.split('.').pop()}`;
-    
-    // 為了簡化，我們將音檔 URL 存儲為相對路徑
-    // 在實際應用中，應該上傳到 S3 或其他存儲服務
-    const audioUrl = `/uploads/${fileName}`;
-    
-    // 創建 uploads 目錄（如果不存在）
-    const uploadsDir = './uploads';
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-    
-    // 保存文件
-    fs.writeFileSync(path.join(uploadsDir, fileName), req.file.buffer);
-    
-    // 更新數據庫中的 audio_url 字段
+    // 從數據庫查詢真實的客戶 ID
     const pool = pools.online;
     if (!pool) {
       return res.status(500).json({ error: '數據庫未連接' });
     }
+
+    let customerId;
+    try {
+      const result = await pool.query(
+        'SELECT id FROM customers WHERE customer_id = $1 LIMIT 1',
+        [customerNumber]
+      );
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: `找不到客戶編號: ${customerNumber}` });
+      }
+      customerId = result.rows[0].id;
+      addLog('info', '查詢到客戶 ID', { customerNumber, customerId });
+    } catch (dbErr) {
+      addLog('error', '查詢客戶 ID 失敗', dbErr.message);
+      return res.status(500).json({ error: `查詢客戶失敗: ${dbErr.message}` });
+    }
+
+    // 使用原始檔名
+    const fileName = req.file.originalname;
+    const fileKey = `inphic-crm/customers/${customerId}/${fileName}`;
+    
+    // 上傳到 R2
+    let audioUrl = '';
+    try {
+      // 檢查環境變數
+      addLog('debug', 'R2 環境變數檢查', {
+        R2_BUCKET_NAME: process.env.R2_BUCKET_NAME ? '✓ 已設置' : '✗ 未設置',
+        R2_ENDPOINT: process.env.R2_ENDPOINT ? '✓ 已設置' : '✗ 未設置',
+        R2_PUBLIC_URL: process.env.R2_PUBLIC_URL ? '✓ 已設置' : '✗ 未設置',
+        R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID ? '✓ 已設置' : '✗ 未設置',
+        R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY ? '✓ 已設置' : '✗ 未設置',
+      });
+      
+      const uploadCommand = new PutObjectCommand({
+        Bucket: process.env.R2_BUCKET_NAME,
+        Key: fileKey,
+        Body: req.file.buffer,
+        ContentType: req.file.mimetype,
+      });
+      
+      addLog('info', '開始上傳到 R2', { fileKey, bucketName: process.env.R2_BUCKET_NAME });
+      await r2Client.send(uploadCommand);
+      addLog('info', 'R2 上傳命令已發送', { fileKey });
+      
+      // 生成 R2 公開 URL
+      const r2PublicUrl = process.env.R2_PUBLIC_URL || process.env.R2_ENDPOINT;
+      audioUrl = `${r2PublicUrl}/${fileKey}`;
+      
+      addLog('info', '音檔已上傳到 R2', { customerId, fileName, fileKey, audioUrl });
+    } catch (r2Err) {
+      addLog('error', 'R2 上傳失敗', r2Err.message);
+      return res.status(500).json({ error: `R2 上傳失敗: ${r2Err.message}` });
+    }
+    
+    // 更新數據庫中的 audio_url 字段
 
     // 首先檢查 audio_url 列是否存在
     try {
