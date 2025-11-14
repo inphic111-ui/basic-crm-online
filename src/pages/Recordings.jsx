@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import '../styles/audio-management.css'
-// import AudioUploadDialog from '../components/AudioUploadDialog' // 已移除
+// import AudioUploadDialog from '../components/AudioUploadDialog' // 已移除 - 上傳對話框已移除
 
 const SALESPERSONS = ['何雨達', '郭庭碩', '鍾汶憲', '何佳珊']
 
@@ -12,7 +12,7 @@ export default function Recordings() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedSalesperson, setSelectedSalesperson] = useState('')
   const [playingAudioId, setPlayingAudioId] = useState(null)
-  // const [showUploadDialog, setShowUploadDialog] = useState(false) // 已移除
+  // 上傳對話框已移除，不再需要此狀态
   const [showTranscriptionModal, setShowTranscriptionModal] = useState(false)
   const [selectedTranscription, setSelectedTranscription] = useState(null)
 
@@ -97,10 +97,70 @@ export default function Recordings() {
     }
   }
 
-  // 上傳音檔功能已移除
-  // const handleUploadAudio = () => {
-  //   setShowUploadDialog(true)
-  // }
+  // 上傳音檔 - 上傳對話框已移除，但保留按鈕
+  const handleUploadAudio = () => {
+    // 直接打開檔案選擇器，不顯示對話框
+    const fileInput = document.createElement('input')
+    fileInput.type = 'file'
+    fileInput.accept = 'audio/*'
+    fileInput.onchange = async (e) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+      
+      // 直接上傳檔案
+      await uploadAudioFile(file)
+    }
+    fileInput.click()
+  }
+
+  const uploadAudioFile = async (file) => {
+    try {
+      // 解析檔名
+      const nameWithoutExt = file.name.replace(/\.[^\/\.]+$/, '')
+      const parts = nameWithoutExt.split('_')
+      
+      if (parts.length < 5) {
+        alert('檔名格式不正確，應為：YYYYMMDDNNNN_業務名_產品名_MMDD_HHMM.mp3')
+        return
+      }
+
+      const [customerIdStr, salespersonName, productName, dateStr, timeStr] = parts
+      
+      // 驗證客戶編號
+      if (!/^\d{12}$/.test(customerIdStr)) {
+        alert('客戶編號應為 12 位數字')
+        return
+      }
+
+      const customerId = customerIdStr.substring(8, 12)
+      
+      // 上傳檔案
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('data', JSON.stringify({
+        customer_id: customerId,
+        filename: file.name
+      }))
+
+      const response = await fetch('/api/audio/upload', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        alert(`上傳失敗: ${error.error || response.status}`)
+        return
+      }
+
+      alert('上傳成功')
+      fetchAudioFiles()
+    } catch (err) {
+      console.error('上傳失敗:', err)
+      alert(`上傳失敗: ${err.message}`)
+    }
+  }
+  
   // const handleUploadSuccess = (audioRecord) => {
   //   fetchAudioFiles()
   // }
@@ -164,7 +224,9 @@ export default function Recordings() {
           <span className="music-icon">🎵</span>
           <h1>錄音管理</h1>
         </div>
-        {/* 上傳音檔按鈕已移除 */}
+        <button className="btn btn-upload" onClick={handleUploadAudio}>
+          ⬆️ 上傳音檔
+        </button>
       </div>
 
       {/* 搜尋和篩選 */}
@@ -305,7 +367,7 @@ export default function Recordings() {
         </div>
       )}
 
-      {/* 上傳對話框已移除 */}
+      {/* 上傳對話框已移除 - 但保留直接上傳功能 */}
     </div>
   )
 }
