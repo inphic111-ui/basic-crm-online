@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import "../styles/recordings.css";
+import { Search, Upload } from "lucide-react";
 
 export default function Recordings() {
   const [records, setRecords] = useState([]);
@@ -9,6 +10,8 @@ export default function Recordings() {
   const [currentPlayer, setCurrentPlayer] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterBusiness, setFilterBusiness] = useState("");
   const fileInputRef = useRef(null);
 
   const fetchRecords = async () => {
@@ -115,10 +118,10 @@ export default function Recordings() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedRecords.size === records.length) {
+    if (selectedRecords.size === filteredRecords.length) {
       setSelectedRecords(new Set());
     } else {
-      setSelectedRecords(new Set(records.map(r => r.recording_id || r.id)));
+      setSelectedRecords(new Set(filteredRecords.map(r => r.recording_id || r.id)));
     }
   };
 
@@ -155,13 +158,29 @@ export default function Recordings() {
     return text;
   };
 
+  // 篩選記錄
+  const filteredRecords = records.filter(record => {
+    const filename = decodeURIComponent(record.audio_url.split("/").pop()).toLowerCase();
+    const business = (record.business_name || record.salesperson_name || "").toLowerCase();
+    const customer = String(record.customer_id || "").toLowerCase();
+    
+    const matchesSearch = 
+      filename.includes(searchQuery.toLowerCase()) ||
+      business.includes(searchQuery.toLowerCase()) ||
+      customer.includes(searchQuery.toLowerCase());
+    
+    const matchesFilter = !filterBusiness || business.includes(filterBusiness.toLowerCase());
+    
+    return matchesSearch && matchesFilter;
+  });
+
   useEffect(() => {
     fetchRecords();
   }, []);
 
   if (loading) {
     return (
-      <div className="recordings-page">
+      <div className="recordings-container">
         <div className="loading-state">
           <p>Loading...</p>
         </div>
@@ -169,157 +188,192 @@ export default function Recordings() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="recordings-page">
-        <div className="error-state">
-          <p>Error: {error}</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="recordings-page">
-      <div className="recordings-header">
-        <div className="header-content">
-          <div>
-            <h1>Audio Recordings</h1>
-            <p className="record-count">Total {records.length} records</p>
+    <div className="recordings-container">
+      {/* 頭部區域 */}
+      <div className="recordings-header-section">
+        <div className="header-top">
+          <div className="header-title">
+            <span className="icon">🎵</span>
+            <h1>錄音管理</h1>
           </div>
           <button
             className="upload-btn"
             onClick={handleUploadClick}
             disabled={uploading}
           >
-            {uploading ? "Uploading..." : "+ Upload Audio"}
+            <Upload size={18} />
+            {uploading ? "上傳中..." : "上傳音檔"}
           </button>
         </div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept="audio/*,.wav,.mp3,.m4a,.ogg,.flac"
-          onChange={handleFileSelect}
-          style={{ display: "none" }}
-        />
+
+        {/* 搜尋和篩選區域 */}
+        <div className="search-filter-section">
+          <div className="search-box">
+            <Search size={18} className="search-icon" />
+            <input
+              type="text"
+              placeholder="搜尋客戶、業務、產品..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="search-input"
+            />
+          </div>
+          <select
+            value={filterBusiness}
+            onChange={(e) => setFilterBusiness(e.target.value)}
+            className="filter-select"
+          >
+            <option value="">業務</option>
+            {[...new Set(records.map(r => r.business_name || r.salesperson_name || ""))].filter(Boolean).map(business => (
+              <option key={business} value={business}>{business}</option>
+            ))}
+          </select>
+        </div>
+
         {uploadError && (
           <div className="upload-error">
-            {uploadError}
+            ⚠️ {uploadError}
           </div>
         )}
       </div>
 
-      {records.length === 0 ? (
-        <div className="empty-state">
-          <p>No audio records</p>
+      {/* 隱藏的文件輸入 */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="audio/*,.wav,.mp3,.m4a,.ogg,.flac"
+        onChange={handleFileSelect}
+        style={{ display: "none" }}
+      />
+
+      {/* 表格區域 */}
+      <div className="recordings-content">
+        <div className="table-header">
+          <h2>音檔別表</h2>
+          <p className="record-count">共 {filteredRecords.length} 條記錄</p>
         </div>
-      ) : (
-        <div className="table-container">
-          <table className="recordings-table">
-            <thead>
-              <tr>
-                <th className="col-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={selectedRecords.size === records.length && records.length > 0}
-                    onChange={toggleSelectAll}
-                  />
-                </th>
-                <th className="col-play">Play</th>
-                <th className="col-filename">Filename</th>
-                <th className="col-customer">Customer</th>
-                <th className="col-business">Business</th>
-                <th className="col-datetime">DateTime</th>
-                <th className="col-duration">Duration</th>
-                <th className="col-transcription">Transcription</th>
-                <th className="col-ai-tags">AI Tags</th>
-                <th className="col-summary">Summary</th>
-              </tr>
-            </thead>
 
-            <tbody>
-              {records.map((record) => {
-                const aiTags = parseAiTags(record.ai_tags);
-                const recordId = record.recording_id || record.id;
-                const isSelected = selectedRecords.has(recordId);
+        {filteredRecords.length === 0 ? (
+          <div className="empty-state">
+            <p>沒有找到相關記錄</p>
+          </div>
+        ) : (
+          <div className="table-wrapper">
+            <table className="recordings-table">
+              <thead>
+                <tr>
+                  <th className="col-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={selectedRecords.size === filteredRecords.length && filteredRecords.length > 0}
+                      onChange={toggleSelectAll}
+                    />
+                  </th>
+                  <th className="col-play">播放</th>
+                  <th className="col-filename">檔名</th>
+                  <th className="col-customer">客戶</th>
+                  <th className="col-business">業務</th>
+                  <th className="col-datetime">時間</th>
+                  <th className="col-duration">長度</th>
+                  <th className="col-transcription">轉錄文本</th>
+                  <th className="col-ai-tags">AI標籤</th>
+                  <th className="col-summary">狀態</th>
+                </tr>
+              </thead>
 
-                return (
-                  <tr key={recordId} className={`record-row ${isSelected ? 'selected' : ''}`}>
-                    <td className="col-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleSelectRecord(recordId)}
-                      />
-                    </td>
+              <tbody>
+                {filteredRecords.map((record) => {
+                  const aiTags = parseAiTags(record.ai_tags);
+                  const recordId = record.recording_id || record.id;
+                  const isSelected = selectedRecords.has(recordId);
 
-                    <td className="col-play">
-                      <button
-                        className="play-btn"
-                        onClick={() => playAudio(recordId, record.audio_url)}
-                        title="Play audio"
-                      >
-                        ▶
-                      </button>
-                    </td>
+                  return (
+                    <tr key={recordId} className={`record-row ${isSelected ? 'selected' : ''}`}>
+                      <td className="col-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelectRecord(recordId)}
+                        />
+                      </td>
 
-                    <td className="col-filename">
-                      <span className="filename" title={decodeURIComponent(record.audio_url.split("/").pop())}>
-                        {decodeURIComponent(record.audio_url.split("/").pop())}
-                      </span>
-                    </td>
+                      <td className="col-play">
+                        <button
+                          className="play-btn"
+                          onClick={() => playAudio(recordId, record.audio_url)}
+                          title="播放音檔"
+                        >
+                          ▶
+                        </button>
+                      </td>
 
-                    <td className="col-customer">
-                      {record.customer_id || "-"}
-                    </td>
+                      <td className="col-filename">
+                        <span className="filename" title={decodeURIComponent(record.audio_url.split("/").pop())}>
+                          {decodeURIComponent(record.audio_url.split("/").pop())}
+                        </span>
+                      </td>
 
-                    <td className="col-business">
-                      {record.business_name || record.salesperson_name || "-"}
-                    </td>
+                      <td className="col-customer">
+                        {record.customer_id || "-"}
+                      </td>
 
-                    <td className="col-datetime">
-                      {formatDateTime(record.call_date, record.call_time)}
-                    </td>
+                      <td className="col-business">
+                        {record.business_name || record.salesperson_name || "-"}
+                      </td>
 
-                    <td className="col-duration">
-                      {record.duration || "-"}
-                    </td>
+                      <td className="col-datetime">
+                        {formatDateTime(record.call_date, record.call_time)}
+                      </td>
 
-                    <td className="col-transcription">
-                      <span 
-                        className="transcription-text" 
-                        title={record.transcription_text || ""}
-                      >
-                        {truncateText(record.transcription_text, 50)}
-                      </span>
-                    </td>
+                      <td className="col-duration">
+                        {record.duration || "-"}
+                      </td>
 
-                    <td className="col-ai-tags">
-                      <div className="tags-container">
-                        {aiTags.slice(0, 3).map((tag, idx) => (
-                          <span key={idx} className="tag" title={tag}>
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
+                      <td className="col-transcription">
+                        <span 
+                          className="transcription-text" 
+                          title={record.transcription_text || ""}
+                        >
+                          {truncateText(record.transcription_text, 50)}
+                        </span>
+                      </td>
 
-                    <td className="col-summary">
-                      <span 
-                        className="summary-text" 
-                        title={record.analysis_summary || record.summary_text || ""}
-                      >
-                        {truncateText(record.analysis_summary || record.summary_text, 50)}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+                      <td className="col-ai-tags">
+                        <div className="tags-container">
+                          {aiTags.slice(0, 3).map((tag, idx) => (
+                            <span key={idx} className="tag" title={tag}>
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+
+                      <td className="col-summary">
+                        <div className="status-badges">
+                          {record.transcription_status === 'completed' && (
+                            <span className="badge badge-success">已轉文字</span>
+                          )}
+                          {record.transcription_status !== 'completed' && (
+                            <span className="badge badge-warning">未轉文字</span>
+                          )}
+                          {record.analysis_status === 'completed' && (
+                            <span className="badge badge-success">已分析</span>
+                          )}
+                          {record.analysis_status !== 'completed' && (
+                            <span className="badge badge-warning">未分析</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
