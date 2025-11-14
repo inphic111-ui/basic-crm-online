@@ -87,6 +87,14 @@ export default function Recordings() {
     return [];
   };
 
+  const truncateText = (text, maxLength = 50) => {
+    if (!text) return "-";
+    if (text.length > maxLength) {
+      return text.substring(0, maxLength) + "...";
+    }
+    return text;
+  };
+
   useEffect(() => {
     fetchRecords();
   }, []);
@@ -140,8 +148,9 @@ export default function Recordings() {
                 <th className="col-business">業務</th>
                 <th className="col-datetime">時間</th>
                 <th className="col-duration">長度</th>
+                <th className="col-transcription">轉錄文本</th>
                 <th className="col-ai-tags">AI標籤</th>
-                <th className="col-status">狀態</th>
+                <th className="col-summary">文本總結</th>
               </tr>
             </thead>
 
@@ -174,7 +183,7 @@ export default function Recordings() {
 
                     {/* 檔名 */}
                     <td className="col-filename">
-                      <span className="filename">
+                      <span className="filename" title={decodeURIComponent(record.audio_url.split("/").pop())}>
                         {decodeURIComponent(record.audio_url.split("/").pop())}
                       </span>
                     </td>
@@ -199,27 +208,35 @@ export default function Recordings() {
                       {record.duration || "-"}
                     </td>
 
+                    {/* 轉錄文本 */}
+                    <td className="col-transcription">
+                      <span 
+                        className="transcription-text" 
+                        title={record.transcription_text || ""}
+                      >
+                        {truncateText(record.transcription_text, 50)}
+                      </span>
+                    </td>
+
                     {/* AI標籤 */}
                     <td className="col-ai-tags">
                       <div className="tags-container">
                         {aiTags.slice(0, 3).map((tag, idx) => (
-                          <span key={idx} className="tag">
+                          <span key={idx} className="tag" title={tag}>
                             {tag}
                           </span>
                         ))}
                       </div>
                     </td>
 
-                    {/* 狀態 */}
-                    <td className="col-status">
-                      <div className="status-container">
-                        <span className={`status-badge ${record.transcription_status === 'completed' ? 'completed' : 'pending'}`}>
-                          {record.transcription_status === 'completed' ? '已轉文字' : '未轉文字'}
-                        </span>
-                        <span className={`status-badge ${record.analysis_status === 'completed' ? 'completed' : 'pending'}`}>
-                          {record.analysis_status === 'completed' ? '已分析' : '未分析'}
-                        </span>
-                      </div>
+                    {/* 文本總結 */}
+                    <td className="col-summary">
+                      <span 
+                        className="summary-text" 
+                        title={record.summary_text || ""}
+                      >
+                        {truncateText(record.summary_text, 50)}
+                      </span>
                     </td>
                   </tr>
                 );
