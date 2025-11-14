@@ -743,30 +743,28 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
     }
 
     const customerNumber = parsedData.customer_id;
-    if (!customerNumber) {
-      return res.status(400).json({ error: '缺少客戶編號' });
-    }
-
-    // 從數據庫查詢真實的客戶 ID
+    
+    // 從數據庫查詢真實的客戶 ID（如果提供了客戶編號）
     const pool = pools.online;
-    if (!pool) {
-      return res.status(500).json({ error: '數據庫未連接' });
-    }
-
-    let customerId;
-    try {
-      const result = await pool.query(
-        'SELECT id FROM customers WHERE customer_id = $1 LIMIT 1',
-        [customerNumber]
-      );
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: `找不到客戶編號: ${customerNumber}` });
+    let customerId = 'unknown'; // 默認值
+    
+    if (customerNumber && pool) {
+      try {
+        const result = await pool.query(
+          'SELECT id FROM customers WHERE customer_id = $1 LIMIT 1',
+          [customerNumber]
+        );
+        if (result.rows.length > 0) {
+          customerId = result.rows[0].id;
+          addLog('info', '查詢到客戶 ID', { customerNumber, customerId });
+        } else {
+          addLog('warn', '找不到客戶編號，使用默認值', { customerNumber });
+        }
+      } catch (dbErr) {
+        addLog('warn', '查詢客戶 ID 失敗，使用默認值', dbErr.message);
       }
-      customerId = result.rows[0].id;
-      addLog('info', '查詢到客戶 ID', { customerNumber, customerId });
-    } catch (dbErr) {
-      addLog('error', '查詢客戶 ID 失敗', dbErr.message);
-      return res.status(500).json({ error: `查詢客戶失敗: ${dbErr.message}` });
+    } else {
+      addLog('info', '未提供客戶編號或數據庫未連接，使用默認值', { customerNumber, poolExists: !!pool });
     }
 
     // 使用原始檔名
