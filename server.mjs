@@ -67,12 +67,12 @@ function addLog(level, message, data = null) {
 const config = {
   offline: {
     name: 'OFFLINE (測試)',
-    dbUrl: process.env.OFFLINE_DB_URL || process.env.DATABASE_URL,
+    dbUrl: (process.env.OFFLINE_DB_URL || process.env.DATABASE_URL || '').replace('?', '?sslmode=require&').replace('postgresql://', 'postgresql://'),
     logFile: '/tmp/offline.log'
   },
   online: {
     name: 'ONLINE (正式)',
-    dbUrl: process.env.ONLINE_DB_URL || process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL,
+    dbUrl: (process.env.ONLINE_DB_URL || process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL || '').replace('?', '?sslmode=require&').replace('postgresql://', 'postgresql://'),
     logFile: '/tmp/online.log'
   }
 };
