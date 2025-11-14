@@ -1,367 +1,239 @@
-import React, { useEffect, useState, useRef } from "react";
-import "../styles/recordings.css";
-import { Search, Upload } from "lucide-react";
+import React, { useState, useEffect, useRef } from 'react';
+import '../styles/recordings.css';
 
 export default function Recordings() {
-  const [records, setRecords] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [selectedRecords, setSelectedRecords] = useState(new Set());
-  const [currentPlayer, setCurrentPlayer] = useState(null);
+  const [recordings, setRecordings] = useState([]);
+  const [filteredRecordings, setFilteredRecordings] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedBusiness, setSelectedBusiness] = useState('');
+  const [selectAll, setSelectAll] = useState(false);
+  const [selectedRecordings, setSelectedRecordings] = useState(new Set());
   const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterBusiness, setFilterBusiness] = useState("");
   const fileInputRef = useRef(null);
 
+  const businessNames = ['何雨達', '郭庭碩', '鍾汶憲', '何佳珊'];
+
+  // 獲取錄音列表
   const fetchRecords = async () => {
     try {
-      setLoading(true);
-      const res = await fetch("/api/audio/list");
-      if (!res.ok) throw new Error("Failed to fetch records");
-      const data = await res.json();
-      setRecords(data || []);
-      setError(null);
-    } catch (err) {
-      console.error("Error fetching records:", err);
-      setError(err.message);
-      setRecords([]);
-    } finally {
-      setLoading(false);
+      const response = await fetch('/api/audio/list');
+      if (!response.ok) throw new Error('Failed to fetch');
+      const data = await response.json();
+      setRecordings(data || []);
+      filterRecords(data || [], searchTerm, selectedBusiness);
+    } catch (error) {
+      console.error('Failed to fetch recordings:', error);
     }
-  };
-
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileSelect = async (e) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    setUploading(true);
-    setUploadError(null);
-
-    try {
-      let successCount = 0;
-      let failureCount = 0;
-      const errors = [];
-
-      for (let i = 0; i < files.length; i++) {
-        try {
-          const formData = new FormData();
-          formData.append("file", files[i]);
-
-          console.log(`[${i + 1}/${files.length}] 開始上傳: ${files[i].name}`);
-          
-          const res = await fetch("/api/audio/upload", {
-            method: "POST",
-            body: formData,
-          });
-
-          if (!res.ok) {
-            const errorData = await res.json();
-            console.error(`上傳失敗 ${files[i].name}:`, errorData);
-            throw new Error(errorData.error || "Upload failed");
-          }
-
-          const result = await res.json();
-          console.log(`✅ 上傳成功 ${files[i].name}:`, result);
-          successCount++;
-        } catch (err) {
-          failureCount++;
-          console.error(`❌ 上傳失敗 ${files[i].name}:`, err);
-          errors.push(`${files[i].name}: ${err.message}`);
-        }
-      }
-
-      console.log(`上傳完成: 成功 ${successCount}, 失敗 ${failureCount}`);
-      
-      // 刷新列表
-      console.log("開始刷新列表...");
-      await fetchRecords();
-      console.log("列表刷新完成");
-
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-
-      if (failureCount > 0) {
-        setUploadError(`Success: ${successCount}, Failed: ${failureCount}`);
-      } else if (successCount > 0) {
-        setUploadError(null);
-      }
-    } catch (err) {
-      console.error("❌ 上傳過程發生錯誤:", err);
-      setUploadError(err.message || "Upload failed");
-    } finally {
-      console.log("上傳流程結束");
-      setUploading(false);
-    }
-  };
-
-  const playAudio = (recordingId, audioUrl) => {
-    if (currentPlayer && currentPlayer.id !== recordingId) {
-      currentPlayer.audio.pause();
-    }
-
-    if (currentPlayer && currentPlayer.id === recordingId) {
-      if (currentPlayer.audio.paused) {
-        currentPlayer.audio.play();
-      } else {
-        currentPlayer.audio.pause();
-      }
-      return;
-    }
-
-    const audio = new Audio(audioUrl);
-    audio.play();
-    setCurrentPlayer({ id: recordingId, audio });
-  };
-
-  const toggleSelectRecord = (recordingId) => {
-    const newSelected = new Set(selectedRecords);
-    if (newSelected.has(recordingId)) {
-      newSelected.delete(recordingId);
-    } else {
-      newSelected.add(recordingId);
-    }
-    setSelectedRecords(newSelected);
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedRecords.size === filteredRecords.length) {
-      setSelectedRecords(new Set());
-    } else {
-      setSelectedRecords(new Set(filteredRecords.map(r => r.recording_id || r.id)));
-    }
-  };
-
-  const formatDateTime = (dateStr, timeStr) => {
-    if (!dateStr) return "-";
-    try {
-      const date = new Date(dateStr);
-      const time = timeStr ? timeStr : "00:00";
-      return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')} ${time}`;
-    } catch {
-      return dateStr;
-    }
-  };
-
-  const parseAiTags = (tagsData) => {
-    if (!tagsData) return [];
-    if (Array.isArray(tagsData)) return tagsData;
-    if (typeof tagsData === "string") {
-      try {
-        const parsed = JSON.parse(tagsData);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  };
-
-  const truncateText = (text, maxLength = 50) => {
-    if (!text) return "-";
-    if (text.length > maxLength) {
-      return text.substring(0, maxLength) + "...";
-    }
-    return text;
   };
 
   // 篩選記錄
-  const filteredRecords = records.filter(record => {
-    const filename = decodeURIComponent(record.audio_url.split("/").pop()).toLowerCase();
-    const business = (record.business_name || record.salesperson_name || "").toLowerCase();
-    const customer = String(record.customer_id || "").toLowerCase();
-    
-    const matchesSearch = 
-      filename.includes(searchQuery.toLowerCase()) ||
-      business.includes(searchQuery.toLowerCase()) ||
-      customer.includes(searchQuery.toLowerCase());
-    
-    const matchesFilter = !filterBusiness || business.includes(filterBusiness.toLowerCase());
-    
-    return matchesSearch && matchesFilter;
-  });
+  const filterRecords = (records, search, business) => {
+    let filtered = records;
+
+    if (search) {
+      filtered = filtered.filter(r =>
+        (r.audio_filename || '').toLowerCase().includes(search.toLowerCase()) ||
+        (r.business_name || '').includes(search) ||
+        (r.product_name || '').includes(search)
+      );
+    }
+
+    if (business) {
+      filtered = filtered.filter(r => r.business_name === business);
+    }
+
+    setFilteredRecordings(filtered);
+  };
 
   useEffect(() => {
     fetchRecords();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="recordings-container">
-        <div className="loading-state">
-          <p>Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  // 搜尋和篩選
+  const handleSearch = (value) => {
+    setSearchTerm(value);
+    filterRecords(recordings, value, selectedBusiness);
+  };
+
+  const handleBusinessFilter = (value) => {
+    setSelectedBusiness(value);
+    filterRecords(recordings, searchTerm, value);
+  };
+
+  // 複選框處理
+  const handleSelectAll = (e) => {
+    const checked = e.target.checked;
+    setSelectAll(checked);
+    if (checked) {
+      setSelectedRecordings(new Set(filteredRecordings.map(r => r.id)));
+    } else {
+      setSelectedRecordings(new Set());
+    }
+  };
+
+  const handleSelectRecording = (id) => {
+    const newSelected = new Set(selectedRecordings);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedRecordings(newSelected);
+    setSelectAll(newSelected.size === filteredRecordings.length);
+  };
+
+  // 上傳音檔
+  const handleFileSelect = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    setUploading(true);
+    for (const file of files) {
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('/api/audio/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error('Upload failed');
+        }
+
+        console.log(`✅ 上傳成功: ${file.name}`);
+      } catch (error) {
+        console.error(`❌ 上傳失敗: ${file.name}`, error);
+      }
+    }
+
+    setUploading(false);
+    fetchRecords();
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const formatDateTime = (date, time) => {
+    if (!date) return '-';
+    return `${date} ${time || ''}`.trim();
+  };
+
+  const getStatusText = (status) => {
+    if (status === 'completed') return '已完成';
+    if (status === 'pending') return '待處理';
+    return status || '-';
+  };
 
   return (
     <div className="recordings-container">
-      {/* 頭部區域 */}
-      <div className="recordings-header-section">
-        <div className="header-top">
-          <div className="header-title">
-            <span className="icon">🎵</span>
-            <h1>錄音管理</h1>
-          </div>
+      {/* 頁面頭部 */}
+      <div className="recordings-header">
+        <div className="header-left">
+          <h1>🎵 錄音管理</h1>
+        </div>
+        <div className="header-right">
           <button
             className="upload-btn"
-            onClick={handleUploadClick}
+            onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
           >
-            <Upload size={18} />
-            {uploading ? "上傳中..." : "上傳音檔"}
+            📤 上傳音檔
           </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="audio/*"
+            onChange={handleFileSelect}
+            style={{ display: 'none' }}
+          />
         </div>
-
-        {/* 搜尋和篩選區域 */}
-        <div className="search-filter-section">
-          <div className="search-box">
-            <Search size={18} className="search-icon" />
-            <input
-              type="text"
-              placeholder="搜尋客戶、業務、產品..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-input"
-            />
-          </div>
-          <select
-            value={filterBusiness}
-            onChange={(e) => setFilterBusiness(e.target.value)}
-            className="filter-select"
-          >
-            <option value="">業務名</option>
-            {['何雨達', '郭庭碩', '鍾汶憲', '何佳珊'].map(business => (
-              <option key={business} value={business}>{business}</option>
-            ))}
-          </select>
-        </div>
-
-        {uploadError && (
-          <div className="upload-error">
-            ⚠️ {uploadError}
-          </div>
-        )}
       </div>
 
-      {/* 隱藏的文件輸入 */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        accept="audio/*,.wav,.mp3,.m4a,.ogg,.flac"
-        onChange={handleFileSelect}
-        style={{ display: "none" }}
-      />
+      {/* 搜尋和篩選 */}
+      <div className="search-filter-bar">
+        <input
+          type="text"
+          placeholder="搜尋客戶、業務、產品..."
+          value={searchTerm}
+          onChange={(e) => handleSearch(e.target.value)}
+          className="search-input"
+        />
+        <select
+          value={selectedBusiness}
+          onChange={(e) => handleBusinessFilter(e.target.value)}
+          className="filter-select"
+        >
+          <option value="">業務名</option>
+          {businessNames.map(name => (
+            <option key={name} value={name}>{name}</option>
+          ))}
+        </select>
+      </div>
 
-      {/* 表格區域 */}
-      <div className="recordings-content">
-        <div className="table-header">
+      {/* 音檔列表 */}
+      <div className="recordings-list">
+        <div className="list-header">
           <h2>音檔別表</h2>
-          <p className="record-count">共 {filteredRecords.length} 條記錄</p>
+          <p>共 {filteredRecordings.length} 條記錄</p>
         </div>
 
-        {filteredRecords.length === 0 ? (
+        <table className="recordings-table">
+          <thead>
+            <tr>
+              <th className="col-checkbox">
+                <input
+                  type="checkbox"
+                  checked={selectAll && filteredRecordings.length > 0}
+                  onChange={handleSelectAll}
+                />
+              </th>
+              <th className="col-play">播放</th>
+              <th className="col-filename">檔名</th>
+              <th className="col-customer">客戶</th>
+              <th className="col-business">業務</th>
+              <th className="col-time">時間</th>
+              <th className="col-duration">長度</th>
+              <th className="col-tags">AI標籤</th>
+              <th className="col-summary">分析總結</th>
+              <th className="col-status">狀態</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredRecordings.map(record => (
+              <tr key={record.id} className={selectedRecordings.has(record.id) ? 'selected' : ''}>
+                <td className="col-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={selectedRecordings.has(record.id)}
+                    onChange={() => handleSelectRecording(record.id)}
+                  />
+                </td>
+                <td className="col-play">
+                  <button className="play-btn" title="播放">▶</button>
+                </td>
+                <td className="col-filename">{record.audio_filename || '-'}</td>
+                <td className="col-customer">{record.customer_id || '-'}</td>
+                <td className="col-business">{record.business_name || '-'}</td>
+                <td className="col-time">{formatDateTime(record.call_date, record.call_time)}</td>
+                <td className="col-duration">-</td>
+                <td className="col-tags">
+                  {record.ai_tags && record.ai_tags.length > 0
+                    ? record.ai_tags.slice(0, 3).join('、')
+                    : '-'}
+                </td>
+                <td className="col-summary">{record.analysis_summary || '-'}</td>
+                <td className="col-status">{getStatusText(record.analysis_status)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {filteredRecordings.length === 0 && (
           <div className="empty-state">
-            <p>沒有找到相關記錄</p>
-          </div>
-        ) : (
-          <div className="table-wrapper">
-            <table className="recordings-table">
-              <thead>
-                <tr>
-                  <th className="col-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={selectedRecords.size === filteredRecords.length && filteredRecords.length > 0}
-                      onChange={toggleSelectAll}
-                    />
-                  </th>
-                  <th className="col-play">播放</th>
-                  <th className="col-filename">檔名</th>
-                  <th className="col-customer">客戶</th>
-                  <th className="col-business">業務</th>
-                  <th className="col-datetime">時間</th>
-                  <th className="col-duration">長度</th>
-                  <th className="col-ai-tags">AI標籤</th>
-                  <th className="col-summary">分析總結</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {filteredRecords.map((record) => {
-                  const aiTags = parseAiTags(record.ai_tags);
-                  const recordId = record.recording_id || record.id;
-                  const isSelected = selectedRecords.has(recordId);
-
-                  return (
-                    <tr key={recordId} className={`record-row ${isSelected ? 'selected' : ''}`}>
-                      <td className="col-checkbox">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleSelectRecord(recordId)}
-                        />
-                      </td>
-
-                      <td className="col-play">
-                        <button
-                          className="play-btn"
-                          onClick={() => playAudio(recordId, record.audio_url)}
-                          title="播放音檔"
-                        >
-                          ▶
-                        </button>
-                      </td>
-
-                      <td className="col-filename">
-                        <span className="filename" title={record.audio_filename || decodeURIComponent(record.audio_url.split("/").pop())}>
-                          {record.audio_filename || decodeURIComponent(record.audio_url.split("/").pop())}
-                        </span>
-                      </td>
-
-                      <td className="col-customer">
-                        {record.customer_id || "-"}
-                      </td>
-
-                      <td className="col-business">
-                        {record.business_name || record.salesperson_name || "-"}
-                      </td>
-
-                      <td className="col-datetime">
-                        {formatDateTime(record.call_date, record.call_time)}
-                      </td>
-
-                      <td className="col-duration">
-                        {record.duration || "-"}
-                      </td>
-
-                      <td className="col-ai-tags">
-                        <div className="tags-container">
-                          {aiTags.slice(0, 3).map((tag, idx) => (
-                            <span key={idx} className="tag" title={tag}>
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-
-                      <td className="col-summary">
-                        <span className="analysis-summary" title={record.analysis_summary || "-"}>
-                          {truncateText(record.analysis_summary || "-", 50)}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <p>暫無記錄</p>
           </div>
         )}
       </div>

@@ -1,68 +1,46 @@
-/* Recordings 頁面 - 結合兩種模板風格 */
-
 .recordings-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
   background-color: #f5f7fa;
-  min-height: calc(100vh - 60px);
-  padding: 24px;
+  min-height: 100vh;
 }
 
-/* ===== 頭部區域 ===== */
-.recordings-header-section {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-}
-
-.header-top {
+/* 頁面頭部 */
+.recordings-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+  padding: 0;
 }
 
-.header-title {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.header-title .icon {
-  font-size: 28px;
-}
-
-.header-title h1 {
+.header-left h1 {
+  margin: 0;
   font-size: 24px;
   font-weight: 600;
-  color: #1a1a1a;
-  margin: 0;
+  color: #333;
 }
 
-/* 上傳按鈕 */
-.upload-btn {
+.header-right {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background-color: #0066cc;
+  gap: 10px;
+}
+
+.upload-btn {
+  padding: 10px 20px;
+  background-color: #1976d2;
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
+  cursor: pointer;
   font-size: 14px;
   font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(0, 102, 204, 0.2);
+  transition: background-color 0.3s;
 }
 
 .upload-btn:hover:not(:disabled) {
-  background-color: #0052a3;
-  box-shadow: 0 4px 8px rgba(0, 102, 204, 0.3);
-}
-
-.upload-btn:active:not(:disabled) {
-  transform: scale(0.98);
+  background-color: #1565c0;
 }
 
 .upload-btn:disabled {
@@ -70,99 +48,70 @@
   cursor: not-allowed;
 }
 
-/* 搜尋和篩選區域 */
-.search-filter-section {
+/* 搜尋和篩選 */
+.search-filter-bar {
   display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.search-box {
-  flex: 1;
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.search-icon {
-  position: absolute;
-  left: 12px;
-  color: #999;
-  pointer-events: none;
+  gap: 10px;
+  margin-bottom: 20px;
+  background-color: white;
+  padding: 15px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .search-input {
-  width: 100%;
-  padding: 10px 12px 10px 40px;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
   font-size: 14px;
-  transition: all 0.2s ease;
+  outline: none;
+  transition: border-color 0.3s;
 }
 
 .search-input:focus {
-  outline: none;
-  border-color: #0066cc;
-  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+  border-color: #1976d2;
 }
 
 .filter-select {
   padding: 10px 12px;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
   font-size: 14px;
   background-color: white;
   cursor: pointer;
-  transition: all 0.2s ease;
-  min-width: 120px;
+  outline: none;
+  transition: border-color 0.3s;
 }
 
 .filter-select:focus {
-  outline: none;
-  border-color: #0066cc;
-  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+  border-color: #1976d2;
 }
 
-/* 上傳錯誤提示 */
-.upload-error {
-  padding: 12px 16px;
-  background-color: #fff5f5;
-  color: #c41e3a;
-  border: 1px solid #ffcccb;
-  border-radius: 6px;
-  font-size: 13px;
+/* 列表區域 */
+.recordings-list {
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
 }
 
-/* ===== 表格區域 ===== */
-.recordings-content {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+.list-header {
+  padding: 20px;
+  border-bottom: 1px solid #eee;
 }
 
-.table-header {
-  margin-bottom: 20px;
-  border-bottom: 1px solid #e0e0e0;
-  padding-bottom: 16px;
-}
-
-.table-header h2 {
-  font-size: 18px;
+.list-header h2 {
+  margin: 0 0 5px 0;
+  font-size: 16px;
   font-weight: 600;
-  color: #1a1a1a;
-  margin: 0 0 8px 0;
+  color: #333;
 }
 
-.record-count {
-  font-size: 13px;
-  color: #666;
+.list-header p {
   margin: 0;
-}
-
-/* 表格容器 */
-.table-wrapper {
-  overflow-x: auto;
+  font-size: 13px;
+  color: #999;
 }
 
 /* 表格樣式 */
@@ -173,297 +122,171 @@
 }
 
 .recordings-table thead {
-  background-color: #f5f7fa;
-  border-bottom: 2px solid #e0e0e0;
+  background-color: #f9f9f9;
+  border-bottom: 2px solid #eee;
 }
 
 .recordings-table th {
   padding: 12px;
   text-align: left;
   font-weight: 600;
-  color: #333;
+  color: #666;
   white-space: nowrap;
+  border-right: 1px solid #eee;
+}
+
+.recordings-table th:last-child {
+  border-right: none;
 }
 
 .recordings-table tbody tr {
-  border-bottom: 1px solid #e0e0e0;
-  transition: all 0.2s ease;
+  border-bottom: 1px solid #eee;
+  transition: background-color 0.2s;
 }
 
 .recordings-table tbody tr:hover {
-  background-color: #f9fafb;
+  background-color: #f9f9f9;
 }
 
 .recordings-table tbody tr.selected {
-  background-color: #f0f4ff;
+  background-color: #e3f2fd;
 }
 
 .recordings-table td {
   padding: 12px;
-  vertical-align: middle;
+  border-right: 1px solid #eee;
+  color: #333;
+  word-break: break-word;
 }
 
-/* 複選框欄 */
+.recordings-table td:last-child {
+  border-right: none;
+}
+
+/* 欄位寬度 */
 .col-checkbox {
   width: 40px;
   text-align: center;
 }
 
-.col-checkbox input[type="checkbox"] {
-  cursor: pointer;
-  width: 16px;
-  height: 16px;
-}
-
-/* 播放按鈕欄 */
 .col-play {
   width: 50px;
   text-align: center;
 }
 
-.play-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  background-color: #0066cc;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(0, 102, 204, 0.2);
-}
-
-.play-btn:hover {
-  background-color: #0052a3;
-  box-shadow: 0 4px 8px rgba(0, 102, 204, 0.3);
-}
-
-.play-btn:active {
-  transform: scale(0.95);
-}
-
-/* 檔名欄 */
 .col-filename {
   width: 180px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
 }
 
-.filename {
-  color: #0066cc;
-  text-decoration: none;
-  cursor: pointer;
-  word-break: break-word;
-}
-
-.filename:hover {
-  text-decoration: underline;
-}
-
-/* 客戶欄 */
 .col-customer {
-  width: 80px;
-}
-
-/* 業務欄 */
-.col-business {
-  width: 100px;
-}
-
-/* 時間欄 */
-.col-datetime {
-  width: 140px;
-}
-
-/* 長度欄 */
-.col-duration {
-  width: 70px;
+  width: 60px;
   text-align: center;
 }
 
-/* 轉錄文本欄 */
-.col-transcription {
+.col-business {
+  width: 80px;
+  text-align: center;
+}
+
+.col-time {
+  width: 140px;
+}
+
+.col-duration {
+  width: 60px;
+  text-align: center;
+}
+
+.col-tags {
   width: 150px;
 }
 
-.transcription-text {
-  color: #666;
-  display: block;
+.col-summary {
+  width: 200px;
+  max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* AI標籤欄 */
-.col-ai-tags {
-  width: 150px;
+.col-status {
+  width: 80px;
+  text-align: center;
 }
 
-.tags-container {
+/* 複選框 */
+.recordings-table input[type="checkbox"] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+}
+
+/* 播放按鈕 */
+.play-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #1976d2;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s;
 }
 
-.tag {
-  display: inline-block;
-  padding: 4px 10px;
-  background-color: #e8f5e9;
-  color: #2e7d32;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-/* 狀態欄 */
-.col-summary {
-  width: 150px;
-}
-
-.status-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.badge {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.badge-success {
-  background-color: #e8f5e9;
-  color: #2e7d32;
-}
-
-.badge-warning {
-  background-color: #fff3e0;
-  color: #f57c00;
-}
-
-.badge-danger {
-  background-color: #ffebee;
-  color: #c41e3a;
+.play-btn:hover {
+  background-color: #1565c0;
 }
 
 /* 空狀態 */
 .empty-state {
-  text-align: center;
   padding: 40px 20px;
-  color: #999;
-}
-
-.empty-state p {
-  font-size: 14px;
-  margin: 0;
-}
-
-/* 加載狀態 */
-.loading-state {
   text-align: center;
-  padding: 40px 20px;
   color: #999;
-}
-
-.loading-state p {
   font-size: 14px;
-  margin: 0;
 }
 
-/* ===== 響應式設計 ===== */
-@media (max-width: 1400px) {
-  .col-filename {
+/* 響應式設計 */
+@media (max-width: 1200px) {
+  .col-summary {
     width: 150px;
   }
 
-  .col-transcription {
+  .col-tags {
     width: 120px;
-  }
-
-  .col-ai-tags {
-    width: 120px;
-  }
-
-  .col-summary {
-    width: 120px;
-  }
-}
-
-@media (max-width: 1200px) {
-  .recordings-container {
-    padding: 16px;
-  }
-
-  .recordings-header-section {
-    padding: 16px;
-  }
-
-  .recordings-content {
-    padding: 16px;
-  }
-
-  .header-top {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .upload-btn {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .search-filter-section {
-    flex-direction: column;
-  }
-
-  .filter-select {
-    width: 100%;
   }
 
   .col-filename {
-    width: 120px;
-  }
-
-  .col-transcription {
-    width: 100px;
-  }
-
-  .col-ai-tags {
-    width: 100px;
-  }
-
-  .col-summary {
-    width: 100px;
+    width: 150px;
   }
 }
 
 @media (max-width: 768px) {
   .recordings-container {
-    padding: 12px;
+    padding: 10px;
   }
 
-  .recordings-header-section {
-    padding: 12px;
+  .recordings-header {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
   }
 
-  .recordings-content {
-    padding: 12px;
+  .header-left h1 {
+    font-size: 18px;
   }
 
-  .header-title h1 {
-    font-size: 20px;
+  .upload-btn {
+    width: 100%;
   }
 
-  .table-wrapper {
-    overflow-x: auto;
+  .search-filter-bar {
+    flex-direction: column;
   }
 
   .recordings-table {
@@ -476,59 +299,23 @@
   }
 
   .col-filename {
-    width: 100px;
-  }
-
-  .col-transcription {
-    width: 80px;
-  }
-
-  .col-ai-tags {
-    width: 80px;
+    width: 120px;
   }
 
   .col-summary {
+    width: 100px;
+  }
+
+  .col-tags {
     width: 80px;
   }
 
-  .play-btn {
-    width: 28px;
-    height: 28px;
-    font-size: 10px;
-  }
-
-  .tag {
-    padding: 2px 8px;
-    font-size: 11px;
-  }
-
-  .badge {
-    padding: 2px 8px;
-    font-size: 11px;
+  .col-time {
+    width: 100px;
   }
 }
 
 @media (max-width: 480px) {
-  .recordings-container {
-    padding: 8px;
-  }
-
-  .recordings-header-section {
-    padding: 12px;
-  }
-
-  .recordings-content {
-    padding: 12px;
-  }
-
-  .header-title h1 {
-    font-size: 18px;
-  }
-
-  .header-title .icon {
-    font-size: 24px;
-  }
-
   .recordings-table {
     font-size: 11px;
   }
@@ -538,59 +325,21 @@
     padding: 6px;
   }
 
-  .col-checkbox {
-    width: 35px;
-  }
-
-  .col-play {
-    width: 40px;
-  }
-
   .col-filename {
     width: 80px;
   }
 
-  .col-customer {
-    width: 60px;
-  }
-
-  .col-business {
-    width: 70px;
-  }
-
-  .col-datetime {
-    width: 100px;
-  }
-
-  .col-duration {
-    width: 50px;
-  }
-
-  .col-transcription {
-    width: 60px;
-  }
-
-  .col-ai-tags {
-    width: 60px;
-  }
-
   .col-summary {
+    width: 80px;
+  }
+
+  .col-tags {
     width: 60px;
   }
 
   .play-btn {
-    width: 24px;
-    height: 24px;
-    font-size: 9px;
-  }
-
-  .tag {
-    padding: 2px 6px;
-    font-size: 10px;
-  }
-
-  .badge {
-    padding: 2px 6px;
-    font-size: 10px;
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
   }
 }
