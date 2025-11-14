@@ -1162,7 +1162,7 @@ function Customers() {
                               .then(data => {
                                 if (data.success) {
                                   alert('音檔上傳成功');
-                                  setEditFormData({...editFormData, audioUrl: data.audioUrl});
+                                  setEditFormData({...editFormData, audioUrl: data.audio_url});
                                 } else {
                                   alert('音檔上傳失敗: ' + data.error);
                                 }
