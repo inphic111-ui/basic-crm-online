@@ -753,12 +753,21 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
     let recordingId = timestamp;
     
     try {
+      // 第一步：驗證 R2 環境變數
       addLog('debug', 'R2 環境變數檢查', {
         R2_BUCKET_NAME: process.env.R2_BUCKET_NAME ? '✓ 已設置' : '✗ 未設置',
         R2_ENDPOINT: process.env.R2_ENDPOINT ? '✓ 已設置' : '✗ 未設置',
         R2_PUBLIC_URL: process.env.R2_PUBLIC_URL ? '✓ 已設置' : '✗ 未設置',
+        R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID ? '✓ 已設置' : '✗ 未設置',
+        R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY ? '✓ 已設置' : '✗ 未設置',
       });
       
+      // 驗證必要的環境變數
+      if (!process.env.R2_BUCKET_NAME || !process.env.R2_ENDPOINT || !process.env.R2_PUBLIC_URL) {
+        throw new Error('R2 環境變數未完整設置');
+      }
+      
+      // 第二步：上傳到 R2
       const uploadCommand = new PutObjectCommand({
         Bucket: process.env.R2_BUCKET_NAME,
         Key: fileKey,
@@ -766,16 +775,38 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
         ContentType: req.file.mimetype,
       });
       
-      addLog('info', '開始上傳到 R2', { fileKey, fileName, timestamp });
-      await r2Client.send(uploadCommand);
+      addLog('info', '開始上傳到 R2', { 
+        fileKey, 
+        fileName, 
+        timestamp,
+        fileSize: req.file.size,
+        bucket: process.env.R2_BUCKET_NAME,
+        endpoint: process.env.R2_ENDPOINT
+      });
       
-      // 生成 R2 公開 URL
-      const r2PublicUrl = process.env.R2_PUBLIC_URL || process.env.R2_ENDPOINT;
-      audioUrl = `${r2PublicUrl}/${fileKey}`;
+      const uploadResponse = await r2Client.send(uploadCommand);
+      addLog('info', 'R2 上傳響應', { 
+        etag: uploadResponse.ETag,
+        versionId: uploadResponse.VersionId 
+      });
       
-      addLog('info', '✅ 音檔已成功上傳到 R2', { timestamp, fileName, fileKey, audioUrl });
+      // 第三步：生成 R2 公開 URL（只有上傳成功才執行）
+      audioUrl = `${process.env.R2_PUBLIC_URL}/${fileKey}`;
+      
+      addLog('info', '✅ 音檔已成功上傳到 R2', { 
+        timestamp, 
+        fileName, 
+        fileKey, 
+        audioUrl,
+        uploadedAt: new Date().toISOString()
+      });
     } catch (r2Err) {
-      addLog('error', '❌ R2 上傳失敗', r2Err.message);
+      addLog('error', '❌ R2 上傳失敗', {
+        message: r2Err.message,
+        code: r2Err.code,
+        statusCode: r2Err.$metadata?.httpStatusCode,
+        stack: r2Err.stack
+      });
       return res.status(500).json({ error: `R2 上傳失敗: ${r2Err.message}` });
     }
 
