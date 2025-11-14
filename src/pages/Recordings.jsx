@@ -115,24 +115,21 @@ export default function Recordings() {
 
   const uploadAudioFile = async (file) => {
     try {
-      // 解析檔名
+      // 簡化：直接使用檔名的前 4 位作為客戶編號（如果是數字）
+      // 否則使用默認值 1
       const nameWithoutExt = file.name.replace(/\.[^\/\.]+$/, '')
-      const parts = nameWithoutExt.split('_')
+      const firstPart = nameWithoutExt.split('_')[0]
       
-      if (parts.length < 5) {
-        alert('檔名格式不正確，應為：YYYYMMDDNNNN_業務名_產品名_MMDD_HHMM.mp3')
-        return
+      // 嘗試從檔名中提取客戶編號
+      let customerId = '1' // 默認值
+      if (/^\d{12}$/.test(firstPart)) {
+        // 如果是標準格式，提取後 4 位
+        customerId = firstPart.substring(8, 12)
+      } else if (/^\d+$/.test(firstPart)) {
+        // 如果是純數字，直接使用
+        customerId = firstPart
       }
-
-      const [customerIdStr, salespersonName, productName, dateStr, timeStr] = parts
-      
-      // 驗證客戶編號
-      if (!/^\d{12}$/.test(customerIdStr)) {
-        alert('客戶編號應為 12 位數字')
-        return
-      }
-
-      const customerId = customerIdStr.substring(8, 12)
+      // 否則使用默認值 1
       
       // 上傳檔案
       const formData = new FormData()
