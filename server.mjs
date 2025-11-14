@@ -732,20 +732,8 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: '沒有選擇文件' });
     }
 
-    // 使用原始檔名，並進行 URL 編碼以支持中文字符
-    let fileName = req.file.originalname;
-    
-    // 對文件名進行 URL 編碼，以正確處理中文和特殊字符
-    // 保留字母、數字、下劃線、連字符、點，其他字符進行 URL 編碼
-    const encodedFileName = fileName
-      .split('')
-      .map(char => {
-        if (/[a-zA-Z0-9_\-.]/.test(char)) {
-          return char;
-        }
-        return encodeURIComponent(char);
-      })
-      .join('');
+    // 使用原始檔名
+    const fileName = req.file.originalname;
     
     // 從 req.body.data 中解析出客戶信息
     let parsedData = {};
@@ -760,26 +748,17 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
     // 第一步：直接上傳到 R2（不依賴數據庫）
     // 使用時間戳作為 recordingId（如果數據庫連接失敗）
     const timestamp = Date.now();
-    const fileKey = `inphic-crm/audio_recordings/${timestamp}/${encodedFileName}`;
+    const fileKey = `inphic-crm/audio_recordings/${timestamp}/${fileName}`;
     let audioUrl = '';
     let recordingId = timestamp;
     
     try {
-      // 第一步：驗證 R2 環境變數
       addLog('debug', 'R2 環境變數檢查', {
         R2_BUCKET_NAME: process.env.R2_BUCKET_NAME ? '✓ 已設置' : '✗ 未設置',
         R2_ENDPOINT: process.env.R2_ENDPOINT ? '✓ 已設置' : '✗ 未設置',
         R2_PUBLIC_URL: process.env.R2_PUBLIC_URL ? '✓ 已設置' : '✗ 未設置',
-        R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID ? '✓ 已設置' : '✗ 未設置',
-        R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY ? '✓ 已設置' : '✗ 未設置',
       });
       
-      // 驗證必要的環境變數
-      if (!process.env.R2_BUCKET_NAME || !process.env.R2_ENDPOINT || !process.env.R2_PUBLIC_URL) {
-        throw new Error('R2 環境變數未完整設置');
-      }
-      
-      // 第二步：上傳到 R2
       const uploadCommand = new PutObjectCommand({
         Bucket: process.env.R2_BUCKET_NAME,
         Key: fileKey,
@@ -787,38 +766,16 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
         ContentType: req.file.mimetype,
       });
       
-      addLog('info', '開始上傳到 R2', { 
-        fileKey, 
-        fileName, 
-        timestamp,
-        fileSize: req.file.size,
-        bucket: process.env.R2_BUCKET_NAME,
-        endpoint: process.env.R2_ENDPOINT
-      });
+      addLog('info', '開始上傳到 R2', { fileKey, fileName, timestamp });
+      await r2Client.send(uploadCommand);
       
-      const uploadResponse = await r2Client.send(uploadCommand);
-      addLog('info', 'R2 上傳響應', { 
-        etag: uploadResponse.ETag,
-        versionId: uploadResponse.VersionId 
-      });
+      // 生成 R2 公開 URL
+      const r2PublicUrl = process.env.R2_PUBLIC_URL || process.env.R2_ENDPOINT;
+      audioUrl = `${r2PublicUrl}/${fileKey}`;
       
-      // 第三步：生成 R2 公開 URL（只有上傳成功才執行）
-      audioUrl = `${process.env.R2_PUBLIC_URL}/${fileKey}`;
-      
-      addLog('info', '✅ 音檔已成功上傳到 R2', { 
-        timestamp, 
-        fileName, 
-        fileKey, 
-        audioUrl,
-        uploadedAt: new Date().toISOString()
-      });
+      addLog('info', '✅ 音檔已成功上傳到 R2', { timestamp, fileName, fileKey, audioUrl });
     } catch (r2Err) {
-      addLog('error', '❌ R2 上傳失敗', {
-        message: r2Err.message,
-        code: r2Err.code,
-        statusCode: r2Err.$metadata?.httpStatusCode,
-        stack: r2Err.stack
-      });
+      addLog('error', '❌ R2 上傳失敗', r2Err.message);
       return res.status(500).json({ error: `R2 上傳失敗: ${r2Err.message}` });
     }
 
@@ -2033,6 +1990,35 @@ app.use((err, req, res, next) => {
 
 
 // 音檔上傳 API
+app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: '沒有選擇文件' });
+    }
+
+    const customerId = req.body.customerId;
+    const fileName = `${customerId}-${Date.now()}-${req.file.originalname}`;
+    const filePath = path.join('uploads', 'audio', fileName);
+    
+    // 確保目錄存在
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    
+    // 保存文件
+    fs.writeFileSync(filePath, req.file.buffer);
+    
+    res.json({ 
+      success: true, 
+      audioUrl: `/uploads/audio/${fileName}`,
+      message: '音檔上傳成功'
+    });
+  } catch (error) {
+    console.error('音檔上傳錯誤:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 // 音檔刪除 API
 app.delete('/api/audio/delete/:customerId', async (req, res) => {
@@ -2529,6 +2515,47 @@ app.post('/api/audio/parse-and-update', async (req, res) => {
 });
 
 // R2 音檔上傳端點
+app.post('/api/audio/upload', upload.single('audio'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: '沒有文件上傳' });
+    }
+
+    const { originalname, buffer, mimetype } = req.file;
+    const timestamp = Date.now();
+    const key = `audio/${timestamp}_${originalname}`;
+
+    // 上傳到 R2
+    const command = new PutObjectCommand({
+      Bucket: process.env.R2_BUCKET_NAME,
+      Key: key,
+      Body: buffer,
+      ContentType: mimetype,
+      ACL: 'public-read',
+    });
+
+    await r2Client.send(command);
+
+    // 構建公開 URL
+    const publicUrl = `${process.env.R2_PUBLIC_URL}/${key}`;
+
+    addLog('info', '音檔上傳成功', { filename: originalname, url: publicUrl });
+
+    res.json({
+      success: true,
+      message: '文件上傳成功',
+      data: {
+        filename: originalname,
+        url: publicUrl,
+        key: key,
+        size: buffer.length,
+      }
+    });
+  } catch (error) {
+    addLog('error', 'R2 上傳失敗', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 app.listen(PORT, () => {
   addLog('info', `CRM 3.0 服務器啟動成功，監聽端口 ${PORT}`);
