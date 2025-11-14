@@ -52,6 +52,8 @@ export default function Recordings() {
           const formData = new FormData();
           formData.append("file", files[i]);
 
+          console.log(`[${i + 1}/${files.length}] 開始上傳: ${files[i].name}`);
+          
           const res = await fetch("/api/audio/upload", {
             method: "POST",
             body: formData,
@@ -59,19 +61,26 @@ export default function Recordings() {
 
           if (!res.ok) {
             const errorData = await res.json();
+            console.error(`上傳失敗 ${files[i].name}:`, errorData);
             throw new Error(errorData.error || "Upload failed");
           }
 
           const result = await res.json();
-          console.log("Upload successful:", result);
+          console.log(`✅ 上傳成功 ${files[i].name}:`, result);
           successCount++;
         } catch (err) {
           failureCount++;
+          console.error(`❌ 上傳失敗 ${files[i].name}:`, err);
           errors.push(`${files[i].name}: ${err.message}`);
         }
       }
 
+      console.log(`上傳完成: 成功 ${successCount}, 失敗 ${failureCount}`);
+      
+      // 刷新列表
+      console.log("開始刷新列表...");
       await fetchRecords();
+      console.log("列表刷新完成");
 
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -79,11 +88,14 @@ export default function Recordings() {
 
       if (failureCount > 0) {
         setUploadError(`Success: ${successCount}, Failed: ${failureCount}`);
+      } else if (successCount > 0) {
+        setUploadError(null);
       }
     } catch (err) {
-      console.error("Upload error:", err);
+      console.error("❌ 上傳過程發生錯誤:", err);
       setUploadError(err.message || "Upload failed");
     } finally {
+      console.log("上傳流程結束");
       setUploading(false);
     }
   };
