@@ -78,14 +78,24 @@ const config = {
 };
 
 // R2 客戶端配置
-const r2Client = new S3Client({
-  region: 'auto',
-  endpoint: process.env.R2_ENDPOINT,
-  credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID,
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
-  },
-});
+let r2Client = null;
+try {
+  if (process.env.R2_ENDPOINT && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY) {
+    r2Client = new S3Client({
+      region: 'auto',
+      endpoint: process.env.R2_ENDPOINT,
+      credentials: {
+        accessKeyId: process.env.R2_ACCESS_KEY_ID,
+        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+      },
+    });
+    console.log('[INFO] R2 Client 初始化成功');
+  } else {
+    console.warn('[WARN] R2 環境變數未完整設置，跳過 R2 Client 初始化');
+  }
+} catch (err) {
+  console.error('[ERROR] R2 Client 初始化失敗:', err.message);
+}
 
 // Multer 配置（內存存儲）
 const upload = multer({
@@ -753,10 +763,28 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
     let recordingId = timestamp;
     
     try {
-      addLog('debug', 'R2 環境變數檢查', {
-        R2_BUCKET_NAME: process.env.R2_BUCKET_NAME ? '✓ 已設置' : '✗ 未設置',
-        R2_ENDPOINT: process.env.R2_ENDPOINT ? '✓ 已設置' : '✗ 未設置',
-        R2_PUBLIC_URL: process.env.R2_PUBLIC_URL ? '✓ 已設置' : '✗ 未設置',
+      // 檢查 R2 Client 是否初始化成功
+      if (!r2Client) {
+        addLog('error', '❌ R2 Client 未初始化', { reason: 'R2 環境變數未完整設置' });
+        return res.status(500).json({ error: 'R2 Client 未初始化，請檢查環境變數設置' });
+      }
+      
+      // 詳細診斷：檢查 R2 Client 狀態
+      addLog('debug', '【R2 診斷】R2 Client 初始化狀態', {
+        r2ClientExists: !!r2Client,
+        r2ClientConfig: {
+          region: r2Client.config?.region,
+          endpoint: r2Client.config?.endpoint,
+          credentials: r2Client.config?.credentials ? '已設置' : '未設置'
+        }
+      });
+      
+      addLog('debug', '【R2 診斷】環境變數檢查', {
+        R2_BUCKET_NAME: process.env.R2_BUCKET_NAME || '未設置',
+        R2_ENDPOINT: process.env.R2_ENDPOINT || '未設置',
+        R2_PUBLIC_URL: process.env.R2_PUBLIC_URL || '未設置',
+        R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID ? '已設置' : '未設置',
+        R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY ? '已設置' : '未設置',
       });
       
       const uploadCommand = new PutObjectCommand({
@@ -766,8 +794,21 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
         ContentType: req.file.mimetype,
       });
       
-      addLog('info', '開始上傳到 R2', { fileKey, fileName, timestamp });
-      await r2Client.send(uploadCommand);
+      addLog('info', '【R2 診斷】上傳命令構建完成', { 
+        fileKey, 
+        fileName, 
+        timestamp,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype
+      });
+      
+      addLog('info', '【R2 診斷】開始執行 r2Client.send(uploadCommand)...');
+      const uploadResponse = await r2Client.send(uploadCommand);
+      addLog('info', '【R2 診斷】r2Client.send() 完成', {
+        ETag: uploadResponse.ETag,
+        VersionId: uploadResponse.VersionId,
+        ServerSideEncryption: uploadResponse.ServerSideEncryption
+      });
       
       // 生成 R2 公開 URL
       const r2PublicUrl = process.env.R2_PUBLIC_URL || process.env.R2_ENDPOINT;
