@@ -763,10 +763,9 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
     }
 
     // ---------- Step 1：上傳到 R2 ----------
-    const timestamp = Date.now();
-    const fileKey = `inphic-crm/audio_recordings/${timestamp}/${fileName}`;
+    const recordingId = Date.now();
+    const fileKey = `audio-recordings/${recordingId}/${fileName}`;
     let audioUrl = '';
-    let recordingId = timestamp;
 
     try {
       // 診斷：檢查 R2 Client 是否初始化
@@ -802,14 +801,13 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
       });
 
       // 公開網址
-      const publicBase = process.env.R2_PUBLIC_URL || process.env.R2_ENDPOINT;
-      audioUrl = `${publicBase}/${fileKey}`;
+      audioUrl = `${process.env.R2_PUBLIC_URL}/${fileKey}`;
 
       addLog('info', '✅ 音檔成功上傳到 R2', { 
         audioUrl, 
         fileKey,
         fileName: fileName,
-        timestamp: timestamp
+        recordingId: recordingId
       });
 
     } catch (err) {
@@ -842,20 +840,22 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
           [customerNumber, businessName, productName, callDate, callTime, audioUrl]
         );
 
+        // 使用數據庫返回的真正 ID（如果成功）
         recordingId = result.rows[0].id;
 
         addLog('info', '✅ DB 已建立音檔記錄', {
-          recordingId,
+          recordingId: result.rows[0].id,
           customerNumber,
           fileName: fileName,
           audioUrl: audioUrl
         });
 
       } catch (dbErr) {
-        addLog('warn', '⚠️ DB 寫入失敗（但 R2 上傳成功）', {
+        addLog('warn', '⚠️ DB 寫入失敗（但 R2 上傳成功），使用時間戳作為 recordingId', {
           message: dbErr.message,
           fileName: fileName,
-          audioUrl: audioUrl
+          audioUrl: audioUrl,
+          recordingId: recordingId
         });
       }
     } else {
