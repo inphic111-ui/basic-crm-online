@@ -67,12 +67,12 @@ function addLog(level, message, data = null) {
 const config = {
   offline: {
     name: 'OFFLINE (測試)',
-    dbUrl: process.env.OFFLINE_DB_URL || process.env.DATABASE_URL,
+    dbUrl: process.env.DATABASE_URL || process.env.OFFLINE_DB_URL,
     logFile: '/tmp/offline.log'
   },
   online: {
     name: 'ONLINE (正式)',
-    dbUrl: process.env.ONLINE_DB_URL || process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL,
+    dbUrl: process.env.DATABASE_URL || process.env.ONLINE_DB_URL || process.env.DATABASE_PUBLIC_URL,
     logFile: '/tmp/online.log'
   }
 };
@@ -107,14 +107,17 @@ const upload = multer({
 const pools = {};
 
 function createPool(env) {
-  if (!config[env].dbUrl) {
+  const dbUrl = config[env].dbUrl;
+  if (!dbUrl) {
     addLog('warn', `${env.toUpperCase()} 數據庫 URL 未配置`);
+    addLog('debug', `環境變數檢查：DATABASE_URL=${process.env.DATABASE_URL ? '✓' : '✗'}, ONLINE_DB_URL=${process.env.ONLINE_DB_URL ? '✓' : '✗'}`);
     return null;
   }
 
   try {
+    addLog('debug', `${env.toUpperCase()} 數據庫 URL：${dbUrl.substring(0, 50)}...`);
     pools[env] = new Pool({
-      connectionString: config[env].dbUrl,
+      connectionString: dbUrl,
       max: 5,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 2000,
@@ -125,10 +128,10 @@ function createPool(env) {
       addLog('error', `${env.toUpperCase()} 數據庫連接池錯誤`, err.message);
     });
 
-    addLog('info', `${env.toUpperCase()} 數據庫連接池已創建`);
+    addLog('info', `✅ ${env.toUpperCase()} 數據庫連接池已成功創建`);
     return pools[env];
   } catch (err) {
-    addLog('error', `創建 ${env.toUpperCase()} 連接池失敗`, err.message);
+    addLog('error', `❌ 創建 ${env.toUpperCase()} 連接池失敗`, err.message);
     return null;
   }
 }
