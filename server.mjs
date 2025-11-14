@@ -614,12 +614,6 @@ app.get('/api/customers/:id', async (req, res) => {
 
 // API: 刪除客戶
 
-// 配置 multer 用於文件上傳
-const upload = multer({ 
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 16 * 1024 * 1024 } // 16MB 限制
-});
-
 // 音檔列表端點
 app.get('/api/audio/list', async (req, res) => {
   try {
