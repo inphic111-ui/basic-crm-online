@@ -652,6 +652,79 @@ app.get('/api/audio/list', async (req, res) => {
   }
 });
 
+// 音檔檔名解析端點
+app.post('/api/audio/parse-filename', async (req, res) => {
+  try {
+    const { filename } = req.body;
+    if (!filename) {
+      return res.status(400).json({ error: '缺少檔名' });
+    }
+
+    // 移除副檔名
+    const nameWithoutExt = filename.replace(/\.[^\/\.]+$/, '');
+    
+    // 分割檔名
+    const parts = nameWithoutExt.split('_');
+    
+    if (parts.length < 5) {
+      return res.status(400).json({ 
+        error: '檔名格式不正確，應為：YYYYMMDDNNNN_業務名_產品名_MMDD_HHMM.mp3' 
+      });
+    }
+
+    const [customerIdStr, salespersonName, productName, dateStr, timeStr] = parts;
+
+    // 驗證客戶編號（12 位數字）
+    if (!/^\d{12}$/.test(customerIdStr)) {
+      return res.status(400).json({ 
+        error: '客戶編號應為 12 位數字（YYYYMMDDNNNN）' 
+      });
+    }
+
+    const year = customerIdStr.substring(0, 4);
+    const month = customerIdStr.substring(4, 6);
+    const day = customerIdStr.substring(6, 8);
+    const customerId = customerIdStr.substring(8, 12);
+
+    // 驗證撥打日期（4 位數字 MMDD）
+    if (!/^\d{4}$/.test(dateStr)) {
+      return res.status(400).json({ 
+        error: '撥打日期應為 4 位數字（MMDD）' 
+      });
+    }
+
+    const callMonth = dateStr.substring(0, 2);
+    const callDay = dateStr.substring(2, 4);
+    const currentYear = new Date().getFullYear();
+    const callDate = `${currentYear}-${callMonth}-${callDay}`;
+
+    // 驗證撥打時間（4 位數字 HHMM）
+    if (!/^\d{4}$/.test(timeStr)) {
+      return res.status(400).json({ 
+        error: '撥打時間應為 4 位數字（HHMM）' 
+      });
+    }
+
+    const hour = timeStr.substring(0, 2);
+    const minute = timeStr.substring(2, 4);
+    const callTime = `${hour}:${minute}:00`;
+
+    // 返回解析結果
+    res.json({
+      filename: filename,
+      customer_id: customerId,
+      customer_registration_date: `${year}-${month}-${day}`,
+      salesperson_name: salespersonName,
+      product_name: productName,
+      call_date: callDate,
+      call_time: callTime
+    });
+  } catch (err) {
+    addLog('error', '檔名解析失敗', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 音檔上傳端點
 app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
   try {

@@ -5,7 +5,9 @@
   "type": "module",
   "main": "server.mjs",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently \"node server.mjs\" \"vite\"",
+    "dev:frontend": "vite",
+    "dev:backend": "node server.mjs",
     "build": "vite build",
     "start": "node server.mjs",
     "preview": "vite preview"
@@ -32,6 +34,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.0",
+    "concurrently": "^8.2.2",
     "vite": "^5.4.0"
   },
   "engines": {
