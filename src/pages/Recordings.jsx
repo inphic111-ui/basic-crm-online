@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import "../styles/recordings.css";
 
 export default function Recordings() {
@@ -7,6 +7,9 @@ export default function Recordings() {
   const [error, setError] = useState(null);
   const [selectedRecords, setSelectedRecords] = useState(new Set());
   const [currentPlayer, setCurrentPlayer] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+  const fileInputRef = useRef(null);
 
   const fetchRecords = async () => {
     try {
@@ -22,6 +25,63 @@ export default function Recordings() {
       setRecords([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = async (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    setUploadError(null);
+
+    try {
+      let successCount = 0;
+      let failureCount = 0;
+      const errors = [];
+
+      for (let i = 0; i < files.length; i++) {
+        try {
+          const formData = new FormData();
+          formData.append("file", files[i]);
+
+          const res = await fetch("/api/audio/upload", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.error || "Upload failed");
+          }
+
+          const result = await res.json();
+          console.log("Upload successful:", result);
+          successCount++;
+        } catch (err) {
+          failureCount++;
+          errors.push(`${files[i].name}: ${err.message}`);
+        }
+      }
+
+      await fetchRecords();
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+
+      if (failureCount > 0) {
+        setUploadError(`Success: ${successCount}, Failed: ${failureCount}`);
+      }
+    } catch (err) {
+      console.error("Upload error:", err);
+      setUploadError(err.message || "Upload failed");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -58,7 +118,7 @@ export default function Recordings() {
     if (selectedRecords.size === records.length) {
       setSelectedRecords(new Set());
     } else {
-      setSelectedRecords(new Set(records.map(r => r.recording_id)));
+      setSelectedRecords(new Set(records.map(r => r.recording_id || r.id)));
     }
   };
 
@@ -103,7 +163,7 @@ export default function Recordings() {
     return (
       <div className="recordings-page">
         <div className="loading-state">
-          <p>加載中...</p>
+          <p>Loading...</p>
         </div>
       </div>
     );
@@ -113,7 +173,7 @@ export default function Recordings() {
     return (
       <div className="recordings-page">
         <div className="error-state">
-          <p>⚠️ 加載失敗: {error}</p>
+          <p>Error: {error}</p>
         </div>
       </div>
     );
@@ -122,13 +182,37 @@ export default function Recordings() {
   return (
     <div className="recordings-page">
       <div className="recordings-header">
-        <h1>音檔別表</h1>
-        <p className="record-count">共 {records.length} 條記錄</p>
+        <div className="header-content">
+          <div>
+            <h1>Audio Recordings</h1>
+            <p className="record-count">Total {records.length} records</p>
+          </div>
+          <button
+            className="upload-btn"
+            onClick={handleUploadClick}
+            disabled={uploading}
+          >
+            {uploading ? "Uploading..." : "+ Upload Audio"}
+          </button>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="audio/*,.wav,.mp3,.m4a,.ogg,.flac"
+          onChange={handleFileSelect}
+          style={{ display: "none" }}
+        />
+        {uploadError && (
+          <div className="upload-error">
+            {uploadError}
+          </div>
+        )}
       </div>
 
       {records.length === 0 ? (
         <div className="empty-state">
-          <p>暫無音檔記錄</p>
+          <p>No audio records</p>
         </div>
       ) : (
         <div className="table-container">
@@ -142,73 +226,66 @@ export default function Recordings() {
                     onChange={toggleSelectAll}
                   />
                 </th>
-                <th className="col-play">播放</th>
-                <th className="col-filename">檔名</th>
-                <th className="col-customer">客戶</th>
-                <th className="col-business">業務</th>
-                <th className="col-datetime">時間</th>
-                <th className="col-duration">長度</th>
-                <th className="col-transcription">轉錄文本</th>
-                <th className="col-ai-tags">AI標籤</th>
-                <th className="col-summary">文本總結</th>
+                <th className="col-play">Play</th>
+                <th className="col-filename">Filename</th>
+                <th className="col-customer">Customer</th>
+                <th className="col-business">Business</th>
+                <th className="col-datetime">DateTime</th>
+                <th className="col-duration">Duration</th>
+                <th className="col-transcription">Transcription</th>
+                <th className="col-ai-tags">AI Tags</th>
+                <th className="col-summary">Summary</th>
               </tr>
             </thead>
 
             <tbody>
               {records.map((record) => {
                 const aiTags = parseAiTags(record.ai_tags);
-                const isSelected = selectedRecords.has(record.recording_id);
+                const recordId = record.recording_id || record.id;
+                const isSelected = selectedRecords.has(recordId);
 
                 return (
-                  <tr key={record.recording_id} className={`record-row ${isSelected ? 'selected' : ''}`}>
-                    {/* 複選框 */}
+                  <tr key={recordId} className={`record-row ${isSelected ? 'selected' : ''}`}>
                     <td className="col-checkbox">
                       <input
                         type="checkbox"
                         checked={isSelected}
-                        onChange={() => toggleSelectRecord(record.recording_id)}
+                        onChange={() => toggleSelectRecord(recordId)}
                       />
                     </td>
 
-                    {/* 播放按鈕 */}
                     <td className="col-play">
                       <button
                         className="play-btn"
-                        onClick={() => playAudio(record.recording_id, record.audio_url)}
-                        title="播放音檔"
+                        onClick={() => playAudio(recordId, record.audio_url)}
+                        title="Play audio"
                       >
                         ▶
                       </button>
                     </td>
 
-                    {/* 檔名 */}
                     <td className="col-filename">
                       <span className="filename" title={decodeURIComponent(record.audio_url.split("/").pop())}>
                         {decodeURIComponent(record.audio_url.split("/").pop())}
                       </span>
                     </td>
 
-                    {/* 客戶 */}
                     <td className="col-customer">
                       {record.customer_id || "-"}
                     </td>
 
-                    {/* 業務 */}
                     <td className="col-business">
-                      {record.salesperson_name || "-"}
+                      {record.business_name || record.salesperson_name || "-"}
                     </td>
 
-                    {/* 時間 */}
                     <td className="col-datetime">
                       {formatDateTime(record.call_date, record.call_time)}
                     </td>
 
-                    {/* 長度 */}
                     <td className="col-duration">
                       {record.duration || "-"}
                     </td>
 
-                    {/* 轉錄文本 */}
                     <td className="col-transcription">
                       <span 
                         className="transcription-text" 
@@ -218,7 +295,6 @@ export default function Recordings() {
                       </span>
                     </td>
 
-                    {/* AI標籤 */}
                     <td className="col-ai-tags">
                       <div className="tags-container">
                         {aiTags.slice(0, 3).map((tag, idx) => (
@@ -229,13 +305,12 @@ export default function Recordings() {
                       </div>
                     </td>
 
-                    {/* 文本總結 */}
                     <td className="col-summary">
                       <span 
                         className="summary-text" 
-                        title={record.summary_text || ""}
+                        title={record.analysis_summary || record.summary_text || ""}
                       >
-                        {truncateText(record.summary_text, 50)}
+                        {truncateText(record.analysis_summary || record.summary_text, 50)}
                       </span>
                     </td>
                   </tr>
