@@ -5,6 +5,8 @@ import { Pool } from 'pg';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { v4 as uuidv4 } from 'uuid';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -74,6 +76,32 @@ const config = {
     logFile: '/tmp/online.log'
   }
 };
+
+// R2 客戶端配置
+const r2Client = new S3Client({
+  region: 'auto',
+  endpoint: process.env.R2_ENDPOINT,
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID,
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+  },
+});
+
+// Multer 配置（內存存儲）
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/webm'];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('只允許上傳音檔'));
+    }
+  },
+});
 
 // 創建數據庫連接池
 const pools = {};
@@ -2389,6 +2417,49 @@ app.post('/api/audio/parse-and-update', async (req, res) => {
   } catch (err) {
     addLog('error', '解析或更新音檔記錄失敗', err.message);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// R2 音檔上傳端點
+app.post('/api/audio/upload', upload.single('audio'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: '沒有文件上傳' });
+    }
+
+    const { originalname, buffer, mimetype } = req.file;
+    const timestamp = Date.now();
+    const key = `audio/${timestamp}_${originalname}`;
+
+    // 上傳到 R2
+    const command = new PutObjectCommand({
+      Bucket: process.env.R2_BUCKET_NAME,
+      Key: key,
+      Body: buffer,
+      ContentType: mimetype,
+      ACL: 'public-read',
+    });
+
+    await r2Client.send(command);
+
+    // 構建公開 URL
+    const publicUrl = `${process.env.R2_PUBLIC_URL}/${key}`;
+
+    addLog('info', '音檔上傳成功', { filename: originalname, url: publicUrl });
+
+    res.json({
+      success: true,
+      message: '文件上傳成功',
+      data: {
+        filename: originalname,
+        url: publicUrl,
+        key: key,
+        size: buffer.length,
+      }
+    });
+  } catch (error) {
+    addLog('error', 'R2 上傳失敗', error.message);
+    res.status(500).json({ error: error.message });
   }
 });
 
