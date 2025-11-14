@@ -732,14 +732,51 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: '沒有選擇文件' });
     }
 
+    const pool = pools.online;
+    if (!pool) {
+      return res.status(500).json({ error: '數據庫未連接' });
+    }
+
     // 使用原始檔名
     const fileName = req.file.originalname;
     
-    // 簡化路徑：直接使用檔名作為路徑
-    const fileKey = `inphic-crm/audio/${fileName}`;
-    
-    // 第一步：直接上傳到 R2（不依賴數據庫）
+    // 從 req.body.data 中解析出客戶信息
+    let parsedData = {};
+    if (req.body.data) {
+      try {
+        parsedData = JSON.parse(req.body.data);
+      } catch (e) {
+        addLog('warn', '解析 data 字段失敗', e.message);
+      }
+    }
+
+    // 第一步：在 audio_recordings 表中創建記錄
+    let recordingId;
+    try {
+      const customerNumber = parsedData.customer_id;
+      const businessName = parsedData.salesperson_name || '';
+      const productName = parsedData.product_name || '';
+      const callDate = parsedData.call_date || new Date().toISOString().split('T')[0];
+      const callTime = parsedData.call_time || '00:00:00';
+      
+      const insertResult = await pool.query(
+        `INSERT INTO audio_recordings (customer_id, business_name, product_name, call_date, call_time, transcription_status, analysis_status, overall_status, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, 'pending', 'pending', 'processing', NOW(), NOW())
+         RETURNING id`,
+        [customerNumber || null, businessName, productName, callDate, callTime]
+      );
+      
+      recordingId = insertResult.rows[0].id;
+      addLog('info', '✅ 在 audio_recordings 表中創建記錄', { recordingId, customerNumber });
+    } catch (dbErr) {
+      addLog('error', '❌ 創建 audio_recordings 記錄失敗', dbErr.message);
+      return res.status(500).json({ error: `創建記錄失敗: ${dbErr.message}` });
+    }
+
+    // 第二步：上傳到 R2
+    const fileKey = `inphic-crm/audio_recordings/${recordingId}/${fileName}`;
     let audioUrl = '';
+    
     try {
       addLog('debug', 'R2 環境變數檢查', {
         R2_BUCKET_NAME: process.env.R2_BUCKET_NAME ? '✓ 已設置' : '✗ 未設置',
@@ -754,66 +791,34 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
         ContentType: req.file.mimetype,
       });
       
-      addLog('info', '開始上傳到 R2', { fileKey, fileName });
+      addLog('info', '開始上傳到 R2', { fileKey, fileName, recordingId });
       await r2Client.send(uploadCommand);
       
       // 生成 R2 公開 URL
       const r2PublicUrl = process.env.R2_PUBLIC_URL || process.env.R2_ENDPOINT;
       audioUrl = `${r2PublicUrl}/${fileKey}`;
       
-      addLog('info', '✅ 音檔已成功上傳到 R2', { fileName, fileKey, audioUrl });
+      addLog('info', '✅ 音檔已成功上傳到 R2', { recordingId, fileName, fileKey, audioUrl });
     } catch (r2Err) {
       addLog('error', '❌ R2 上傳失敗', r2Err.message);
       return res.status(500).json({ error: `R2 上傳失敗: ${r2Err.message}` });
     }
-    
-    // 第二步：嘗試更新數據庫（可選，失敗不影響上傳結果）
-    const pool = pools.online;
-    if (pool) {
-      try {
-        // 從 req.body.data 中解析出 customer_id
-        let parsedData = {};
-        if (req.body.data) {
-          try {
-            parsedData = JSON.parse(req.body.data);
-          } catch (e) {
-            addLog('warn', '解析 data 字段失敗', e.message);
-          }
-        }
 
-        const customerNumber = parsedData.customer_id;
-        if (customerNumber) {
-          // 查詢客戶 ID
-          const result = await pool.query(
-            'SELECT id FROM customers WHERE customer_id = $1 LIMIT 1',
-            [customerNumber]
-          );
-          
-          if (result.rows.length > 0) {
-            const customerId = result.rows[0].id;
-            
-            // 更新數據庫
-            try {
-              await pool.query(
-                'UPDATE customers SET audio_url = $1 WHERE id = $2',
-                [audioUrl, customerId]
-              );
-              addLog('info', '✅ 數據庫已更新', { customerId, fileName });
-            } catch (dbErr) {
-              addLog('warn', '⚠️ 數據庫更新失敗（但 R2 上傳成功）', dbErr.message);
-            }
-          } else {
-            addLog('warn', '⚠️ 找不到客戶編號（但 R2 上傳成功）', { customerNumber });
-          }
-        }
-      } catch (dbErr) {
-        addLog('warn', '⚠️ 數據庫操作失敗（但 R2 上傳成功）', dbErr.message);
-      }
+    // 第三步：更新 audio_recordings 表中的 audio_url
+    try {
+      await pool.query(
+        'UPDATE audio_recordings SET audio_url = $1, updated_at = NOW() WHERE id = $2',
+        [audioUrl, recordingId]
+      );
+      addLog('info', '✅ 已更新 audio_recordings 表', { recordingId, audioUrl });
+    } catch (dbErr) {
+      addLog('warn', '⚠️ 更新 audio_recordings 失敗（但 R2 上傳成功）', dbErr.message);
     }
 
     // 返回成功結果
     res.json({ 
       success: true, 
+      recording_id: recordingId,
       audio_url: audioUrl,
       message: '✅ 音檔已成功上傳到 R2' 
     });
