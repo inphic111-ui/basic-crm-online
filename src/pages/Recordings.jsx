@@ -236,8 +236,8 @@ export default function Recordings() {
             onChange={(e) => setFilterBusiness(e.target.value)}
             className="filter-select"
           >
-            <option value="">業務</option>
-            {[...new Set(records.map(r => r.business_name || r.salesperson_name || ""))].filter(Boolean).map(business => (
+            <option value="">業務名</option>
+            {['何雨達', '郭庭碩', '鍾汶憲', '何佳珊'].map(business => (
               <option key={business} value={business}>{business}</option>
             ))}
           </select>
@@ -289,9 +289,8 @@ export default function Recordings() {
                   <th className="col-business">業務</th>
                   <th className="col-datetime">時間</th>
                   <th className="col-duration">長度</th>
-                  <th className="col-transcription">轉錄文本</th>
                   <th className="col-ai-tags">AI標籤</th>
-                  <th className="col-summary">狀態</th>
+                  <th className="col-summary">分析總結</th>
                 </tr>
               </thead>
 
@@ -343,15 +342,6 @@ export default function Recordings() {
                         {record.duration || "-"}
                       </td>
 
-                      <td className="col-transcription">
-                        <span 
-                          className="transcription-text" 
-                          title={record.transcription_text || ""}
-                        >
-                          {truncateText(record.transcription_text, 50)}
-                        </span>
-                      </td>
-
                       <td className="col-ai-tags">
                         <div className="tags-container">
                           {aiTags.slice(0, 3).map((tag, idx) => (
@@ -363,20 +353,9 @@ export default function Recordings() {
                       </td>
 
                       <td className="col-summary">
-                        <div className="status-badges">
-                          {record.transcription_status === 'completed' && (
-                            <span className="badge badge-success">已轉文字</span>
-                          )}
-                          {record.transcription_status !== 'completed' && (
-                            <span className="badge badge-warning">未轉文字</span>
-                          )}
-                          {record.analysis_status === 'completed' && (
-                            <span className="badge badge-success">已分析</span>
-                          )}
-                          {record.analysis_status !== 'completed' && (
-                            <span className="badge badge-warning">未分析</span>
-                          )}
-                        </div>
+                        <span className="analysis-summary" title={record.analysis_summary || "-"}>
+                          {truncateText(record.analysis_summary || "-", 50)}
+                        </span>
                       </td>
                     </tr>
                   );
