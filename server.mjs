@@ -2295,6 +2295,103 @@ app.get('/api/init-test-data', async (req, res) => {
 
 /// 静态文件服勑 - 音檔
 app.use('/uploads', express.static('uploads'));
+
+/// API: 解析音檔檔名並更新數據庫
+function parseAudioFilename(filename) {
+  const nameWithoutExt = filename.replace(/\.[^.]+$/, '');
+  const parts = nameWithoutExt.split('_');
+  
+  if (parts.length !== 5) {
+    throw new Error(`檔名格式不正確，預期 5 個部分，實際 ${parts.length} 個。檔名：${filename}`);
+  }
+  
+  const [customerCode, salesperson, product, callDateCode, callTimeCode] = parts;
+  
+  const customerYear = customerCode.substring(0, 4);
+  const customerMonth = customerCode.substring(4, 6);
+  const customerDay = customerCode.substring(6, 8);
+  const customerId = parseInt(customerCode.substring(8), 10);
+  const customerRegistrationDate = `${customerYear}-${customerMonth}-${customerDay}`;
+  
+  const salespersonName = salesperson;
+  const productName = product;
+  
+  const callMonth = callDateCode.substring(0, 2);
+  const callDay = callDateCode.substring(2, 4);
+  const callDate = `2025-${callMonth}-${callDay}`;
+  
+  const callHour = callTimeCode.substring(0, 2);
+  const callMinute = callTimeCode.substring(2, 4);
+  const callTime = `${callHour}:${callMinute}:00`;
+  
+  return {
+    customerId,
+    customerRegistrationDate,
+    salespersonName,
+    productName,
+    callDate,
+    callTime,
+    audioUrl: `/uploads/${filename}`
+  };
+}
+
+app.post('/api/audio/parse-and-update', async (req, res) => {
+  try {
+    const { filename, recordId } = req.body;
+    
+    if (!filename || !recordId) {
+      return res.status(400).json({ error: '缺少 filename 或 recordId' });
+    }
+    
+    // 解析檔名
+    const parsed = parseAudioFilename(filename);
+    addLog('info', '檔名解析成功', JSON.stringify(parsed));
+    
+    const pool = pools.online;
+    if (!pool) {
+      return res.status(500).json({ error: '數據庫未連接' });
+    }
+    
+    // 更新數據庫
+    const updateResult = await pool.query(`
+      UPDATE audio_recordings
+      SET
+        customer_id = $1,
+        business_name = $2,
+        product_name = $3,
+        call_date = $4,
+        call_time = $5,
+        audio_url = $6,
+        updated_at = NOW()
+      WHERE id = $7
+      RETURNING *
+    `, [
+      parsed.customerId,
+      parsed.salespersonName,
+      parsed.productName,
+      parsed.callDate,
+      parsed.callTime,
+      parsed.audioUrl,
+      recordId
+    ]);
+    
+    if (updateResult.rows.length === 0) {
+      return res.status(404).json({ error: `找不到 ID 為 ${recordId} 的記錄` });
+    }
+    
+    addLog('info', '音檔記錄已更新', `ID: ${recordId}`);
+    
+    res.json({
+      success: true,
+      message: '記錄已更新',
+      data: updateResult.rows[0]
+    });
+  } catch (err) {
+    addLog('error', '解析或更新音檔記錄失敗', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(PORT, () => {
   addLog('info', `CRM 3.0 服務器啟動成功，監聽端口 ${PORT}`);
   console.log(`
