@@ -322,8 +322,8 @@ export default function Recordings() {
                       </td>
 
                       <td className="col-filename">
-                        <span className="filename" title={decodeURIComponent(record.audio_url.split("/").pop())}>
-                          {decodeURIComponent(record.audio_url.split("/").pop())}
+                        <span className="filename" title={record.audio_filename || decodeURIComponent(record.audio_url.split("/").pop())}>
+                          {record.audio_filename || decodeURIComponent(record.audio_url.split("/").pop())}
                         </span>
                       </td>
 
