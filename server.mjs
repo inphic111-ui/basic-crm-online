@@ -742,7 +742,15 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: '沒有選擇文件' });
     }
 
-    const fileName = req.file.originalname;
+    // 修復檔名編碼問題：移除特殊字符，保留字母數字和下劃線
+    let fileName = req.file.originalname;
+    // 使用 Buffer 確保正確的 UTF-8 編碼
+    fileName = Buffer.from(fileName, 'utf8').toString('utf8');
+    // 移除可能導致問題的特殊字符，但保留中文字符
+    // fileName = fileName.replace(/[^\w\u4e00-\u9fa5.-]/g, '_');
+    // 或者使用 URL 編碼
+    // fileName = encodeURIComponent(fileName);
+    addLog('info', '【檔名診斷】原始檔名', { originalname: req.file.originalname, encodedName: fileName });
 
     // 嘗試解析 req.body.data
     let parsedData = {};
@@ -761,9 +769,22 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
     let recordingId = timestamp;
 
     try {
+      // 診斷：檢查 R2 Client 是否初始化
+      if (!r2Client) {
+        addLog('error', '❌ R2 Client 未初始化', {
+          R2_ENDPOINT: process.env.R2_ENDPOINT ? '已設置' : '未設置',
+          R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID ? '已設置' : '未設置',
+          R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY ? '已設置' : '未設置',
+        });
+        return res.status(500).json({ error: 'R2 Client 未初始化' });
+      }
+
       addLog('info', '開始上傳到 R2', {
         Bucket: process.env.R2_BUCKET_NAME,
         Key: fileKey,
+        fileName: fileName,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype,
       });
 
       const putCommand = new PutObjectCommand({
@@ -773,16 +794,32 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
         ContentType: req.file.mimetype
       });
 
-      await r2Client.send(putCommand);
+      addLog('info', '【R2 診斷】PutObjectCommand 已構建，準備發送...');
+      const uploadResponse = await r2Client.send(putCommand);
+      addLog('info', '【R2 診斷】上傳命令執行完成', {
+        ETag: uploadResponse.ETag,
+        VersionId: uploadResponse.VersionId,
+      });
 
       // 公開網址
       const publicBase = process.env.R2_PUBLIC_URL || process.env.R2_ENDPOINT;
       audioUrl = `${publicBase}/${fileKey}`;
 
-      addLog('info', '✅ 音檔成功上傳到 R2', { audioUrl });
+      addLog('info', '✅ 音檔成功上傳到 R2', { 
+        audioUrl, 
+        fileKey,
+        fileName: fileName,
+        timestamp: timestamp
+      });
 
     } catch (err) {
-      addLog('error', '❌ R2 上傳失敗', err.message);
+      addLog('error', '❌ R2 上傳失敗', {
+        fileName: fileName,
+        fileKey: fileKey,
+        message: err.message,
+        code: err.code,
+        statusCode: err.statusCode,
+      });
       return res.status(500).json({ error: 'R2 上傳失敗：' + err.message });
     }
 
@@ -809,11 +846,17 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
 
         addLog('info', '✅ DB 已建立音檔記錄', {
           recordingId,
-          customerNumber
+          customerNumber,
+          fileName: fileName,
+          audioUrl: audioUrl
         });
 
       } catch (dbErr) {
-        addLog('warn', '⚠️ DB 寫入失敗（但 R2 上傳成功）', dbErr.message);
+        addLog('warn', '⚠️ DB 寫入失敗（但 R2 上傳成功）', {
+          message: dbErr.message,
+          fileName: fileName,
+          audioUrl: audioUrl
+        });
       }
     } else {
       addLog('warn', '⚠️ DB 未連接（但 R2 上傳已成功）');
