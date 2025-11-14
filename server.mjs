@@ -67,12 +67,12 @@ function addLog(level, message, data = null) {
 const config = {
   offline: {
     name: 'OFFLINE (測試)',
-    dbUrl: (process.env.OFFLINE_DB_URL || process.env.DATABASE_URL || '').replace('?', '?sslmode=require&').replace('postgresql://', 'postgresql://'),
+    dbUrl: (process.env.OFFLINE_DB_URL || process.env.DATABASE_URL || '').replace('?', '?sslmode=disable&').replace('postgresql://', 'postgresql://'),
     logFile: '/tmp/offline.log'
   },
   online: {
     name: 'ONLINE (正式)',
-    dbUrl: (process.env.ONLINE_DB_URL || process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL || '').replace('?', '?sslmode=require&').replace('postgresql://', 'postgresql://'),
+    dbUrl: (process.env.ONLINE_DB_URL || process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL || '').replace('?', '?sslmode=disable&').replace('postgresql://', 'postgresql://'),
     logFile: '/tmp/online.log'
   }
 };
@@ -639,11 +639,9 @@ app.get('/api/audio/list', async (req, res) => {
         call_date,
         call_time,
         audio_url,
-        audio_filename,
+        transcription_text,
         transcription_status,
         analysis_status,
-        analysis_summary,
-        ai_tags,
         created_at
       FROM audio_recordings
       ORDER BY created_at DESC
@@ -654,7 +652,8 @@ app.get('/api/audio/list', async (req, res) => {
 
   } catch (err) {
     addLog('error', '❌ /api/audio/list 失敗', err.message);
-    res.json([]); // 永遠不要讓前端崩潰
+    console.error('Full SQL Error:', err);
+    res.status(200).json([]);
   }
 });
 

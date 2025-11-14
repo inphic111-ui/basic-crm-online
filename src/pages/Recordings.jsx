@@ -32,9 +32,10 @@ export default function Recordings() {
 
     if (search) {
       filtered = filtered.filter(r =>
-        (r.audio_filename || '').toLowerCase().includes(search.toLowerCase()) ||
+        (r.id || '').toString().toLowerCase().includes(search.toLowerCase()) ||
         (r.business_name || '').includes(search) ||
-        (r.product_name || '').includes(search)
+        (r.product_name || '').includes(search) ||
+        (r.customer_id || '').toString().includes(search)
       );
     }
 
@@ -214,17 +215,13 @@ export default function Recordings() {
                 <td className="col-play">
                   <button className="play-btn" title="播放">▶</button>
                 </td>
-                <td className="col-filename">{record.audio_filename || '-'}</td>
+                <td className="col-filename">{record.audio_filename || `錄音_${record.id}`}</td>
                 <td className="col-customer">{record.customer_id || '-'}</td>
                 <td className="col-business">{record.business_name || '-'}</td>
                 <td className="col-time">{formatDateTime(record.call_date, record.call_time)}</td>
                 <td className="col-duration">-</td>
-                <td className="col-tags">
-                  {record.ai_tags && record.ai_tags.length > 0
-                    ? record.ai_tags.slice(0, 3).join('、')
-                    : '-'}
-                </td>
-                <td className="col-summary">{record.analysis_summary || '-'}</td>
+                <td className="col-tags">-</td>
+                <td className="col-summary">{(record.transcription_text || '').substring(0, 50) || '-'}</td>
                 <td className="col-status">{getStatusText(record.analysis_status)}</td>
               </tr>
             ))}

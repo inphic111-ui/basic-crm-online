@@ -123,7 +123,7 @@
 
 .recordings-table thead {
   background-color: #f9f9f9;
-  border-bottom: 2px solid #eee;
+  border-bottom: 1px solid #eee;
 }
 
 .recordings-table th {
@@ -132,7 +132,7 @@
   font-weight: 600;
   color: #666;
   white-space: nowrap;
-  border-right: 1px solid #eee;
+  border-right: none;
 }
 
 .recordings-table th:last-child {
@@ -154,7 +154,7 @@
 
 .recordings-table td {
   padding: 12px;
-  border-right: 1px solid #eee;
+  border-right: none;
   color: #333;
   word-break: break-word;
 }
@@ -225,22 +225,24 @@
 
 /* 播放按鈕 */
 .play-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background-color: #1976d2;
-  color: white;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background-color: transparent;
+  color: #1976d2;
   border: none;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.3s;
+  transition: color 0.3s;
+  padding: 0;
+  line-height: 1;
 }
 
 .play-btn:hover {
-  background-color: #1565c0;
+  color: #1565c0;
 }
 
 /* 空狀態 */
