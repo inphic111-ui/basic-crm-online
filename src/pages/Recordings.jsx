@@ -28,15 +28,25 @@ export default function Recordings() {
         ? `/api/audio/list?salesperson=${encodeURIComponent(selectedSalesperson)}`
         : '/api/audio/list'
       
+      console.log('🔍 正在獲取音檔列表，URL:', url)
       const response = await fetch(url)
+      console.log('📡 API 響應狀態碼:', response.status)
+      
       if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ API 返回錯誤:', errorText)
         throw new Error(`獲取音檔列表失敗: ${response.status}`)
       }
+      
       const data = await response.json()
+      console.log('✅ 成功獲取音檔列表，共', data?.length || 0, '筆記錄')
+      console.log('📊 音檔數據:', data)
+      
       setAudioFiles(data || [])
       setError(null)
     } catch (err) {
-      console.error('獲取音檔列表失敗:', err)
+      console.error('❌ 獲取音檔列表失敗:', err)
+      console.error('❌ 錯誤詳情:', err.message)
       setError(err.message)
       setAudioFiles([])
     } finally {
@@ -123,6 +133,29 @@ export default function Recordings() {
     if (status === 'completed' || status === 'done') return '✅已分析'
     if (status === 'pending' || status === 'processing') return '⏳分析中'
     return status
+  }
+
+  // 解析 ai_tags（從 JSON 字符串轉換為陣列）
+  const parseAiTags = (tagsData) => {
+    if (!tagsData) return []
+    
+    // 如果已經是陣列，直接返回
+    if (Array.isArray(tagsData)) {
+      return tagsData
+    }
+    
+    // 如果是字符串，嘗試解析 JSON
+    if (typeof tagsData === 'string') {
+      try {
+        const parsed = JSON.parse(tagsData)
+        return Array.isArray(parsed) ? parsed : []
+      } catch (err) {
+        console.warn('解析 ai_tags 失敗:', err, 'tagsData:', tagsData)
+        return []
+      }
+    }
+    
+    return []
   }
 
   return (
@@ -231,11 +264,14 @@ export default function Recordings() {
                     </button>
                   </td>
                   <td className="ai-tags-col">
-                    {audio.ai_tags && audio.ai_tags.length > 0
-                      ? audio.ai_tags.slice(0, 3).map((tag, i) => (
-                          <span key={i} className="ai-tag">{tag}</span>
-                        ))
-                      : '-'}
+                    {(() => {
+                      const tags = parseAiTags(audio.ai_tags)
+                      return tags && tags.length > 0
+                        ? tags.slice(0, 3).map((tag, i) => (
+                            <span key={i} className="ai-tag">{tag}</span>
+                          ))
+                        : '-'
+                    })()}
                   </td>
                   <td className="analysis-col">
                     {audio.analysis_summary || '-'}
