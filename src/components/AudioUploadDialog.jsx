@@ -16,6 +16,20 @@ export default function AudioUploadDialog({ isOpen, onClose, onUploadSuccess }) 
     const file = e.target.files?.[0]
     if (!file) return
 
+    // 驗證文件大小（限制 50MB）
+    const maxSize = 50 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setError('文件大小超過 50MB 限制');
+      return;
+    }
+    
+    // 驗證文件類型
+    const allowedTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/webm'];
+    if (!allowedTypes.includes(file.type)) {
+      setError('不支援的音檔格式，請上傳 MP3、WAV、OGG 或 WebM 格式');
+      return;
+    }
+
     setSelectedFile(file)
     setLoading(true)
     setError(null)
@@ -29,7 +43,8 @@ export default function AudioUploadDialog({ isOpen, onClose, onUploadSuccess }) 
       })
 
       if (!response.ok) {
-        throw new Error(`解析失敗: ${response.status}`)
+        const errorData = await response.json()
+        throw new Error(errorData.error || `解析失敗: ${response.status}`)
       }
 
       const data = await response.json()
@@ -37,7 +52,7 @@ export default function AudioUploadDialog({ isOpen, onClose, onUploadSuccess }) 
       setStep(2)
     } catch (err) {
       console.error('解析檔名失敗:', err)
-      setError(err.message)
+      setError(`❌ ${err.message}`)
     } finally {
       setLoading(false)
     }
@@ -61,22 +76,27 @@ export default function AudioUploadDialog({ isOpen, onClose, onUploadSuccess }) 
       })
 
       if (!response.ok) {
-        throw new Error(`上傳失敗: ${response.status}`)
+        const errorData = await response.json()
+        throw new Error(errorData.error || `HTTP ${response.status}: 上傳失敗`)
       }
 
       const result = await response.json()
       
-      // 上傳成功
-      onUploadSuccess(result)
-      
-      // 重置狀態
-      setStep(1)
-      setSelectedFile(null)
-      setParsedData(null)
-      onClose()
+      if (result.success && result.audio_url) {
+        // 上傳成功
+        onUploadSuccess(result)
+        
+        // 重置狀態
+        setStep(1)
+        setSelectedFile(null)
+        setParsedData(null)
+        onClose()
+      } else {
+        throw new Error(result.error || '上傳失敗：未收到有效的 URL')
+      }
     } catch (err) {
       console.error('上傳失敗:', err)
-      setError(err.message)
+      setError(`❌ ${err.message}`)
     } finally {
       setLoading(false)
     }

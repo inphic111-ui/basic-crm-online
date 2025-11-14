@@ -15,6 +15,11 @@ export default function Recordings() {
   // 上傳對話框已移除，不再需要此狀态
   const [showTranscriptionModal, setShowTranscriptionModal] = useState(false)
   const [selectedTranscription, setSelectedTranscription] = useState(null)
+  
+  // 音檔上傳的 state
+  const [audioUploadLoading, setAudioUploadLoading] = useState(false)
+  const [audioUploadError, setAudioUploadError] = useState(null)
+  const [audioUploadSuccess, setAudioUploadSuccess] = useState(false)
 
   // 獲取音檔列表
   useEffect(() => {
@@ -115,8 +120,25 @@ export default function Recordings() {
 
   const uploadAudioFile = async (file) => {
     try {
+      // 驗證文件大小（限制 50MB）
+      const maxSize = 50 * 1024 * 1024;
+      if (file.size > maxSize) {
+        setAudioUploadError('文件大小超過 50MB 限制');
+        return;
+      }
+      
+      // 驗證文件類型
+      const allowedTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/webm'];
+      if (!allowedTypes.includes(file.type)) {
+        setAudioUploadError('不支援的音檔格式，請上傳 MP3、WAV、OGG 或 WebM 格式');
+        return;
+      }
+      
+      setAudioUploadLoading(true);
+      setAudioUploadError(null);
+      setAudioUploadSuccess(false);
+      
       // 簡化：直接使用檔名的前 4 位作為客戶編號（如果是數字）
-      // 否則使用默認值 1
       const nameWithoutExt = file.name.replace(/\.[^\/\.]+$/, '')
       const firstPart = nameWithoutExt.split('_')[0]
       
@@ -129,7 +151,6 @@ export default function Recordings() {
         // 如果是純數字，直接使用
         customerId = firstPart
       }
-      // 否則使用默認值 1
       
       // 上傳檔案
       const formData = new FormData()
@@ -145,16 +166,24 @@ export default function Recordings() {
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        alert(`上傳失敗: ${error.error || response.status}`)
-        return
+        const errorData = await response.json()
+        throw new Error(errorData.error || `HTTP ${response.status}: 上傳失敗`);
       }
 
-      alert('上傳成功')
-      fetchAudioFiles()
+      const result = await response.json()
+      if (result.success && result.audio_url) {
+        setAudioUploadSuccess(true);
+        setAudioUploadError(null);
+        setTimeout(() => setAudioUploadSuccess(false), 3000);
+        fetchAudioFiles()
+      } else {
+        throw new Error(result.error || '上傳失敗：未收到有效的 URL');
+      }
     } catch (err) {
       console.error('上傳失敗:', err)
-      alert(`上傳失敗: ${err.message}`)
+      setAudioUploadError(`❌ ${err.message}`);
+    } finally {
+      setAudioUploadLoading(false);
     }
   }
   

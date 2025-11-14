@@ -314,6 +314,11 @@ function Customers() {
   // 分頁功能的 state
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(50)
+  
+  // 音檔上傳的 state
+  const [audioUploadLoading, setAudioUploadLoading] = useState(false)
+  const [audioUploadError, setAudioUploadError] = useState(null)
+  const [audioUploadSuccess, setAudioUploadSuccess] = useState(false)
 
   // 生成隨機人名列表
   const generateResponsiblePersons = () => {
@@ -1147,28 +1152,60 @@ function Customers() {
                           type="file" 
                           accept="audio/*" 
                           id="audio-upload"
+                          disabled={audioUploadLoading}
                           onChange={(e) => {
                             const file = e.target.files?.[0];
-                            if (file) {
-                              const formData = new FormData();
-                              formData.append('file', file);
-                              formData.append('customerId', editFormData.id);
-                              
-                              fetch('/api/audio/upload', {
-                                method: 'POST',
-                                body: formData
-                              })
-                              .then(res => res.json())
-                              .then(data => {
-                                if (data.success) {
-                                  alert('音檔上傳成功');
-                                  setEditFormData({...editFormData, audioUrl: data.audio_url});
-                                } else {
-                                  alert('音檔上傳失敗: ' + data.error);
-                                }
-                              })
-                              .catch(err => alert('上傳錯誤: ' + err.message));
+                            if (!file) return;
+                            
+                            const maxSize = 50 * 1024 * 1024;
+                            if (file.size > maxSize) {
+                              setAudioUploadError('文件大小超過 50MB 限制');
+                              return;
                             }
+                            
+                            const allowedTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/webm'];
+                            if (!allowedTypes.includes(file.type)) {
+                              setAudioUploadError('不支援的音檔格式，請上傳 MP3、WAV、OGG 或 WebM 格式');
+                              return;
+                            }
+                            
+                            setAudioUploadLoading(true);
+                            setAudioUploadError(null);
+                            setAudioUploadSuccess(false);
+                            
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            formData.append('customerId', editFormData.id);
+                            
+                            fetch('/api/audio/upload', {
+                              method: 'POST',
+                              body: formData
+                            })
+                            .then(res => {
+                              if (!res.ok) {
+                                return res.json().then(data => {
+                                  throw new Error(data.error || `HTTP ${res.status}: 上傳失敗`);
+                                });
+                              }
+                              return res.json();
+                            })
+                            .then(data => {
+                              if (data.success && data.audio_url) {
+                                setEditFormData({...editFormData, audioUrl: data.audio_url});
+                                setAudioUploadSuccess(true);
+                                setAudioUploadError(null);
+                                setTimeout(() => setAudioUploadSuccess(false), 3000);
+                              } else {
+                                throw new Error(data.error || '上傳失敗：未收到有效的 URL');
+                              }
+                            })
+                            .catch(err => {
+                              console.error('音檔上傳錯誤:', err);
+                              setAudioUploadError(`❌ ${err.message}`);
+                            })
+                            .finally(() => {
+                              setAudioUploadLoading(false);
+                            });
                           }}
                           style={{ display: 'none' }}
                         />
