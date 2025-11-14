@@ -1,29 +1,29 @@
-/* 音檔管理頁面樣式 */
+/* 音檔別表頁面樣式 */
 
-.recordings-container {
+.recordings-page {
   padding: 24px;
-  background-color: #f5f5f5;
+  background-color: #f0f2f5;
   min-height: calc(100vh - 60px);
 }
 
 .recordings-header {
-  margin-bottom: 32px;
+  margin-bottom: 20px;
 }
 
 .recordings-header h1 {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 600;
   color: #1a1a1a;
   margin: 0 0 8px 0;
 }
 
-.recordings-header .subtitle {
-  font-size: 14px;
+.record-count {
+  font-size: 13px;
   color: #666;
   margin: 0;
 }
 
-/* 加載狀態 */
+/* 加載和錯誤狀態 */
 .loading-state,
 .error-state,
 .empty-state {
@@ -39,7 +39,7 @@
 .loading-state p,
 .error-state p,
 .empty-state p {
-  font-size: 16px;
+  font-size: 14px;
   color: #666;
   margin: 0;
 }
@@ -54,111 +54,136 @@
 }
 
 /* 表格容器 */
-.table-wrapper {
+.table-container {
   background-color: white;
   border-radius: 8px;
   border: 1px solid #e0e0e0;
-  overflow-x: auto;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 /* 表格樣式 */
 .recordings-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .recordings-table thead {
-  background-color: #f9f9f9;
-  border-bottom: 2px solid #0066cc;
+  background-color: #fafafa;
+  border-bottom: 1px solid #e0e0e0;
 }
 
 .recordings-table thead th {
-  padding: 16px 12px;
+  padding: 12px 8px;
   text-align: left;
-  font-weight: 600;
-  color: #0066cc;
+  font-weight: 500;
+  color: #333;
   white-space: nowrap;
   user-select: none;
+  border-right: 1px solid #f0f0f0;
+}
+
+.recordings-table thead th:last-child {
+  border-right: none;
 }
 
 .recordings-table tbody tr {
-  border-bottom: 1px solid #e0e0e0;
-  transition: background-color 0.2s ease;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.15s ease;
 }
 
 .recordings-table tbody tr:hover {
-  background-color: #f9f9f9;
+  background-color: #fafafa;
+}
+
+.recordings-table tbody tr.selected {
+  background-color: #f5f5f5;
 }
 
 .recordings-table tbody td {
-  padding: 12px;
+  padding: 12px 8px;
   vertical-align: middle;
+  border-right: 1px solid #f0f0f0;
+}
+
+.recordings-table tbody td:last-child {
+  border-right: none;
 }
 
 /* 列寬設定 */
+.col-checkbox {
+  width: 40px;
+  text-align: center;
+}
+
 .col-play {
-  width: 60px;
+  width: 50px;
   text-align: center;
 }
 
 .col-filename {
-  width: 180px;
+  width: 200px;
 }
 
 .col-customer {
   width: 80px;
+  text-align: center;
 }
 
 .col-business {
-  width: 140px;
+  width: 80px;
+  text-align: center;
 }
 
-.col-product {
-  width: 180px;
+.col-datetime {
+  width: 160px;
 }
 
-.col-date {
-  width: 120px;
+.col-duration {
+  width: 70px;
+  text-align: center;
 }
 
-.col-time {
-  width: 100px;
+.col-ai-tags {
+  width: 200px;
 }
 
-.col-transcription {
-  width: 120px;
+.col-status {
+  width: 160px;
 }
 
-.col-analysis {
-  width: 120px;
+/* 複選框 */
+.recordings-table input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #0066cc;
 }
 
 /* 播放按鈕 */
-.play-button {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+.play-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
   background-color: #0066cc;
   border: none;
   color: white;
-  font-size: 18px;
+  font-size: 14px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
+  font-weight: bold;
+}
+
+.play-btn:hover {
+  background-color: #0052a3;
   box-shadow: 0 2px 4px rgba(0, 102, 204, 0.2);
 }
 
-.play-button:hover {
-  background-color: #0052a3;
-  box-shadow: 0 4px 8px rgba(0, 102, 204, 0.3);
-  transform: scale(1.05);
-}
-
-.play-button:active {
+.play-btn:active {
   transform: scale(0.95);
 }
 
@@ -166,133 +191,190 @@
 .filename {
   color: #0066cc;
   font-weight: 500;
-  word-break: break-word;
+  word-break: break-all;
+  font-size: 12px;
 }
 
-/* 客戶編號 */
-.customer-id {
-  color: #1a1a1a;
-  font-weight: 500;
+/* AI標籤容器 */
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-/* 業務名稱 */
-.business-name {
+.tag {
+  display: inline-block;
+  padding: 3px 10px;
+  background-color: #f0f0f0;
   color: #333;
+  border-radius: 12px;
+  font-size: 12px;
+  white-space: nowrap;
+  border: 1px solid #e0e0e0;
 }
 
-/* 產品名稱 */
-.product-name {
-  color: #333;
+/* 狀態容器 */
+.status-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-/* 日期和時間 */
-.call-date,
-.call-time {
-  color: #666;
-  font-family: "Courier New", monospace;
-}
-
-/* 狀態徽章 */
 .status-badge {
   display: inline-block;
-  padding: 4px 12px;
+  padding: 4px 10px;
   border-radius: 12px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   white-space: nowrap;
+  text-align: center;
 }
 
-.status-completed {
+.status-badge.completed {
   background-color: #e8f5e9;
   color: #2e7d32;
 }
 
-.status-pending {
+.status-badge.pending {
   background-color: #fff3e0;
   color: #e65100;
 }
 
 /* 響應式設計 */
-@media (max-width: 1200px) {
+@media (max-width: 1400px) {
   .col-filename {
+    width: 160px;
+  }
+
+  .col-ai-tags {
+    width: 160px;
+  }
+
+  .col-status {
     width: 140px;
   }
 
-  .col-business {
-    width: 100px;
-  }
-
-  .col-product {
-    width: 140px;
+  .recordings-table {
+    font-size: 12px;
   }
 
   .recordings-table thead th,
   .recordings-table tbody td {
-    padding: 10px 8px;
-    font-size: 13px;
+    padding: 10px 6px;
+  }
+
+  .filename {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .recordings-page {
+    padding: 16px;
+  }
+
+  .col-filename {
+    width: 140px;
+  }
+
+  .col-datetime {
+    width: 140px;
+  }
+
+  .col-ai-tags {
+    width: 140px;
+  }
+
+  .col-status {
+    width: 120px;
+  }
+
+  .recordings-table {
+    font-size: 11px;
+  }
+
+  .recordings-table thead th,
+  .recordings-table tbody td {
+    padding: 8px 5px;
+  }
+
+  .play-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .tag {
+    padding: 2px 8px;
+    font-size: 11px;
+  }
+
+  .status-badge {
+    padding: 3px 8px;
+    font-size: 11px;
   }
 }
 
 @media (max-width: 768px) {
-  .recordings-container {
-    padding: 16px;
+  .recordings-page {
+    padding: 12px;
   }
 
   .recordings-header h1 {
-    font-size: 24px;
-  }
-
-  .table-wrapper {
-    overflow-x: auto;
-  }
-
-  .col-play {
-    width: 50px;
+    font-size: 20px;
   }
 
   .col-filename {
     width: 120px;
   }
 
+  .col-customer,
   .col-business {
-    width: 80px;
+    width: 70px;
   }
 
-  .col-product {
+  .col-datetime {
+    width: 120px;
+  }
+
+  .col-duration {
+    width: 60px;
+  }
+
+  .col-ai-tags {
     width: 100px;
   }
 
-  .col-date {
+  .col-status {
     width: 100px;
   }
 
-  .col-time {
-    width: 80px;
-  }
-
-  .col-transcription,
-  .col-analysis {
-    width: 100px;
-  }
-
-  .play-button {
-    width: 36px;
-    height: 36px;
-    font-size: 16px;
+  .recordings-table {
+    font-size: 10px;
   }
 
   .recordings-table thead th,
   .recordings-table tbody td {
-    padding: 8px 6px;
-    font-size: 12px;
+    padding: 6px 4px;
+  }
+
+  .play-btn {
+    width: 24px;
+    height: 24px;
+    font-size: 10px;
   }
 
   .filename {
-    font-size: 12px;
+    font-size: 10px;
+  }
+
+  .tag {
+    padding: 2px 6px;
+    font-size: 10px;
   }
 
   .status-badge {
-    padding: 3px 8px;
-    font-size: 11px;
+    padding: 2px 6px;
+    font-size: 10px;
   }
 }
