@@ -625,40 +625,37 @@ app.get('/api/customers/:id', async (req, res) => {
 // API: 刪除客戶
 
 // 音檔列表端點
+// 取得所有音檔清單
 app.get('/api/audio/list', async (req, res) => {
   try {
     const pool = pools.online;
+
     if (!pool) {
-      return res.status(500).json({ error: '數據庫未連接' });
+      return res.json([]); // DB 連不到也不要報錯
     }
 
-    const result = await pool.query(`
+    const query = `
       SELECT 
-        id,
+        id as recording_id,
         customer_id,
-        business_name,
+        business_name AS salesperson_name,
         product_name,
         call_date,
         call_time,
         audio_url,
-        transcription_text,
         transcription_status,
-        analysis_summary,
         analysis_status,
-        ai_tags,
-        overall_status,
-        created_at,
-        updated_at
+        created_at
       FROM audio_recordings
       ORDER BY created_at DESC
-      LIMIT 100
-    `);
-    
-    const audioList = result.rows || [];
-    res.json(audioList);
+    `;
+
+    const result = await pool.query(query);
+    res.json(result.rows);
+
   } catch (err) {
-    addLog('error', '獲取音檔列表失敗', err.message);
-    res.status(500).json({ error: err.message });
+    addLog('error', '❌ /api/audio/list 失敗', err.message);
+    res.json([]); // 永遠不要讓前端崩潰
   }
 });
 
