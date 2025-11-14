@@ -735,143 +735,94 @@ app.post('/api/audio/parse-filename', async (req, res) => {
   }
 });
 
-// 音檔上傳端點
+// 音檔上傳端點（格式化後最終版本）
 app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: '沒有選擇文件' });
     }
 
-    // 修復檔名編碼問題：移除特殊字符，保留字母數字和下劃線
-    let fileName = req.file.originalname;
-    // 使用 Buffer 確保正確的 UTF-8 編碼
-    fileName = Buffer.from(fileName, 'utf8').toString('utf8');
-    // 移除可能導致問題的特殊字符，但保留中文字符
-    // fileName = fileName.replace(/[^\w\u4e00-\u9fa5.-]/g, '_');
-    // 或者使用 URL 編碼
-    // fileName = encodeURIComponent(fileName);
-    addLog('info', '【檔名診斷】原始檔名', { originalname: req.file.originalname, encodedName: fileName });
+    // 原始檔名
+    const fileName = req.file.originalname;
 
-    // 嘗試解析 req.body.data
+    // 嘗試解析 data
     let parsedData = {};
-    if (req.body.data) {
-      try {
+    try {
+      if (req.body.data) {
         parsedData = JSON.parse(req.body.data);
-      } catch (e) {
-        addLog('warn', '解析 data 字段失敗', e.message);
       }
+    } catch (e) {
+      addLog('warn', '解析 data 失敗', e.message);
     }
 
-    // ---------- Step 1：上傳到 R2 ----------
-    const recordingId = Date.now();
+    // 預設 recordingId（如果 DB 寫入失敗）
+    let recordingId = Date.now();
+
+    // 🔵 先上傳 R2（不依賴資料庫）
     const fileKey = `audio-recordings/${recordingId}/${fileName}`;
-    let audioUrl = '';
+    let audioUrl = "";
 
     try {
-      // 診斷：檢查 R2 Client 是否初始化
-      if (!r2Client) {
-        addLog('error', '❌ R2 Client 未初始化', {
-          R2_ENDPOINT: process.env.R2_ENDPOINT ? '已設置' : '未設置',
-          R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID ? '已設置' : '未設置',
-          R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY ? '已設置' : '未設置',
-        });
-        return res.status(500).json({ error: 'R2 Client 未初始化' });
-      }
-
-      addLog('info', '開始上傳到 R2', {
-        Bucket: process.env.R2_BUCKET_NAME,
-        Key: fileKey,
-        fileName: fileName,
-        fileSize: req.file.size,
-        mimeType: req.file.mimetype,
-      });
-
-      const putCommand = new PutObjectCommand({
+      const uploadCommand = new PutObjectCommand({
         Bucket: process.env.R2_BUCKET_NAME,
         Key: fileKey,
         Body: req.file.buffer,
-        ContentType: req.file.mimetype
+        ContentType: req.file.mimetype,
       });
 
-      addLog('info', '【R2 診斷】PutObjectCommand 已構建，準備發送...');
-      const uploadResponse = await r2Client.send(putCommand);
-      addLog('info', '【R2 診斷】上傳命令執行完成', {
-        ETag: uploadResponse.ETag,
-        VersionId: uploadResponse.VersionId,
-      });
+      addLog("info", "開始上傳到 R2", { fileKey });
+      await r2Client.send(uploadCommand);
 
-      // 公開網址
-      audioUrl = `${process.env.R2_PUBLIC_URL}/${fileKey}`;
+      // 公開 URL
+      const baseUrl = process.env.R2_PUBLIC_URL || process.env.R2_ENDPOINT;
+      audioUrl = `${baseUrl}/${fileKey}`;
 
-      addLog('info', '✅ 音檔成功上傳到 R2', { 
-        audioUrl, 
-        fileKey,
-        fileName: fileName,
-        recordingId: recordingId
-      });
-
+      addLog("info", "✅ 上傳 R2 成功", { audioUrl });
     } catch (err) {
-      addLog('error', '❌ R2 上傳失敗', {
-        fileName: fileName,
-        fileKey: fileKey,
-        message: err.message,
-        code: err.code,
-        statusCode: err.statusCode,
-      });
-      return res.status(500).json({ error: 'R2 上傳失敗：' + err.message });
+      addLog("error", "❌ R2 上傳失敗", err.message);
+      return res.status(500).json({ error: "R2 上傳失敗：" + err.message });
     }
 
-    // ---------- Step 2：寫入資料庫（可選） ----------
-    const pool = pools.online;
-    if (pool) {
-      try {
-        const customerNumber = parsedData.customer_id || null;
-        const businessName = parsedData.salesperson_name || '';
-        const productName = parsedData.product_name || '';
-        const callDate = parsedData.call_date || new Date().toISOString().split('T')[0];
-        const callTime = parsedData.call_time || '00:00:00';
-
-        const result = await pool.query(
-          `INSERT INTO audio_recordings 
-          (customer_id, business_name, product_name, call_date, call_time, audio_url,
-           transcription_status, analysis_status, overall_status, created_at, updated_at)
-           VALUES ($1,$2,$3,$4,$5,$6,'pending','pending','processing',NOW(),NOW())
-           RETURNING id`,
-          [customerNumber, businessName, productName, callDate, callTime, audioUrl]
+    // 🔵 再寫入資料庫（可選）
+    try {
+      const pool = pools.online;
+      if (pool) {
+        const insert = await pool.query(
+          `
+          INSERT INTO audio_recordings 
+          (customer_id, business_name, product_name, call_date, call_time, audio_url, transcription_status, analysis_status, overall_status, created_at, updated_at)
+          VALUES ($1, $2, $3, $4, $5, $6, 'pending', 'pending', 'processing', NOW(), NOW())
+          RETURNING id
+          `,
+          [
+            parsedData.customer_id || null,
+            parsedData.salesperson_name || "",
+            parsedData.product_name || "",
+            parsedData.call_date || new Date().toISOString().split("T")[0],
+            parsedData.call_time || "00:00:00",
+            audioUrl,
+          ]
         );
 
-        // 使用數據庫返回的真正 ID（如果成功）
-        recordingId = result.rows[0].id;
-
-        addLog('info', '✅ DB 已建立音檔記錄', {
-          recordingId: result.rows[0].id,
-          customerNumber,
-          fileName: fileName,
-          audioUrl: audioUrl
-        });
-
-      } catch (dbErr) {
-        addLog('warn', '⚠️ DB 寫入失敗（但 R2 上傳成功），使用時間戳作為 recordingId', {
-          message: dbErr.message,
-          fileName: fileName,
-          audioUrl: audioUrl,
-          recordingId: recordingId
-        });
+        // 使用 DB 自己的 recordingId
+        recordingId = insert.rows[0].id;
+        addLog("info", "✅ 寫入 DB 成功", { recordingId });
+      } else {
+        addLog("warn", "⚠️ 資料庫未連接，僅上傳 R2");
       }
-    } else {
-      addLog('warn', '⚠️ DB 未連接（但 R2 上傳已成功）');
+    } catch (dbErr) {
+      addLog("warn", "⚠️ DB 寫入失敗（不影響 R2 上傳）", dbErr.message);
     }
 
-    // ---------- 回傳 ----------
-    res.json({
+    // 回傳成功
+    return res.json({
       success: true,
       recording_id: recordingId,
       audio_url: audioUrl,
-      message: '成功'
+      message: "音檔已成功上傳到 R2",
     });
-
   } catch (err) {
-    addLog('error', '❌ 音檔上傳流程錯誤', err.message);
+    addLog("error", "❌ 音檔上傳發生例外", err.message);
     res.status(500).json({ error: err.message });
   }
 });
