@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import '../styles/audio-management.css'
-import AudioUploadDialog from '../components/AudioUploadDialog'
+// import AudioUploadDialog from '../components/AudioUploadDialog' // 已移除
 
 const SALESPERSONS = ['何雨達', '郭庭碩', '鍾汶憲', '何佳珊']
 
@@ -12,7 +12,7 @@ export default function Recordings() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedSalesperson, setSelectedSalesperson] = useState('')
   const [playingAudioId, setPlayingAudioId] = useState(null)
-  const [showUploadDialog, setShowUploadDialog] = useState(false)
+  // const [showUploadDialog, setShowUploadDialog] = useState(false) // 已移除
   const [showTranscriptionModal, setShowTranscriptionModal] = useState(false)
   const [selectedTranscription, setSelectedTranscription] = useState(null)
 
@@ -97,15 +97,13 @@ export default function Recordings() {
     }
   }
 
-  // 上傳音檔
-  const handleUploadAudio = () => {
-    setShowUploadDialog(true)
-  }
-
-  // 上傳成功回調
-  const handleUploadSuccess = (audioRecord) => {
-    fetchAudioFiles()
-  }
+  // 上傳音檔功能已移除
+  // const handleUploadAudio = () => {
+  //   setShowUploadDialog(true)
+  // }
+  // const handleUploadSuccess = (audioRecord) => {
+  //   fetchAudioFiles()
+  // }
 
   // 打開轉錄文本對話框
   const handleViewTranscription = (audio) => {
@@ -166,9 +164,7 @@ export default function Recordings() {
           <span className="music-icon">🎵</span>
           <h1>錄音管理</h1>
         </div>
-        <button className="btn btn-upload" onClick={handleUploadAudio}>
-          ⬆️ 上傳音檔
-        </button>
+        {/* 上傳音檔按鈕已移除 */}
       </div>
 
       {/* 搜尋和篩選 */}
@@ -309,12 +305,7 @@ export default function Recordings() {
         </div>
       )}
 
-      {/* 上傳對話框 */}
-      <AudioUploadDialog
-        isOpen={showUploadDialog}
-        onClose={() => setShowUploadDialog(false)}
-        onUploadSuccess={handleUploadSuccess}
-      />
+      {/* 上傳對話框已移除 */}
     </div>
   )
 }

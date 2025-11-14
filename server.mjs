@@ -732,7 +732,17 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: '沒有選擇文件' });
     }
 
-    const { customerId } = req.body;
+    // 從 req.body.data 中解析出 customer_id
+    let parsedData = {};
+    if (req.body.data) {
+      try {
+        parsedData = JSON.parse(req.body.data);
+      } catch (e) {
+        addLog('warn', '解析 data 字段失敗', e.message);
+      }
+    }
+
+    const customerId = parsedData.customer_id;
     if (!customerId) {
       return res.status(400).json({ error: '缺少客戶 ID' });
     }
