@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import AudioPlayer from 'react-h5-audio-player';
+import 'react-h5-audio-player/lib/styles.css';
 import '../styles/recordings.css';
 
 export default function Recordings() {
@@ -199,11 +201,12 @@ export default function Recordings() {
 
   
   // 播放音檔
+  const [playingRecordId, setPlayingRecordId] = useState(null);
+  const [playingUrl, setPlayingUrl] = useState(null);
+
   const handlePlayAudio = (record) => {
-    const audio = new Audio(record.audio_url);
-    audio.play().catch(error => {
-      console.error('播放失敗:', error);
-    });
+    setPlayingRecordId(record.id);
+    setPlayingUrl(record.audio_url);
   };
 
   const handleCloseSummaryModal = () => {
@@ -298,7 +301,11 @@ export default function Recordings() {
                   />
                 </td>
                 <td className="col-play">
-                  <button className="play-btn" title="播放" onClick={() => handlePlayAudio(record)}>
+                  <button 
+                    className={`play-btn ${playingRecordId === record.id ? 'playing' : ''}`}
+                    title="播放" 
+                    onClick={() => handlePlayAudio(record)}
+                  >
                     <svg viewBox="0 0 24 24" width="16" height="16" style={{fill: 'none', stroke: '#2196F3', strokeWidth: 2}}>
                       <polygon points="6,4 20,12 6,20" />
                     </svg>
@@ -424,6 +431,25 @@ export default function Recordings() {
         </div>
       )}
 
+      {/* 音檔播放器 */}
+      {playingUrl && (
+        <div className="audio-player-container">
+          <div className="audio-player-wrapper">
+            <div className="player-header">
+              <span className="player-title">正在播放</span>
+              <button className="player-close-btn" onClick={() => {setPlayingUrl(null); setPlayingRecordId(null);}}>✕</button>
+            </div>
+            <AudioPlayer
+              autoPlay
+              src={playingUrl}
+              onEnded={() => {setPlayingUrl(null); setPlayingRecordId(null);}}
+              layout="stacked-reverse"
+              customProgressBarSection={['CURRENT_TIME', 'PROGRESS_BAR', 'DURATION']}
+              customControlsSection={['PLAY_PAUSE', 'VOLUME']}
+            />
+          </div>
+        </div>
+      )}
 
     </div>
   );
