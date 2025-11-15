@@ -273,7 +273,7 @@ export default function Recordings() {
                       onClick={() => handleViewTranscription(record.transcription_text, record.audio_filename || `錄音_${record.id}`)}
                       title="查看轉錄文本"
                     >
-                      查看
+                      📄
                     </button>
                   ) : (
                     <span>-</span>
@@ -317,7 +317,7 @@ export default function Recordings() {
                       onClick={() => handleViewSummary(record.analysis_summary, record.audio_filename || `Recording_${record.id}`)}
                       title="View analysis summary"
                     >
-                      View
+                      📋
                     </button>
                   ) : (
                     <span>-</span>

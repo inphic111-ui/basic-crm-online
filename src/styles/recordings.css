@@ -136,6 +136,7 @@
   border-right: none;
   vertical-align: middle;
   height: 44px;
+  line-height: 1.2;
 }
 
 .recordings-table th:last-child {
