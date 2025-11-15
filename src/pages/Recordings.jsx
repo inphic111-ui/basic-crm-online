@@ -200,6 +200,7 @@ export default function Recordings() {
   
   // 播放音檔
   const [playingRecordId, setPlayingRecordId] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef(null);
 
   const handlePlayAudio = (record) => {
@@ -216,14 +217,17 @@ export default function Recordings() {
       if (audioRef.current.paused) {
         console.log('繼續播放');
         audioRef.current.play().catch(err => console.error('播放失敗:', err));
+        setIsPlaying(true);
       } else {
         console.log('暫停播放');
         audioRef.current.pause();
+        setIsPlaying(false);
       }
     } else {
       // 播放新音檔
       console.log('播放新音檔:', record.audio_url);
       setPlayingRecordId(record.id);
+      setIsPlaying(true);
       
       if (audioRef.current) {
         audioRef.current.src = record.audio_url;
@@ -231,6 +235,35 @@ export default function Recordings() {
       }
     }
   };
+  
+  // 監聽音檔播放結束
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setPlayingRecordId(null);
+    };
+    
+    const handlePause = () => {
+      setIsPlaying(false);
+    };
+    
+    const handlePlay = () => {
+      setIsPlaying(true);
+    };
+    
+    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('pause', handlePause);
+    audio.addEventListener('play', handlePlay);
+    
+    return () => {
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('pause', handlePause);
+      audio.removeEventListener('play', handlePlay);
+    };
+  }, []);
 
   const handleCloseSummaryModal = () => {
     setShowSummaryModal(false);
@@ -325,14 +358,21 @@ export default function Recordings() {
                 </td>
                 <td className="col-play">
                   <button 
-                    className={`play-btn ${playingRecordId === record.id ? 'playing' : ''}`}
-                    title="播放" 
+                    className={`play-btn ${playingRecordId === record.id && isPlaying ? 'playing' : ''}`}
+                    title={playingRecordId === record.id && isPlaying ? '暫停' : '播放'} 
                     onClick={() => handlePlayAudio(record)}
                     type="button"
                   >
-                    <svg viewBox="0 0 24 24" width="20" height="20" style={{fill: 'none', stroke: '#2196F3', strokeWidth: 2}}>
-                      <polygon points="6,4 20,12 6,20" />
-                    </svg>
+                    {playingRecordId === record.id && isPlaying ? (
+                      <svg viewBox="0 0 24 24" width="20" height="20" style={{fill: '#2196F3'}}>
+                        <rect x="6" y="4" width="4" height="16" />
+                        <rect x="14" y="4" width="4" height="16" />
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" width="20" height="20" style={{fill: 'none', stroke: '#2196F3', strokeWidth: 2}}>
+                        <polygon points="6,4 20,12 6,20" />
+                      </svg>
+                    )}
                   </button>
                 </td>
                 <td className="col-filename">{record.audio_filename || `錄音_${record.id}`}</td>
