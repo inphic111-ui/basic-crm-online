@@ -135,9 +135,9 @@
   white-space: nowrap;
   border-right: none;
   height: 44px;
-  display: flex;
-  align-items: center;
+  vertical-align: middle;
   line-height: 1.2;
+  display: table-cell;
 }
 
 .recordings-table th:last-child {
@@ -164,9 +164,8 @@
   color: #333;
   word-break: break-word;
   height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
+  vertical-align: middle;
+  display: table-cell;
 }
 
 .recordings-table td:last-child {
@@ -192,7 +191,6 @@
 .col-play {
   width: 60px;
   text-align: center;
-  justify-content: center;
 }
 
 /* 播放按鈕 - 淡藍色邊框三角形 */
