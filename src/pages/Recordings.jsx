@@ -447,7 +447,7 @@ export default function Recordings() {
             </div>
           </div>
         </div>
-
+      )}
 
       {/* 音檔播放器模態框 */}
       {showAudioPlayer && currentAudio && (
