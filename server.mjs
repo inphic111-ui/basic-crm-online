@@ -11,6 +11,9 @@ import http from 'http';
 import { WebSocketServer } from 'ws';
 import FormData from 'form-data';
 import { parseBuffer } from 'music-metadata';
+import axios from 'axios';
+import OpenAI from 'openai';
+import { Blob } from 'buffer';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,6 +22,9 @@ const __dirname = path.dirname(__filename);
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const BUILT_IN_FORGE_API_KEY = process.env.BUILT_IN_FORGE_API_KEY;
 const BUILT_IN_FORGE_API_URL = process.env.BUILT_IN_FORGE_API_URL;
+
+// 初始化 OpenAI 客戶端
+const openaiClient = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -2850,37 +2856,29 @@ async function getAudioDuration(audioUrl) {
 // Whisper 轉錄函數
 async function transcribeAudio(audioUrl) {
   try {
-    // 下載音檔
-    const response = await fetch(audioUrl);
-    if (!response.ok) throw new Error(`下載音檔失敗: ${response.status}`);
-    
-    // 使用 arrayBuffer() 代替 buffer()
-    const arrayBuffer = await response.arrayBuffer();
-    const audioBuffer = Buffer.from(arrayBuffer);
-    
-    // 使用 form-data 庫而不是 FormData
-    const formData = new FormData();
-    formData.append('file', audioBuffer, { filename: 'audio.mp3' });
-    formData.append('model', 'whisper-1');
-    formData.append('language', 'zh');
-    
-    // 调用 OpenAI Whisper API
-    const transcriptionResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: {
-        ...formData.getHeaders(),
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: formData
+    addLog('info', '✅ 開始下載音檔', { audioUrl });
+
+    // 下載 R2 音檔 (必須強制 arraybuffer)
+    const response = await axios.get(audioUrl, {
+      responseType: 'arraybuffer',
     });
-    
-    if (!transcriptionResponse.ok) {
-      const error = await transcriptionResponse.json();
-      throw new Error(`Whisper API 錯誤: ${error.error?.message || transcriptionResponse.statusText}`);
-    }
-    
-    const result = await transcriptionResponse.json();
-    return result.text || '';
+
+    const audioBuffer = Buffer.from(response.data);
+    addLog('info', '✅ 下載完成', { size: audioBuffer.length });
+
+    // Whisper API 需要 Blob / File
+    const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
+
+    addLog('info', '✅ 開始調用 Whisper API', { blobSize: audioBlob.size });
+
+    const transcript = await openaiClient.audio.transcriptions.create({
+      file: audioBlob,
+      model: 'whisper-1',
+      language: 'zh',
+    });
+
+    addLog('info', '✅ Whisper API 成功', { text: transcript.text?.substring(0, 100) });
+    return transcript.text || '';
   } catch (err) {
     addLog('error', '❌ Whisper 轉錄失敗', { error: err.message });
     throw err;
