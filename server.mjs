@@ -9,6 +9,7 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
 import http from 'http';
 import { WebSocketServer } from 'ws';
+import { parseBuffer } from 'music-metadata';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -857,6 +858,18 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
 
     // 預設 recordingId（如果 DB 寫入失敗）
     let recordingId = Date.now();
+    
+    // 🔵 提取音檔長度
+    let duration = 0; // 秒數
+    try {
+      const metadata = await parseBuffer(req.file.buffer, { mimeType: req.file.mimetype });
+      if (metadata.format.duration) {
+        duration = Math.round(metadata.format.duration); // 四捨五入到秒
+        addLog('info', '✅ 音檔長度提取成功', { fileName, durationFormatted: `${Math.floor(duration / 60)}:${String(duration % 60).padStart(2, '0')}` });
+      }
+    } catch (durationErr) {
+      addLog('warn', '⚠️ 音檔長度提取失敗，使用默認值 0', { fileName, error: durationErr.message });
+    }
 
     // 🔵 先上傳 R2（不依賴資料庫）
     // 使用一層目錄結構：audio-recordings/filename
@@ -895,8 +908,8 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
         const insert = await pool.query(
           `
           INSERT INTO audio_recordings 
-          (customer_id, business_name, product_name, call_date, call_time, audio_url, audio_filename, transcription_status, analysis_status, overall_status, created_at, updated_at)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', 'pending', 'processing', NOW(), NOW())
+          (customer_id, business_name, product_name, call_date, call_time, audio_url, audio_filename, duration, transcription_status, analysis_status, overall_status, created_at, updated_at)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', 'pending', 'processing', NOW(), NOW())
           RETURNING id
           `,
           [
@@ -907,6 +920,7 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
             parsedData.call_time || "00:00:00",
             audioUrl,
             fileName,
+            duration,
           ]
         );
 
@@ -926,20 +940,21 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
     }
 
     // 回傳成功
-    addLog("info", "✅ 上傳完成，回傳給前端（原始檔名）", { recordingId, audioUrl, fileName, encodedFileName });
+    addLog("info", "✅ 上傳完成，回傳給前端（原始檔名）", { recordingId, audioUrl, fileName, encodedFileName, duration });
     return res.json({
       success: true,
       recording_id: recordingId,
       audio_url: audioUrl,
+      duration: duration,
       message: "音檔已成功上傳到 R2",
       fileName: fileName,
       originalFileName: fileName,
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
-    addLog("error", "❌ 音檔上傳發生例外（原始檔名）", { message: err.message, stack: err.stack });
-    res.status(500).json({ error: err.message });
-  }
+      addLog("error", "❌ 音檔上傳發生例外（原始檔名）", { message: err.message, duration, stack: err.stack });
+      res.status(500).json({ error: err.message });
+    }
 });
 
 // 音檔刪除端點
