@@ -1,0 +1,130 @@
+{
+  "query": "DESCRIBE customers;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 29rDkMc4estG6xm.4c132c16006a --database WrczB9FbLtLbFuhmSGfDzu --execute DESCRIBE customers;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int(11)",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment"
+    },
+    {
+      "Field": "name",
+      "Type": "varchar(255)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "email",
+      "Type": "varchar(320)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "phone",
+      "Type": "varchar(20)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "company",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "priority",
+      "Type": "enum('S級-確認待收款','A級-優質跟進客戶','B級-跟進客戶','C級-養成客戶','D級-低價值無效客戶','E級-永久無需求','聯繫名單失效','客戶要求拒絕往來','黑名單')",
+      "Null": "YES",
+      "Key": "",
+      "Default": "B級-跟進客戶",
+      "Extra": ""
+    },
+    {
+      "Field": "classification",
+      "Type": "enum('鯨魚','鯊魚','小魚','小蝦')",
+      "Null": "YES",
+      "Key": "",
+      "Default": "小魚",
+      "Extra": ""
+    },
+    {
+      "Field": "notes",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "createdAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "updatedAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "Field": "annual_consumption",
+      "Type": "decimal(15,2)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "product_url",
+      "Type": "varchar(500)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "ai_analysis",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "nfvp_score_n",
+      "Type": "varchar(10)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "nfvp_score_f",
+      "Type": "varchar(10)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tint(11)\tNO\tPRI\tNULL\tauto_increment\nname\tvarchar(255)\tNO\t\tNULL\t\nemail\tvarchar(320)\tYES\t\tNULL\t\nphone\tvarchar(20)\tYES\t\tNULL\t\ncompany\tvarchar(255)\tYES\t\tNULL\t\npriority\tenum('S級-確認待收款','A級-優質跟進客戶','B級-跟進客戶','C級-養成客戶','D級-低價值無效客戶','E級-永久無需求','聯繫名單失效','客戶要求拒絕往來','黑名單')\tYES\t\tB級-跟進客戶\t\nclassification\tenum('鯨魚','鯊魚','小魚','小蝦')\tYES\t\t小魚\t\nnotes\ttext\tYES\t\tNULL\t\ncreatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\nupdatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\nannual_consumption\tdecimal(15,2)\tYES\t\t0\t\nproduct_url\tvarchar(500)\tYES\t\tNULL\t\nai_analysis\ttext\tYES\t\tNULL\t\nnfvp_score_n\tvarchar(10)\tYES\t\tNULL\t\nnfvp_score_f\tvarchar(10)\tYES\t\tNULL\t\n",
+  "stderr": "",
+  "execution_time_ms": 1578
+}

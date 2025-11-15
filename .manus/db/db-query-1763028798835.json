@@ -1,0 +1,74 @@
+{
+  "query": "SELECT COLUMN_NAME, COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'audio_recordings' ORDER BY ORDINAL_POSITION;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 29rDkMc4estG6xm.4c132c16006a --database WrczB9FbLtLbFuhmSGfDzu --execute SELECT COLUMN_NAME, COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'audio_recordings' ORDER BY ORDINAL_POSITION;",
+  "rows": [
+    {
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int(11)"
+    },
+    {
+      "COLUMN_NAME": "customer_id",
+      "COLUMN_TYPE": "varchar(50)"
+    },
+    {
+      "COLUMN_NAME": "business_name",
+      "COLUMN_TYPE": "varchar(255)"
+    },
+    {
+      "COLUMN_NAME": "product_name",
+      "COLUMN_TYPE": "varchar(255)"
+    },
+    {
+      "COLUMN_NAME": "call_date",
+      "COLUMN_TYPE": "date"
+    },
+    {
+      "COLUMN_NAME": "call_time",
+      "COLUMN_TYPE": "time"
+    },
+    {
+      "COLUMN_NAME": "audio_url",
+      "COLUMN_TYPE": "varchar(500)"
+    },
+    {
+      "COLUMN_NAME": "transcription_text",
+      "COLUMN_TYPE": "longtext"
+    },
+    {
+      "COLUMN_NAME": "transcription_status",
+      "COLUMN_TYPE": "varchar(50)"
+    },
+    {
+      "COLUMN_NAME": "analysis_summary",
+      "COLUMN_TYPE": "longtext"
+    },
+    {
+      "COLUMN_NAME": "analysis_status",
+      "COLUMN_TYPE": "varchar(50)"
+    },
+    {
+      "COLUMN_NAME": "overall_status",
+      "COLUMN_TYPE": "varchar(50)"
+    },
+    {
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp"
+    },
+    {
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp"
+    },
+    {
+      "COLUMN_NAME": "analysis_suggestions",
+      "COLUMN_TYPE": "text"
+    },
+    {
+      "COLUMN_NAME": "ai_tags",
+      "COLUMN_TYPE": "text"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\tCOLUMN_TYPE\nid\tint(11)\ncustomer_id\tvarchar(50)\nbusiness_name\tvarchar(255)\nproduct_name\tvarchar(255)\ncall_date\tdate\ncall_time\ttime\naudio_url\tvarchar(500)\ntranscription_text\tlongtext\ntranscription_status\tvarchar(50)\nanalysis_summary\tlongtext\nanalysis_status\tvarchar(50)\noverall_status\tvarchar(50)\ncreated_at\ttimestamp\nupdated_at\ttimestamp\nanalysis_suggestions\ttext\nai_tags\ttext\n",
+  "stderr": "",
+  "execution_time_ms": 1543
+}

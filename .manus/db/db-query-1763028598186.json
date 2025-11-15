@@ -1,0 +1,50 @@
+{
+  "query": "SELECT COUNT(*) as total_records, business_name FROM audio_recordings GROUP BY business_name ORDER BY COUNT(*) DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 29rDkMc4estG6xm.4c132c16006a --database WrczB9FbLtLbFuhmSGfDzu --execute SELECT COUNT(*) as total_records, business_name FROM audio_recordings GROUP BY business_name ORDER BY COUNT(*) DESC;",
+  "rows": [
+    {
+      "total_records": "1",
+      "business_name": "醫療機構"
+    },
+    {
+      "total_records": "1",
+      "business_name": "金融服務"
+    },
+    {
+      "total_records": "1",
+      "business_name": "製造業"
+    },
+    {
+      "total_records": "1",
+      "business_name": "房地產"
+    },
+    {
+      "total_records": "1",
+      "business_name": "科技公司"
+    },
+    {
+      "total_records": "1",
+      "business_name": "律師事務所"
+    },
+    {
+      "total_records": "1",
+      "business_name": "零售商"
+    },
+    {
+      "total_records": "1",
+      "business_name": "酒店集團"
+    },
+    {
+      "total_records": "1",
+      "business_name": "教育機構"
+    },
+    {
+      "total_records": "1",
+      "business_name": "物流公司"
+    }
+  ],
+  "messages": [],
+  "stdout": "total_records\tbusiness_name\n1\t醫療機構\n1\t金融服務\n1\t製造業\n1\t房地產\n1\t科技公司\n1\t律師事務所\n1\t零售商\n1\t酒店集團\n1\t教育機構\n1\t物流公司\n",
+  "stderr": "",
+  "execution_time_ms": 1503
+}

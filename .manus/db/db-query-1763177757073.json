@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE audio_recordings SET ai_tags = JSON_ARRAY('安全','數據','災難') WHERE id = 1;\nUPDATE audio_recordings SET ai_tags = JSON_ARRAY('客戶','知識','自動') WHERE id = 2;\nUPDATE audio_recordings SET ai_tags = JSON_ARRAY('房產','租戶','自動') WHERE id = 3;\nUPDATE audio_recordings SET ai_tags = JSON_ARRAY('物流','路線','成本') WHERE id = 4;\nUPDATE audio_recordings SET ai_tags = JSON_ARRAY('訂房','支付','收入') WHERE id = 5;\nUPDATE audio_recordings SET ai_tags = JSON_ARRAY('案例','文檔','時間') WHERE id = 6;\nUPDATE audio_recordings SET ai_tags = JSON_ARRAY('ER','生產','定制') WHERE id = 7;\nUPDATE audio_recordings SET ai_tags = JSON_ARRAY('庫存','系統','成本') WHERE id = 8;\nUPDATE audio_recordings SET ai_tags = JSON_ARRAY('投資','風險','數據') WHERE id = 9;\nUPDATE audio_recordings SET ai_tags = JSON_ARRAY('感興','需要','預算') WHERE id = 10",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 29rDkMc4estG6xm.4c132c16006a --database WrczB9FbLtLbFuhmSGfDzu --execute UPDATE audio_recordings SET ai_tags = JSON_ARRAY('安全','數據','災難') WHERE id = 1;\nUPDATE audio_recordings SET ai_tags = JSON_ARRAY('客戶','知識','自動') WHERE id = 2;\nUPDATE audio_recordings SET ai_tags = JSON_ARRAY('房產','租戶','自動') WHERE id = 3;\nUPDATE audio_recordings SET ai_tags = JSON_ARRAY('物流','路線','成本') WHERE id = 4;\nUPDATE audio_recordings SET ai_tags = JSON_ARRAY('訂房','支付','收入') WHERE id = 5;\nUPDATE audio_recordings SET ai_tags = JSON_ARRAY('案例','文檔','時間') WHERE id = 6;\nUPDATE audio_recordings SET ai_tags = JSON_ARRAY('ER','生產','定制') WHERE id = 7;\nUPDATE audio_recordings SET ai_tags = JSON_ARRAY('庫存','系統','成本') WHERE id = 8;\nUPDATE audio_recordings SET ai_tags = JSON_ARRAY('投資','風險','數據') WHERE id = 9;\nUPDATE audio_recordings SET ai_tags = JSON_ARRAY('感興','需要','預算') WHERE id = 10",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 4289
+}

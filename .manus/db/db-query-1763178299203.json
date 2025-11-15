@@ -1,0 +1,70 @@
+{
+  "query": "SELECT COLUMN_NAME, COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'audio_recordings' AND TABLE_SCHEMA = DATABASE()",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 29rDkMc4estG6xm.4c132c16006a --database WrczB9FbLtLbFuhmSGfDzu --execute SELECT COLUMN_NAME, COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'audio_recordings' AND TABLE_SCHEMA = DATABASE()",
+  "rows": [
+    {
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int(11)"
+    },
+    {
+      "COLUMN_NAME": "customer_id",
+      "COLUMN_TYPE": "int(11)"
+    },
+    {
+      "COLUMN_NAME": "business_name",
+      "COLUMN_TYPE": "varchar(100)"
+    },
+    {
+      "COLUMN_NAME": "product_name",
+      "COLUMN_TYPE": "varchar(100)"
+    },
+    {
+      "COLUMN_NAME": "call_date",
+      "COLUMN_TYPE": "date"
+    },
+    {
+      "COLUMN_NAME": "call_time",
+      "COLUMN_TYPE": "time"
+    },
+    {
+      "COLUMN_NAME": "audio_url",
+      "COLUMN_TYPE": "varchar(512)"
+    },
+    {
+      "COLUMN_NAME": "audio_filename",
+      "COLUMN_TYPE": "varchar(255)"
+    },
+    {
+      "COLUMN_NAME": "duration",
+      "COLUMN_TYPE": "varchar(20)"
+    },
+    {
+      "COLUMN_NAME": "transcription_text",
+      "COLUMN_TYPE": "text"
+    },
+    {
+      "COLUMN_NAME": "transcription_status",
+      "COLUMN_TYPE": "varchar(50)"
+    },
+    {
+      "COLUMN_NAME": "analysis_summary",
+      "COLUMN_TYPE": "text"
+    },
+    {
+      "COLUMN_NAME": "analysis_status",
+      "COLUMN_TYPE": "varchar(50)"
+    },
+    {
+      "COLUMN_NAME": "ai_tags",
+      "COLUMN_TYPE": "json"
+    },
+    {
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\tCOLUMN_TYPE\nid\tint(11)\ncustomer_id\tint(11)\nbusiness_name\tvarchar(100)\nproduct_name\tvarchar(100)\ncall_date\tdate\ncall_time\ttime\naudio_url\tvarchar(512)\naudio_filename\tvarchar(255)\nduration\tvarchar(20)\ntranscription_text\ttext\ntranscription_status\tvarchar(50)\nanalysis_summary\ttext\nanalysis_status\tvarchar(50)\nai_tags\tjson\ncreated_at\ttimestamp\n",
+  "stderr": "",
+  "execution_time_ms": 1534
+}
