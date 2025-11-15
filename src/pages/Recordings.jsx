@@ -269,11 +269,11 @@ export default function Recordings() {
                 <td className="col-transcription">
                   {record.transcription_text ? (
                     <button
-                      className="transcription-btn"
+                      className="view-btn"
                       onClick={() => handleViewTranscription(record.transcription_text, record.audio_filename || `錄音_${record.id}`)}
                       title="查看轉錄文本"
                     >
-                      📄 查看
+                      查看
                     </button>
                   ) : (
                     <span>-</span>
@@ -313,11 +313,11 @@ export default function Recordings() {
                 <td className="col-summary">
                   {record.analysis_summary ? (
                     <button
-                      className="transcription-btn"
+                      className="view-btn"
                       onClick={() => handleViewSummary(record.analysis_summary, record.audio_filename || `Recording_${record.id}`)}
                       title="View analysis summary"
                     >
-                      📋 View
+                      View
                     </button>
                   ) : (
                     <span>-</span>

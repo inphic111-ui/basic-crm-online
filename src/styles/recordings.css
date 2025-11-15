@@ -216,12 +216,12 @@
   vertical-align: middle;
 }
 
-/* 轉錄文本按鈕 */
-.transcription-btn {
+/* 按鈕樣式 */
+.view-btn {
   padding: 6px 12px;
-  background-color: #f0f0f0;
-  color: #1976d2;
-  border: 1px solid #ddd;
+  background-color: #1976d2;
+  color: white;
+  border: none;
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
@@ -230,10 +230,8 @@
   white-space: nowrap;
 }
 
-.transcription-btn:hover {
-  background-color: #e0e0e0;
-  border-color: #1976d2;
-  color: #1565c0;
+.view-btn:hover {
+  background-color: #1565c0;
 }
 
 .col-tags {
@@ -254,25 +252,24 @@
 /* AI 標籤徽章 - 灰底風格 */
 .tag-badge {
   display: inline-block;
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-radius: 12px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 400;
-  color: #666;
-  background-color: #f0f0f0;
+  color: #555;
+  background-color: #e8e8e8;
   white-space: nowrap;
   box-shadow: none;
-  border: 1px solid #e0e0e0;
+  border: none;
   transition: all 0.2s;
   line-height: 1.4;
-  max-width: 50px;
+  max-width: 45px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .tag-badge:hover {
-  background-color: #e8e8e8;
-  border-color: #d0d0d0;
+  background-color: #d8d8d8;
 }
 
 .col-summary {
