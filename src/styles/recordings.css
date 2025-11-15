@@ -134,10 +134,10 @@
   font-size: 13px;
   white-space: nowrap;
   border-right: none;
-  vertical-align: middle;
   height: 44px;
+  display: flex;
+  align-items: center;
   line-height: 1.2;
-  display: table-cell;
 }
 
 .recordings-table th:last-child {
@@ -147,6 +147,7 @@
 .recordings-table tbody tr {
   border-bottom: 1px solid #eee;
   transition: background-color 0.2s;
+  display: table-row;
 }
 
 .recordings-table tbody tr:hover {
@@ -162,8 +163,10 @@
   border-right: none;
   color: #333;
   word-break: break-word;
-  vertical-align: middle;
   height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 .recordings-table td:last-child {
@@ -187,9 +190,46 @@
 }
 
 .col-play {
-  width: 50px;
+  width: 60px;
   text-align: center;
-  vertical-align: middle;
+  justify-content: center;
+}
+
+/* 播放按鈕 - 淡藍色邊框三角形 */
+.play-btn {
+  width: 28px;
+  height: 28px;
+  border: 2px solid #81D4FA;
+  background-color: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  padding: 0;
+  position: relative;
+}
+
+.play-btn:hover {
+  border-color: #4FC3F7;
+  background-color: rgba(129, 212, 250, 0.1);
+}
+
+/* 三角形播放圖標 */
+.play-btn::after {
+  content: '';
+  width: 0;
+  height: 0;
+  border-left: 6px solid #81D4FA;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  margin-left: 2px;
+  transition: border-left-color 0.3s;
+}
+
+.play-btn:hover::after {
+  border-left-color: #4FC3F7;
 }
 
 .col-filename {
