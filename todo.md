@@ -91,6 +91,15 @@
 - [ ] 測試音檔轉錄功能
 - [ ] 推送到 GitHub 並驗證 Railway 部署
 
+### 一次性編輯功能（第二十九階段）
+- [x] 添加 is_manual_confirmed 欄位到 audio_recordings 表
+- [x] 創建 ClassifyModal 彈窗組件
+- [x] 在表格中添加編輯按鈕
+- [x] 實現編輯後自動鎖定的邏輯
+- [x] 用戶編輯一次後無法再次修改
+- [x] 後端設置 is_manual_confirmed = TRUE 防止 AI 覆蓋
+- [x] 推送到 GitHub 並驗證 Railway 部署
+
 ### 訂單管理與購買歷史（第二十五階段）
 - [ ] 設計訂單表結構
 - [ ] 創建訂單表遷移
