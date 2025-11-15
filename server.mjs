@@ -67,15 +67,18 @@ function addLog(level, message, data = null) {
 const config = {
   offline: {
     name: 'OFFLINE (測試)',
-    dbUrl: (process.env.OFFLINE_DB_URL || process.env.DATABASE_URL || '').replace('?', '?sslmode=disable&').replace('postgresql://', 'postgresql://'),
+    dbUrl: (process.env.OFFLINE_DB_URL || process.env.DATABASE_URL || ''),
     logFile: '/tmp/offline.log'
   },
   online: {
     name: 'ONLINE (正式)',
-    dbUrl: (process.env.ONLINE_DB_URL || process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL || '').replace('?', '?sslmode=disable&').replace('postgresql://', 'postgresql://'),
+    dbUrl: (process.env.ONLINE_DB_URL || process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL || ''),
     logFile: '/tmp/online.log'
   }
 };
+
+// 添加日誌來調試連接字符串
+addLog('info', 'ONLINE Database URL (first 50 chars): ' + (config.online.dbUrl ? config.online.dbUrl.substring(0, 50) : 'NOT SET'));
 
 // R2 客戶端配置
 let r2Client = null;
@@ -123,22 +126,32 @@ function createPool(env) {
   }
 
   try {
+    // 根據 URL 判斷是否需要 SSL
+    let sslConfig = false;
+    if (config[env].dbUrl.includes('railway.app') || config[env].dbUrl.includes('postgres')) {
+      sslConfig = { rejectUnauthorized: false };
+    }
+    
     pools[env] = new Pool({
       connectionString: config[env].dbUrl,
       max: 5,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
-      ssl: { rejectUnauthorized: false }
+      connectionTimeoutMillis: 5000,
+      ssl: sslConfig
     });
 
     pools[env].on('error', (err) => {
-      addLog('error', `${env.toUpperCase()} 數據庫連接池錯誤`, err.message);
+      addLog('error', `${env.toUpperCase()} 數據庫連接池錯誤: ${err.message}`);
     });
 
-    addLog('info', `${env.toUpperCase()} 數據庫連接池已創建`);
+    pools[env].on('connect', () => {
+      addLog('info', `${env.toUpperCase()} 數據庫連接成功`);
+    });
+
+    addLog('info', `${env.toUpperCase()} 數據庫連接池已創建 (SSL: ${sslConfig ? 'enabled' : 'disabled'})`);
     return pools[env];
   } catch (err) {
-    addLog('error', `創建 ${env.toUpperCase()} 連接池失敗`, err.message);
+    addLog('error', `創建 ${env.toUpperCase()} 連接池失敗: ${err.message}`);
     return null;
   }
 }
@@ -283,25 +296,29 @@ async function initializeDatabase() {
       ];
       
       for (const data of testData) {
-        await pool.query(`
-          INSERT INTO audio_recordings (customer_id, business_name, product_name, call_date, call_time, audio_url, audio_filename, duration, transcription_text, transcription_status, analysis_summary, analysis_status, ai_tags, overall_status)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-        `, [
-          data.customer_id,
-          data.business_name,
-          data.product_name,
-          data.call_date,
-          data.call_time,
-          data.audio_url,
-          data.audio_filename,
-          data.duration,
-          data.transcription_text,
-          data.transcription_status,
-          data.analysis_summary,
-          data.analysis_status,
-          JSON.stringify(data.ai_tags),
-          data.overall_status
-        ]);
+        try {
+          await pool.query(`
+            INSERT INTO audio_recordings (customer_id, business_name, product_name, call_date, call_time, audio_url, audio_filename, duration, transcription_text, transcription_status, analysis_summary, analysis_status, ai_tags, overall_status)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          `, [
+            data.customer_id,
+            data.business_name,
+            data.product_name,
+            data.call_date,
+            data.call_time,
+            data.audio_url,
+            data.audio_filename,
+            data.duration,
+            data.transcription_text,
+            data.transcription_status,
+            data.analysis_summary,
+            data.analysis_status,
+            JSON.stringify(data.ai_tags),
+            data.overall_status
+          ]);
+        } catch (err) {
+          addLog('error', `插入記錄 ${data.customer_id} 失敗: ${err.message}`);
+        }
       }
       addLog('info', '10 筆測試資料已插入 audio_recordings 表');
     } else {
@@ -326,25 +343,29 @@ async function initializeDatabase() {
       ];
       
       for (const data of testData) {
-        await pool.query(`
-          INSERT INTO audio_recordings (customer_id, business_name, product_name, call_date, call_time, audio_url, audio_filename, duration, transcription_text, transcription_status, analysis_summary, analysis_status, ai_tags, overall_status)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-        `, [
-          data.customer_id,
-          data.business_name,
-          data.product_name,
-          data.call_date,
-          data.call_time,
-          data.audio_url,
-          data.audio_filename,
-          data.duration,
-          data.transcription_text,
-          data.transcription_status,
-          data.analysis_summary,
-          data.analysis_status,
-          JSON.stringify(data.ai_tags),
-          data.overall_status
-        ]);
+        try {
+          await pool.query(`
+            INSERT INTO audio_recordings (customer_id, business_name, product_name, call_date, call_time, audio_url, audio_filename, duration, transcription_text, transcription_status, analysis_summary, analysis_status, ai_tags, overall_status)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          `, [
+            data.customer_id,
+            data.business_name,
+            data.product_name,
+            data.call_date,
+            data.call_time,
+            data.audio_url,
+            data.audio_filename,
+            data.duration,
+            data.transcription_text,
+            data.transcription_status,
+            data.analysis_summary,
+            data.analysis_status,
+            JSON.stringify(data.ai_tags),
+            data.overall_status
+          ]);
+        } catch (err) {
+          addLog('error', `插入記錄 ${data.customer_id} 失敗: ${err.message}`);
+        }
       }
       addLog('info', '10 筆新測試資料已插入 audio_recordings 表');
     }
