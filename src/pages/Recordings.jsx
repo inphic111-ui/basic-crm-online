@@ -259,7 +259,11 @@ export default function Recordings() {
                   />
                 </td>
                 <td className="col-play">
-                  <button className="play-btn" title="播放"></button>
+                  <button className="play-btn" title="播放">
+                    <svg viewBox="0 0 24 24" width="16" height="16" style={{fill: 'none', stroke: '#2196F3', strokeWidth: 2}}>
+                      <polygon points="6,4 20,12 6,20" />
+                    </svg>
+                  </button>
                 </td>
                 <td className="col-filename">{record.audio_filename || `錄音_${record.id}`}</td>
                 <td className="col-customer">{customerNames[Math.min(record.customer_id - 1, customerNames.length - 1)] || `客戶${record.customer_id}`}</td>

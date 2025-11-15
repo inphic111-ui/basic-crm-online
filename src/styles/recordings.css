@@ -222,23 +222,13 @@
   background-color: rgba(33, 150, 243, 0.1);
 }
 
-/* 空心三角形播放圖標 */
-.play-btn::before {
-  content: '';
-  display: inline-block;
-  width: 0;
-  height: 0;
-  border-left: 5px solid #2196F3;
-  border-right: 0;
-  border-top: 3px solid transparent;
-  border-bottom: 3px solid transparent;
-  margin-left: 1px;
-  transition: border-left-color 0.3s;
-  vertical-align: middle;
+/* SVG 空心三角形播放圖標 */
+.play-btn svg {
+  transition: stroke 0.3s;
 }
 
-.play-btn:hover::before {
-  border-left-color: #1976D2;
+.play-btn:hover svg {
+  stroke: #1976D2;
 }
 
 .col-filename {
