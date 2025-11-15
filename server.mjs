@@ -2881,7 +2881,8 @@ async function transcribeAudio(audioUrl) {
     const transcript = await openaiClient.audio.transcriptions.create({
       file,
       model: 'whisper-1',
-      language: 'zh-tw',
+      language: 'zh',
+      encoding: 'utf-8'
     });
 
     addLog('info', '✅ Whisper API 成功', { text: transcript.text?.substring(0, 100) });
