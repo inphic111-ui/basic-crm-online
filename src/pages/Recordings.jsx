@@ -15,6 +15,8 @@ export default function Recordings() {
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [selectedSummary, setSelectedSummary] = useState('');
   const [selectedSummaryName, setSelectedSummaryName] = useState('');
+  const [playingId, setPlayingId] = useState(null);
+  const audioRef = useRef(null);
   const fileInputRef = useRef(null);
 
   const businessNames = ['何雨達', '郭庭碩', '鍾汶憲', '何佳珊'];
@@ -202,6 +204,43 @@ export default function Recordings() {
     setSelectedSummaryName('');
   };
 
+  // 播放音檔
+  const handlePlayAudio = (audioUrl, recordingId) => {
+    if (!audioUrl) {
+      alert('音檔 URL 不可用');
+      return;
+    }
+
+    if (playingId === recordingId && audioRef.current) {
+      if (audioRef.current.paused) {
+        audioRef.current.play();
+      } else {
+        audioRef.current.pause();
+      }
+      return;
+    }
+
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+
+    const audio = new Audio(audioUrl);
+    audio.onended = () => setPlayingId(null);
+    audio.onerror = () => {
+      console.error('播放失敗:', audioUrl);
+      alert('無法播放音檔');
+      setPlayingId(null);
+    };
+    audioRef.current = audio;
+    setPlayingId(recordingId);
+    audio.play().catch(err => {
+      console.error('播放錯誤:', err);
+      alert('無法播放音檔');
+      setPlayingId(null);
+    });
+  };
+
   return (
     <div className="recordings-container">
       {/* 頁面頭部 */}
@@ -288,8 +327,12 @@ export default function Recordings() {
                   />
                 </td>
                 <td className="col-play">
-                  <button className="play-btn" title="播放">
-                    <svg viewBox="0 0 24 24" width="16" height="16" style={{fill: 'none', stroke: '#2196F3', strokeWidth: 2}}>
+                  <button 
+                    className="play-btn" 
+                    title="播放"
+                    onClick={() => handlePlayAudio(record.audio_url, record.id)}
+                  >
+                    <svg viewBox="0 0 24 24" width="16" height="16" style={{fill: playingId === record.id ? '#2196F3' : 'none', stroke: '#2196F3', strokeWidth: 2}}>
                       <polygon points="6,4 20,12 6,20" />
                     </svg>
                   </button>
