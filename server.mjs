@@ -2831,8 +2831,12 @@ async function getAudioDuration(audioUrl) {
     const response = await fetch(audioUrl);
     if (!response.ok) throw new Error(`下載音檔失敗: ${response.status}`);
     
-    const stream = response.body;
-    const metadata = await parseStream(stream);
+    // 將 Response 轉換為 Buffer
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    // 使用 parseBuffer 而不是 parseStream
+    const metadata = await parseBuffer(buffer);
     const durationInSeconds = Math.round(metadata.format.duration || 0);
     
     addLog('info', '✅ 音檔時長計算完成', { durationInSeconds });
@@ -2854,9 +2858,10 @@ async function transcribeAudio(audioUrl) {
     const arrayBuffer = await response.arrayBuffer();
     const audioBuffer = Buffer.from(arrayBuffer);
     
-    // 設置 FormData
-    const formData = new FormData();
-    formData.append('file', audioBuffer, 'audio.mp3');
+    // 使用 form-data 庫而不是 FormData
+    const FormDataLib = require('form-data');
+    const formData = new FormDataLib();
+    formData.append('file', audioBuffer, { filename: 'audio.mp3' });
     formData.append('model', 'whisper-1');
     formData.append('language', 'zh');
     
@@ -2864,6 +2869,7 @@ async function transcribeAudio(audioUrl) {
     const transcriptionResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
+        ...formData.getHeaders(),
         'Authorization': `Bearer ${OPENAI_API_KEY}`
       },
       body: formData
