@@ -197,9 +197,9 @@ export default function Recordings() {
               <th className="col-business">業務</th>
               <th className="col-time">時間</th>
               <th className="col-duration">長度</th>
+              <th className="col-transcription">轉錄文本</th>
               <th className="col-tags">AI標籤</th>
               <th className="col-summary">分析總結</th>
-              <th className="col-status">狀態</th>
             </tr>
           </thead>
           <tbody>
@@ -220,9 +220,9 @@ export default function Recordings() {
                 <td className="col-business">{record.business_name || '-'}</td>
                 <td className="col-time">{formatDateTime(record.call_date, record.call_time)}</td>
                 <td className="col-duration">-</td>
+                <td className="col-transcription">{(record.transcription_text || '').substring(0, 50) || '-'}</td>
                 <td className="col-tags">-</td>
-                <td className="col-summary">{(record.transcription_text || '').substring(0, 50) || '-'}</td>
-                <td className="col-status">{getStatusText(record.analysis_status)}</td>
+                <td className="col-summary">{(record.analysis_summary || '').substring(0, 50) || '-'}</td>
               </tr>
             ))}
           </tbody>

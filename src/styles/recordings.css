@@ -199,6 +199,14 @@
   text-align: center;
 }
 
+.col-transcription {
+  width: 150px;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .col-tags {
   width: 150px;
 }
@@ -209,11 +217,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.col-status {
-  width: 80px;
-  text-align: center;
 }
 
 /* 複選框 */
