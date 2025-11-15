@@ -130,7 +130,8 @@
   padding: 14px 12px;
   text-align: left;
   font-weight: 600;
-  color: #666;
+  color: #333;
+  font-size: 13px;
   white-space: nowrap;
   border-right: none;
   vertical-align: middle;
