@@ -1,0 +1,70 @@
+{
+  "query": "SELECT id, business_name, product_name, ai_tags FROM audio_recordings ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 29rDkMc4estG6xm.4c132c16006a --database WrczB9FbLtLbFuhmSGfDzu --execute SELECT id, business_name, product_name, ai_tags FROM audio_recordings ORDER BY id;",
+  "rows": [
+    {
+      "id": "30021",
+      "business_name": "科技公司",
+      "product_name": "AI 軟件",
+      "ai_tags": "NULL"
+    },
+    {
+      "id": "30022",
+      "business_name": "金融服務",
+      "product_name": "投資顧問",
+      "ai_tags": "NULL"
+    },
+    {
+      "id": "30023",
+      "business_name": "零售商",
+      "product_name": "庫存管理系統",
+      "ai_tags": "NULL"
+    },
+    {
+      "id": "30024",
+      "business_name": "製造業",
+      "product_name": "ERP 系統",
+      "ai_tags": "NULL"
+    },
+    {
+      "id": "30025",
+      "business_name": "醫療機構",
+      "product_name": "患者管理系統",
+      "ai_tags": "NULL"
+    },
+    {
+      "id": "30026",
+      "business_name": "教育機構",
+      "product_name": "在線教學平台",
+      "ai_tags": "NULL"
+    },
+    {
+      "id": "30027",
+      "business_name": "房地產",
+      "product_name": "物業管理系統",
+      "ai_tags": "NULL"
+    },
+    {
+      "id": "30028",
+      "business_name": "物流公司",
+      "product_name": "運輸管理系統",
+      "ai_tags": "NULL"
+    },
+    {
+      "id": "30029",
+      "business_name": "酒店集團",
+      "product_name": "預訂管理系統",
+      "ai_tags": "NULL"
+    },
+    {
+      "id": "30030",
+      "business_name": "律師事務所",
+      "product_name": "案件管理系統",
+      "ai_tags": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tbusiness_name\tproduct_name\tai_tags\n30021\t科技公司\tAI 軟件\tNULL\n30022\t金融服務\t投資顧問\tNULL\n30023\t零售商\t庫存管理系統\tNULL\n30024\t製造業\tERP 系統\tNULL\n30025\t醫療機構\t患者管理系統\tNULL\n30026\t教育機構\t在線教學平台\tNULL\n30027\t房地產\t物業管理系統\tNULL\n30028\t物流公司\t運輸管理系統\tNULL\n30029\t酒店集團\t預訂管理系統\tNULL\n30030\t律師事務所\t案件管理系統\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1531
+}
