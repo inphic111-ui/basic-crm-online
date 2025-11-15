@@ -87,7 +87,7 @@
 - [x] 添加 AI 分析函數
 - [x] 修改上傳 API，上傳二進制進行 Whisper 轉錄和 AI 分析
 - [x] 測試 Whisper API 和 OpenAI API 連接
-- [ ] 推送到 GitHub 並驗證 Railway 部署
+- [x] 推送到 GitHub 並驗證 Railway 部署
 
 ### 訂單管理與購買歷史（第二十五階段）
 - [ ] 設計訂單表結構
