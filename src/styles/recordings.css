@@ -127,12 +127,14 @@
 }
 
 .recordings-table th {
-  padding: 12px;
+  padding: 14px 12px;
   text-align: left;
   font-weight: 600;
   color: #666;
   white-space: nowrap;
   border-right: none;
+  vertical-align: middle;
+  height: 44px;
 }
 
 .recordings-table th:last-child {
@@ -153,10 +155,12 @@
 }
 
 .recordings-table td {
-  padding: 12px;
+  padding: 14px 12px;
   border-right: none;
   color: #333;
   word-break: break-word;
+  vertical-align: middle;
+  height: 44px;
 }
 
 .recordings-table td:last-child {
@@ -167,41 +171,49 @@
 .col-checkbox {
   width: 40px;
   text-align: center;
+  vertical-align: middle;
 }
 
 .col-play {
   width: 50px;
   text-align: center;
+  vertical-align: middle;
 }
 
 .col-filename {
   width: 180px;
   font-family: 'Courier New', monospace;
   font-size: 12px;
+  vertical-align: middle;
 }
 
 .col-customer {
   width: 60px;
   text-align: center;
+  vertical-align: middle;
 }
 
 .col-business {
   width: 80px;
   text-align: center;
+  vertical-align: middle;
 }
 
 .col-time {
   width: 140px;
+  vertical-align: middle;
 }
 
 .col-duration {
   width: 60px;
   text-align: center;
+  vertical-align: middle;
 }
 
 .col-transcription {
   width: 120px;
   text-align: center;
+  vertical-align: middle;
 }
 
 /* 轉錄文本按鈕 */
@@ -226,6 +238,7 @@
 
 .col-tags {
   width: 150px;
+  vertical-align: middle;
 }
 
 /* AI 標籤容器 */
@@ -239,26 +252,28 @@
 /* AI 標籤徽章 - 灰底風格 */
 .tag-badge {
   display: inline-block;
-  padding: 5px 12px;
-  border-radius: 14px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #555;
-  background-color: #e8e8e8;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 400;
+  color: #666;
+  background-color: #f0f0f0;
   white-space: nowrap;
   box-shadow: none;
-  border: 1px solid #d0d0d0;
+  border: 1px solid #e0e0e0;
   transition: all 0.2s;
+  line-height: 1.4;
 }
 
 .tag-badge:hover {
-  background-color: #ddd;
-  border-color: #b0b0b0;
+  background-color: #e8e8e8;
+  border-color: #d0d0d0;
 }
 
 .col-summary {
   width: 200px;
   max-width: 200px;
+  vertical-align: middle;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
