@@ -177,20 +177,27 @@
   width: 50px;
   text-align: center;
   vertical-align: middle;
-  padding: 0 12px !important;
-  line-height: 44px;
+  padding: 0 !important;
   height: 44px;
+  display: table-cell !important;
 }
 
 .col-checkbox input[type="checkbox"] {
   vertical-align: middle;
   margin: 0;
   cursor: pointer;
+  display: inline-block;
+  width: 18px;
+  height: 18px;
 }
 
 .col-play {
   width: 60px;
   text-align: center;
+  vertical-align: middle;
+  padding: 0 !important;
+  height: 44px;
+  display: table-cell !important;
 }
 
 /* 播放按鈕 - 淡藍色邊框三角形 */
@@ -201,12 +208,13 @@
   background-color: transparent;
   border-radius: 50%;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   transition: all 0.3s;
   padding: 0;
   position: relative;
+  vertical-align: middle;
 }
 
 .play-btn:hover {
