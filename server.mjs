@@ -10,7 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 import http from 'http';
 import { WebSocketServer } from 'ws';
 import FormData from 'form-data';
-import { parseStream } from 'music-metadata';
+import { parseBuffer } from 'music-metadata';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -2859,8 +2859,7 @@ async function transcribeAudio(audioUrl) {
     const audioBuffer = Buffer.from(arrayBuffer);
     
     // 使用 form-data 庫而不是 FormData
-    const FormDataLib = require('form-data');
-    const formData = new FormDataLib();
+    const formData = new FormData();
     formData.append('file', audioBuffer, { filename: 'audio.mp3' });
     formData.append('model', 'whisper-1');
     formData.append('language', 'zh');
