@@ -189,13 +189,13 @@
 
 .col-customer {
   width: 60px;
-  text-align: center;
+  text-align: left;
   vertical-align: middle;
 }
 
 .col-business {
   width: 80px;
-  text-align: center;
+  text-align: left;
   vertical-align: middle;
 }
 
@@ -206,13 +206,13 @@
 
 .col-duration {
   width: 60px;
-  text-align: center;
+  text-align: left;
   vertical-align: middle;
 }
 
 .col-transcription {
   width: 120px;
-  text-align: center;
+  text-align: left;
   vertical-align: middle;
 }
 
@@ -236,6 +236,7 @@
 
 .col-tags {
   width: 150px;
+  text-align: left;
   vertical-align: middle;
 }
 
