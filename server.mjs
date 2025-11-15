@@ -13,7 +13,7 @@ import FormData from 'form-data';
 import { parseBuffer } from 'music-metadata';
 import axios from 'axios';
 import OpenAI from 'openai';
-import { Blob } from 'buffer';
+import { File } from 'node:buffer';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -2866,13 +2866,13 @@ async function transcribeAudio(audioUrl) {
     const audioBuffer = Buffer.from(response.data);
     addLog('info', '✅ 下載完成', { size: audioBuffer.length });
 
-    // Whisper API 需要 Blob / File
-    const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
+    // Whisper API 需要 File (有 filename) 而不是 Blob
+    const file = new File([audioBuffer], 'audio.mp3', { type: 'audio/mpeg' });
 
-    addLog('info', '✅ 開始調用 Whisper API', { blobSize: audioBlob.size });
+    addLog('info', '✅ 開始調用 Whisper API', { fileSize: file.size, fileName: file.name });
 
     const transcript = await openaiClient.audio.transcriptions.create({
-      file: audioBlob,
+      file,
       model: 'whisper-1',
       language: 'zh',
     });
