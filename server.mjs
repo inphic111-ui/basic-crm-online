@@ -10,6 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 import http from 'http';
 import { WebSocketServer } from 'ws';
 import FormData from 'form-data';
+import { parseStream } from 'music-metadata';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -916,6 +917,10 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
       try {
         addLog("info", "開始進行 Whisper 轉錄和 AI 分析", { recordingId, audioUrl });
         
+        // 0. 計算音檔時長
+        const duration = await getAudioDuration(audioUrl);
+        addLog("info", "✅ 音檔時長計算完成", { recordingId, duration });
+        
         // 1. 轉錄音檔
         const transcriptionResult = await transcribeAudio(audioUrl);
         addLog("info", "✅ Whisper 轉錄完成", { recordingId, transcriptionLength: transcriptionResult.length });
@@ -931,19 +936,21 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
             UPDATE audio_recordings
             SET 
               transcription_text = $1,
-              customer_id = $2,
-              business_name = $3,
-              product_name = $4,
-              analysis_summary = $5,
-              ai_tags = $6,
+              duration = $2,
+              customer_id = $3,
+              business_name = $4,
+              product_name = $5,
+              analysis_summary = $6,
+              ai_tags = $7,
               transcription_status = 'completed',
               analysis_status = 'completed',
               overall_status = 'completed',
               updated_at = NOW()
-            WHERE id = $7
+            WHERE id = $8
             `,
             [
               transcriptionResult,
+              duration,
               analysisResult.customer_id || 0,
               analysisResult.business_name || "",
               analysisResult.product_name || "",
@@ -2817,6 +2824,24 @@ app.get('/api/logs', (req, res) => {
     data: filteredLogs.slice(0, limit)
   });
 });
+
+// 計算音檔時長函數
+async function getAudioDuration(audioUrl) {
+  try {
+    const response = await fetch(audioUrl);
+    if (!response.ok) throw new Error(`下載音檔失敗: ${response.status}`);
+    
+    const stream = response.body;
+    const metadata = await parseStream(stream);
+    const durationInSeconds = Math.round(metadata.format.duration || 0);
+    
+    addLog('info', '✅ 音檔時長計算完成', { durationInSeconds });
+    return durationInSeconds;
+  } catch (err) {
+    addLog('error', '❌ 音檔時長計算失敗', { error: err.message });
+    return 0; // 失敗時返回 0
+  }
+}
 
 // Whisper 轉錄函數
 async function transcribeAudio(audioUrl) {
