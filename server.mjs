@@ -7,12 +7,20 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
+import http from 'http';
+import { WebSocketServer } from 'ws';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const server = http.createServer(app);
+
+// WebSocket 服務
+const wss = new WebSocketServer({ server });
+const wsClients = new Map();
+const deploymentLogs = new Map(); // 存儲部署日誌
 
 // Middleware
 app.use(cors());
@@ -25,6 +33,8 @@ app.use(express.static(path.join(__dirname, 'client')));
 // 日誌存儲
 const logs = [];
 const MAX_LOGS = 1000;
+const deploymentHistory = []; // 部署歷史
+const MAX_DEPLOYMENT_HISTORY = 100;
 
 // 清理和轉換 annual_consumption 欄位
 function cleanAnnualConsumption(value) {
@@ -1926,17 +1936,6 @@ app.post('/api/get-table-data', async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 });
-// SPA 路由 - 所有未匹配的路由都返回 index.html
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'), (err) => {
-    if (err) {
-      // 如果 dist 不存在，嘗試 client
-      res.sendFile(path.join(__dirname, 'client', 'index.html'))
-    }
-  })
-});
-
-
 // 獲取單個客戶詳細信息
 app.get('/api/customers/:id', async (req, res) => {
   const pool = pools.online;
@@ -2542,7 +2541,7 @@ app.post('/api/audio/parse-and-update', async (req, res) => {
 
 // R2 音檔上傳端點
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   addLog('info', `CRM 3.0 服務器啟動成功，監聽端口 ${PORT}`);
   console.log(`
 ╔════════════════════════════════════════╗
@@ -2568,3 +2567,172 @@ process.on('SIGTERM', async () => {
   }
   process.exit(0);
 });
+
+// ============ 部署監控 API ============
+
+// WebSocket 連接處理
+wss.on('connection', (ws) => {
+  const clientId = uuidv4();
+  wsClients.set(clientId, ws);
+  
+  console.log(`[WebSocket] Client connected: ${clientId}`);
+  
+  ws.send(JSON.stringify({
+    type: 'connection',
+    clientId,
+    message: 'Connected to deployment monitoring'
+  }));
+  
+  ws.on('close', () => {
+    wsClients.delete(clientId);
+    console.log(`[WebSocket] Client disconnected: ${clientId}`);
+  });
+  
+  ws.on('error', (error) => {
+    console.error(`[WebSocket] Error: ${error.message}`);
+  });
+});
+
+// 部署歷史 API
+app.get('/api/deployments/history', (req, res) => {
+  const limit = parseInt(req.query.limit) || 20;
+  const offset = parseInt(req.query.offset) || 0;
+  
+  const history = deploymentHistory.slice(offset, offset + limit);
+  
+  res.json({
+    success: true,
+    total: deploymentHistory.length,
+    limit,
+    offset,
+    data: history
+  });
+});
+
+// 部署詳情 API
+app.get('/api/deployments/:deploymentId', (req, res) => {
+  const { deploymentId } = req.params;
+  
+  const deployment = deploymentHistory.find(d => d.id === deploymentId);
+  if (!deployment) {
+    return res.status(404).json({ error: 'Deployment not found' });
+  }
+  
+  const logs = deploymentLogs.get(deploymentId) || [];
+  
+  res.json({
+    success: true,
+    deployment,
+    logs
+  });
+});
+
+// 觸發部署 API
+app.post('/api/deployments/trigger', (req, res) => {
+  const { serviceName, environment = 'production' } = req.body;
+  
+  const deploymentId = uuidv4();
+  const deployment = {
+    id: deploymentId,
+    service_name: serviceName,
+    environment,
+    status: 'PENDING',
+    message: 'Deployment started',
+    started_at: new Date().toISOString(),
+    completed_at: null,
+    created_by: 'system',
+    created_at: new Date().toISOString()
+  };
+  
+  addDeploymentHistory(deployment);
+  addDeploymentLog(deploymentId, 'info', 'Deployment started', `Service: ${serviceName}`);
+  
+  res.json({
+    success: true,
+    deployment
+  });
+});
+
+// 更新部署狀態 API
+app.put('/api/deployments/:deploymentId/status', (req, res) => {
+  const { deploymentId } = req.params;
+  const { status, message } = req.body;
+  
+  const deployment = deploymentHistory.find(d => d.id === deploymentId);
+  if (!deployment) {
+    return res.status(404).json({ error: 'Deployment not found' });
+  }
+  
+  deployment.status = status;
+  deployment.message = message;
+  
+  if (status === 'SUCCESS' || status === 'FAILED') {
+    deployment.completed_at = new Date().toISOString();
+  }
+  
+  addDeploymentLog(deploymentId, status === 'SUCCESS' ? 'info' : 'error', message);
+  broadcastDeploymentUpdate(deploymentId, { status, message });
+  
+  res.json({
+    success: true,
+    deployment
+  });
+});
+
+// 添加部署日誌 API
+app.post('/api/deployments/:deploymentId/logs', (req, res) => {
+  const { deploymentId } = req.params;
+  const { level = 'info', message, details = '' } = req.body;
+  
+  const log = addDeploymentLog(deploymentId, level, message, details);
+  
+  res.json({
+    success: true,
+    log
+  });
+});
+
+// 獲取部署統計 API
+app.get('/api/deployments/stats', (req, res) => {
+  const stats = {
+    total: deploymentHistory.length,
+    success: deploymentHistory.filter(d => d.status === 'SUCCESS').length,
+    failed: deploymentHistory.filter(d => d.status === 'FAILED').length,
+    pending: deploymentHistory.filter(d => d.status === 'PENDING').length,
+    recent: deploymentHistory.slice(0, 10)
+  };
+  
+  res.json({
+    success: true,
+    stats
+  });
+});
+
+// 獲取所有日誌 API
+app.get('/api/logs', (req, res) => {
+  const limit = parseInt(req.query.limit) || 100;
+  const level = req.query.level || null;
+  
+  let filteredLogs = logs;
+  if (level) {
+    filteredLogs = logs.filter(l => l.level === level);
+  }
+  
+  res.json({
+    success: true,
+    total: filteredLogs.length,
+    data: filteredLogs.slice(0, limit)
+  });
+});
+
+// SPA 路由 - 所有未匹配的路由都返回 index.html
+// 注意：這個路由必須放在所有 API 路由之後，否則會攔截 API 請求
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'), (err) => {
+    if (err) {
+      // 如果 dist 不存在，嘗試 client
+      res.sendFile(path.join(__dirname, 'client', 'index.html'))
+    }
+  })
+});
+

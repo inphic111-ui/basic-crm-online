@@ -10,6 +10,7 @@ import Customers from './pages/Customers'
 import Recordings from './pages/Recordings'
 import KnowledgeBase from './pages/KnowledgeBase'
 import UserManagement from './pages/UserManagement'
+import DeploymentDashboard from './pages/DeploymentDashboard'
 
 function App() {
     const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -75,6 +76,15 @@ function App() {
                                 <span className="icon">⚙️</span>
                                 <span className="label">使用者管理</span>
                             </Link>
+                            
+                            {/* 分隔線 */}
+                            <div className="nav-divider"></div>
+                            
+                            {/* 部署監控 */}
+                            <Link to="/deployments" className="nav-item">
+                                <span className="icon">🚀</span>
+                                <span className="label">部署監控</span>
+                            </Link>
                         </nav>
                     </aside>
 
@@ -87,6 +97,7 @@ function App() {
                             <Route path="/recordings" element={<Recordings />} />
                             <Route path="/knowledge-base" element={<KnowledgeBase />} />
                             <Route path="/users" element={<UserManagement />} />
+                            <Route path="/deployments" element={<DeploymentDashboard />} />
                         </Routes>
                     </main>
                 </div>
