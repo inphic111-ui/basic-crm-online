@@ -841,7 +841,7 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
           RETURNING id
           `,
           [
-            parsedData.customer_id || null,
+            parsedData.customer_id || 0,
             parsedData.salesperson_name || "",
             parsedData.product_name || "",
             parsedData.call_date || new Date().toISOString().split("T")[0],
