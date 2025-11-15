@@ -7,12 +7,26 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
+import http from 'http';
+import { WebSocketServer } from 'ws';
+import FormData from 'form-data';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// 初始化 OpenAI 客戶端
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const BUILT_IN_FORGE_API_KEY = process.env.BUILT_IN_FORGE_API_KEY;
+const BUILT_IN_FORGE_API_URL = process.env.BUILT_IN_FORGE_API_URL;
+
 const app = express();
 const PORT = process.env.PORT || 3000;
+const server = http.createServer(app);
+
+// WebSocket 服務
+const wss = new WebSocketServer({ server });
+const wsClients = new Map();
+const deploymentLogs = new Map(); // 存儲部署日誌
 
 // Middleware
 app.use(cors());
@@ -25,6 +39,8 @@ app.use(express.static(path.join(__dirname, 'client')));
 // 日誌存儲
 const logs = [];
 const MAX_LOGS = 1000;
+const deploymentHistory = []; // 部署歷史
+const MAX_DEPLOYMENT_HISTORY = 100;
 
 // 清理和轉換 annual_consumption 欄位
 function cleanAnnualConsumption(value) {
@@ -67,25 +83,38 @@ function addLog(level, message, data = null) {
 const config = {
   offline: {
     name: 'OFFLINE (測試)',
-    dbUrl: process.env.OFFLINE_DB_URL || process.env.DATABASE_URL,
+    dbUrl: (process.env.OFFLINE_DB_URL || process.env.DATABASE_URL || ''),
     logFile: '/tmp/offline.log'
   },
   online: {
     name: 'ONLINE (正式)',
-    dbUrl: process.env.ONLINE_DB_URL || process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL,
+    dbUrl: (process.env.ONLINE_DB_URL || process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL || ''),
     logFile: '/tmp/online.log'
   }
 };
 
+// 添加日誌來調試連接字符串
+addLog('info', 'ONLINE Database URL (first 50 chars): ' + (config.online.dbUrl ? config.online.dbUrl.substring(0, 50) : 'NOT SET'));
+
 // R2 客戶端配置
-const r2Client = new S3Client({
-  region: 'auto',
-  endpoint: process.env.R2_ENDPOINT,
-  credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID,
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
-  },
-});
+let r2Client = null;
+try {
+  if (process.env.R2_ENDPOINT && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY) {
+    r2Client = new S3Client({
+      region: 'auto',
+      endpoint: process.env.R2_ENDPOINT,
+      credentials: {
+        accessKeyId: process.env.R2_ACCESS_KEY_ID,
+        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+      },
+    });
+    console.log('[INFO] R2 Client 初始化成功');
+  } else {
+    console.warn('[WARN] R2 環境變數未完整設置，跳過 R2 Client 初始化');
+  }
+} catch (err) {
+  console.error('[ERROR] R2 Client 初始化失敗:', err.message);
+}
 
 // Multer 配置（內存存儲）
 const upload = multer({
@@ -113,22 +142,32 @@ function createPool(env) {
   }
 
   try {
+    // 根據 URL 判斷是否需要 SSL
+    let sslConfig = false;
+    if (config[env].dbUrl.includes('railway.app') || config[env].dbUrl.includes('postgres')) {
+      sslConfig = { rejectUnauthorized: false };
+    }
+    
     pools[env] = new Pool({
       connectionString: config[env].dbUrl,
       max: 5,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
-      ssl: { rejectUnauthorized: false }
+      connectionTimeoutMillis: 5000,
+      ssl: sslConfig
     });
 
     pools[env].on('error', (err) => {
-      addLog('error', `${env.toUpperCase()} 數據庫連接池錯誤`, err.message);
+      addLog('error', `${env.toUpperCase()} 數據庫連接池錯誤: ${err.message}`);
     });
 
-    addLog('info', `${env.toUpperCase()} 數據庫連接池已創建`);
+    pools[env].on('connect', () => {
+      addLog('info', `${env.toUpperCase()} 數據庫連接成功`);
+    });
+
+    addLog('info', `${env.toUpperCase()} 數據庫連接池已創建 (SSL: ${sslConfig ? 'enabled' : 'disabled'})`);
     return pools[env];
   } catch (err) {
-    addLog('error', `創建 ${env.toUpperCase()} 連接池失敗`, err.message);
+    addLog('error', `創建 ${env.toUpperCase()} 連接池失敗: ${err.message}`);
     return null;
   }
 }
@@ -244,6 +283,8 @@ async function initializeDatabase() {
           call_date DATE,
           call_time TIME,
           audio_url TEXT,
+          audio_filename VARCHAR(255),
+          duration INTEGER,
           transcription_text TEXT,
           transcription_status VARCHAR(50),
           analysis_summary TEXT,
@@ -258,36 +299,42 @@ async function initializeDatabase() {
       
       // 插入 10 筆測試資料
       const testData = [
-        { customer_id: 1, business_name: 'Tech Corp', product_name: 'AI Software', call_date: '2025-11-10', call_time: '09:30:00', audio_url: 'https://example.com/audio1.mp3', transcription_text: 'Customer inquired about AI software features, pricing and implementation timeline.', transcription_status: 'completed', analysis_summary: 'Customer interested in AI software, needs further quote and technical demo', analysis_status: 'completed', ai_tags: ['interested', 'demo_needed', 'budget_sufficient'], overall_status: 'pending' },
-        { customer_id: 2, business_name: 'Finance Services', product_name: 'Investment Advisor', call_date: '2025-11-10', call_time: '10:15:00', audio_url: 'https://example.com/audio2.mp3', transcription_text: 'Discussed portfolio management, risk assessment and market analysis tools.', transcription_status: 'completed', analysis_summary: 'Customer requests further investment plan and cost analysis', analysis_status: 'completed', ai_tags: ['investment_mgmt', 'risk_assessment', 'data_analysis'], overall_status: 'pending' },
-        { customer_id: 3, business_name: 'Retail Store', product_name: 'Inventory Management System', call_date: '2025-11-10', call_time: '11:00:00', audio_url: 'https://example.com/audio3.mp3', transcription_text: 'Inquired about system integration capability, cost and implementation timeline.', transcription_status: 'completed', analysis_summary: 'Customer satisfied with system features, needs demo and integration testing', analysis_status: 'completed', ai_tags: ['inventory_mgmt', 'system_integration', 'cost_effective'], overall_status: 'pending' },
-        { customer_id: 4, business_name: 'Manufacturing', product_name: 'ERP System', call_date: '2025-11-10', call_time: '14:30:00', audio_url: 'https://example.com/audio4.mp3', transcription_text: 'Discussed production process optimization, report functionality and data visualization.', transcription_status: 'completed', analysis_summary: 'Customer needs customization solution, expected decision next week', analysis_status: 'completed', ai_tags: ['ERP', 'production_mgmt', 'customization'], overall_status: 'pending' },
-        { customer_id: 5, business_name: 'Healthcare Institution', product_name: 'Patient Management System', call_date: '2025-11-10', call_time: '15:45:00', audio_url: 'https://example.com/audio5.mp3', transcription_text: 'Inquired about system security, compliance and patient data privacy protection.', transcription_status: 'completed', analysis_summary: 'Customer concerned about data privacy, needs compliance certificate and security assessment', analysis_status: 'completed', ai_tags: ['healthcare_compliance', 'data_security', 'privacy_protection'], overall_status: 'pending' },
-        { customer_id: 1, business_name: 'Education Institution', product_name: 'Online Teaching Platform', call_date: '2025-11-11', call_time: '09:00:00', audio_url: 'https://example.com/audio6.mp3', transcription_text: 'Discussed course management, student interaction and online exam functionality.', transcription_status: 'completed', analysis_summary: 'Customer interested in platform features, planning trial', analysis_status: 'completed', ai_tags: ['online_education', 'interactive_features', 'learning_analytics'], overall_status: 'pending' },
-        { customer_id: 2, business_name: 'Real Estate', product_name: 'Property Management System', call_date: '2025-11-11', call_time: '10:30:00', audio_url: 'https://example.com/audio7.mp3', transcription_text: 'Inquired about tenant management, maintenance work orders and fee calculation functionality.', transcription_status: 'completed', analysis_summary: 'Customer needs multi-property support, needs quote', analysis_status: 'completed', ai_tags: ['property_mgmt', 'tenant_service', 'auto_billing'], overall_status: 'pending' },
-        { customer_id: 3, business_name: 'Logistics Company', product_name: 'Transportation Management System', call_date: '2025-11-11', call_time: '13:15:00', audio_url: 'https://example.com/audio8.mp3', transcription_text: 'Discussed route optimization, real-time tracking and fuel cost management.', transcription_status: 'completed', analysis_summary: 'Customer interested in cost saving effect', analysis_status: 'completed', ai_tags: ['logistics_mgmt', 'route_optimization', 'cost_saving'], overall_status: 'pending' },
-        { customer_id: 4, business_name: 'Hotel Group', product_name: 'Booking Management System', call_date: '2025-11-11', call_time: '14:00:00', audio_url: 'https://example.com/audio9.mp3', transcription_text: 'Inquired about multi-language support, payment integration and customer relationship management functionality.', transcription_status: 'completed', analysis_summary: 'Customer planning to sign next month, needs final quote', analysis_status: 'completed', ai_tags: ['booking_mgmt', 'payment_integration', 'revenue_mgmt'], overall_status: 'pending' },
-        { customer_id: 5, business_name: 'Law Firm', product_name: 'Case Management System', call_date: '2025-11-11', call_time: '15:30:00', audio_url: 'https://example.com/audio10.mp3', transcription_text: 'Discussed document management, time tracking and billing functionality.', transcription_status: 'completed', analysis_summary: 'Customer satisfied with system features, expected decision this month', analysis_status: 'completed', ai_tags: ['case_mgmt', 'document_mgmt', 'time_tracking'], overall_status: 'pending' }
+        { customer_id: 1, business_name: '郭庭碩', product_name: '投資顧問', call_date: '2025-09-23', call_time: '09:24:00', audio_filename: '202409230001_0923_0924.mp3', duration: 1151, audio_url: 'https://example.com/audio1.mp3', transcription_text: '客戶詢問了系統的功能、定價和實施時間表。討論了集成能力、成本和技術支持。客戶對功能滿意，需要進一步的演示和集成測試。', transcription_status: 'completed', analysis_summary: '客戶對功能感興趣，需要進一步的演示和技術支持。預期下週做決定。', analysis_status: 'completed', ai_tags: ['感興趣', '需要演示', '預算充足'], overall_status: 'pending' },
+        { customer_id: 2, business_name: '鍾汶憲', product_name: '案例管理系統', call_date: '2025-05-27', call_time: '04:02:00', audio_filename: '202409230002_0527_0402.mp3', duration: 1724, audio_url: 'https://example.com/audio2.mp3', transcription_text: '詢問了多語言支持、支付集成和客戶關係管理功能。討論了報告功能和數據可視化。客戶計劃下月簽約，需要最終報價。', transcription_status: 'completed', analysis_summary: '客戶計劃下月簽約，需要最終報價和技術演示。', analysis_status: 'completed', ai_tags: ['投資管理', '風險評估', '數據分析'], overall_status: 'pending' },
+        { customer_id: 3, business_name: '何佳珊', product_name: '智能軟件', call_date: '2025-02-17', call_time: '12:15:00', audio_filename: '202409230003_0217_1215.mp3', duration: 870, audio_url: 'https://example.com/audio3.mp3', transcription_text: '討論了路線優化、實時追蹤和燃料成本管理。客戶對成本節省效果感興趣，要求進一步的成本分析。', transcription_status: 'completed', analysis_summary: '客戶對成本節省效果感興趣，要求進一步的成本分析。', analysis_status: 'completed', ai_tags: ['庫存管理', '系統集成', '成本有效'], overall_status: 'pending' },
+        { customer_id: 4, business_name: '何雨達', product_name: '案例管理系統', call_date: '2025-08-14', call_time: '22:26:00', audio_filename: '202409230004_0814_2226.mp3', duration: 1456, audio_url: 'https://example.com/audio4.mp3', transcription_text: '詢問了系統集成能力、成本和實施時間表。客戶對系統功能滿意，需要演示和集成測試。', transcription_status: 'completed', analysis_summary: '客戶對系統功能滿意，需要演示和集成測試。', analysis_status: 'completed', ai_tags: ['ERP', '生產管理', '定制化'], overall_status: 'pending' },
+        { customer_id: 5, business_name: '郭庭碩', product_name: '銷售管理系統', call_date: '2025-01-11', call_time: '20:51:00', audio_filename: '202409230005_0111_2051.mp3', duration: 498, audio_url: 'https://example.com/audio5.mp3', transcription_text: '討論了生產流程優化、報告功能和數據可視化。客戶需要定制化解決方案，預期下週做決定。', transcription_status: 'completed', analysis_summary: '客戶需要定制化解決方案，預期下週做決定。', analysis_status: 'completed', ai_tags: ['案例管理', '文檔管理', '時間追蹤'], overall_status: 'pending' },
+        { customer_id: 6, business_name: '郭庭碩', product_name: 'ERP系統', call_date: '2025-10-22', call_time: '09:25:00', audio_filename: '202409230006_1022_0925.mp3', duration: 982, audio_url: 'https://example.com/audio6.mp3', transcription_text: '討論了文檔管理、時間追蹤和計費功能。客戶對系統功能滿意，預期本月做決定。', transcription_status: 'completed', analysis_summary: '客戶對系統功能滿意，預期本月做決定。', analysis_status: 'completed', ai_tags: ['訂房管理', '支付集成', '收入管理'], overall_status: 'pending' },
+        { customer_id: 7, business_name: '何佳珊', product_name: '客戶服務系統', call_date: '2025-11-19', call_time: '20:14:00', audio_filename: '202409230007_1119_2014.mp3', duration: 1312, audio_url: 'https://example.com/audio7.mp3', transcription_text: '詢問了租戶服務、維護追蹤和自動計費功能。客戶需要進一步的技術支持和定制化方案。', transcription_status: 'completed', analysis_summary: '客戶需要進一步的技術支持和定制化方案。', analysis_status: 'completed', ai_tags: ['物流管理', '路線優化', '成本節省'], overall_status: 'pending' },
+        { customer_id: 8, business_name: '鍾汶憲', product_name: '客戶服務系統', call_date: '2025-01-02', call_time: '08:30:00', audio_filename: '202409230008_0102_0830.mp3', duration: 1436, audio_url: 'https://example.com/audio8.mp3', transcription_text: '討論了銷售流程自動化、客戶分析和報告功能。客戶對功能感興趣，需要價格談判。', transcription_status: 'completed', analysis_summary: '客戶對功能感興趣，需要價格談判。', analysis_status: 'completed', ai_tags: ['房產管理', '租戶服務', '自動計費'], overall_status: 'pending' },
+        { customer_id: 9, business_name: '何雨達', product_name: '庫存管理系統', call_date: '2025-03-15', call_time: '14:45:00', audio_filename: '202409230009_0315_1445.mp3', duration: 1205, audio_url: 'https://example.com/audio9.mp3', transcription_text: '詢問了客戶支持工具、知識庫和自動化功能。客戶計劃試用，需要培訓和技術支持。', transcription_status: 'completed', analysis_summary: '客戶計劃試用，需要培訓和技術支持。', analysis_status: 'completed', ai_tags: ['客戶支持', '知識庫', '自動化'], overall_status: 'pending' },
+        { customer_id: 10, business_name: '何佳珊', product_name: '訂房管理系統', call_date: '2025-07-08', call_time: '16:32:00', audio_filename: '202409230010_0708_1632.mp3', duration: 856, audio_url: 'https://example.com/audio10.mp3', transcription_text: '討論了系統安全性、數據備份和災難恢復。客戶關注數據安全，需要詳細的安全報告。', transcription_status: 'completed', analysis_summary: '客戶關注數據安全，需要詳細的安全報告。', analysis_status: 'completed', ai_tags: ['安全性', '數據備份', '災難恢復'], overall_status: 'pending' }
       ];
       
       for (const data of testData) {
-        await pool.query(`
-          INSERT INTO audio_recordings (customer_id, business_name, product_name, call_date, call_time, audio_url, transcription_text, transcription_status, analysis_summary, analysis_status, ai_tags, overall_status)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-        `, [
-          data.customer_id,
-          data.business_name,
-          data.product_name,
-          data.call_date,
-          data.call_time,
-          data.audio_url,
-          data.transcription_text,
-          data.transcription_status,
-          data.analysis_summary,
-          data.analysis_status,
-          JSON.stringify(data.ai_tags),
-          data.overall_status
-        ]);
+        try {
+          await pool.query(`
+            INSERT INTO audio_recordings (customer_id, business_name, product_name, call_date, call_time, audio_url, audio_filename, duration, transcription_text, transcription_status, analysis_summary, analysis_status, ai_tags, overall_status)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          `, [
+            data.customer_id,
+            data.business_name,
+            data.product_name,
+            data.call_date,
+            data.call_time,
+            data.audio_url,
+            data.audio_filename,
+            data.duration,
+            data.transcription_text,
+            data.transcription_status,
+            data.analysis_summary,
+            data.analysis_status,
+            JSON.stringify(data.ai_tags),
+            data.overall_status
+          ]);
+        } catch (err) {
+          addLog('error', `插入記錄 ${data.customer_id} 失敗: ${err.message}`);
+        }
       }
       addLog('info', '10 筆測試資料已插入 audio_recordings 表');
     } else {
@@ -299,36 +346,42 @@ async function initializeDatabase() {
       
       // 插入 10 筆測試資料
       const testData = [
-        { customer_id: 1, business_name: 'Tech Corp', product_name: 'AI Software', call_date: '2025-11-10', call_time: '09:30:00', audio_url: 'https://example.com/audio1.mp3', transcription_text: 'Customer inquired about AI software features, pricing and implementation timeline.', transcription_status: 'completed', analysis_summary: 'Customer interested in AI software, needs further quote and technical demo', analysis_status: 'completed', ai_tags: ['interested', 'demo_needed', 'budget_sufficient'], overall_status: 'pending' },
-        { customer_id: 2, business_name: 'Finance Services', product_name: 'Investment Advisor', call_date: '2025-11-10', call_time: '10:15:00', audio_url: 'https://example.com/audio2.mp3', transcription_text: 'Discussed portfolio management, risk assessment and market analysis tools.', transcription_status: 'completed', analysis_summary: 'Customer requests further investment plan and cost analysis', analysis_status: 'completed', ai_tags: ['investment_mgmt', 'risk_assessment', 'data_analysis'], overall_status: 'pending' },
-        { customer_id: 3, business_name: 'Retail Store', product_name: 'Inventory Management System', call_date: '2025-11-10', call_time: '11:00:00', audio_url: 'https://example.com/audio3.mp3', transcription_text: 'Inquired about system integration capability, cost and implementation timeline.', transcription_status: 'completed', analysis_summary: 'Customer satisfied with system features, needs demo and integration testing', analysis_status: 'completed', ai_tags: ['inventory_mgmt', 'system_integration', 'cost_effective'], overall_status: 'pending' },
-        { customer_id: 4, business_name: 'Manufacturing', product_name: 'ERP System', call_date: '2025-11-10', call_time: '14:30:00', audio_url: 'https://example.com/audio4.mp3', transcription_text: 'Discussed production process optimization, report functionality and data visualization.', transcription_status: 'completed', analysis_summary: 'Customer needs customization solution, expected decision next week', analysis_status: 'completed', ai_tags: ['ERP', 'production_mgmt', 'customization'], overall_status: 'pending' },
-        { customer_id: 5, business_name: 'Healthcare Institution', product_name: 'Patient Management System', call_date: '2025-11-10', call_time: '15:45:00', audio_url: 'https://example.com/audio5.mp3', transcription_text: 'Inquired about system security, compliance and patient data privacy protection.', transcription_status: 'completed', analysis_summary: 'Customer concerned about data privacy, needs compliance certificate and security assessment', analysis_status: 'completed', ai_tags: ['healthcare_compliance', 'data_security', 'privacy_protection'], overall_status: 'pending' },
-        { customer_id: 1, business_name: 'Education Institution', product_name: 'Online Teaching Platform', call_date: '2025-11-11', call_time: '09:00:00', audio_url: 'https://example.com/audio6.mp3', transcription_text: 'Discussed course management, student interaction and online exam functionality.', transcription_status: 'completed', analysis_summary: 'Customer interested in platform features, planning trial', analysis_status: 'completed', ai_tags: ['online_education', 'interactive_features', 'learning_analytics'], overall_status: 'pending' },
-        { customer_id: 2, business_name: 'Real Estate', product_name: 'Property Management System', call_date: '2025-11-11', call_time: '10:30:00', audio_url: 'https://example.com/audio7.mp3', transcription_text: 'Inquired about tenant management, maintenance work orders and fee calculation functionality.', transcription_status: 'completed', analysis_summary: 'Customer needs multi-property support, needs quote', analysis_status: 'completed', ai_tags: ['property_mgmt', 'tenant_service', 'auto_billing'], overall_status: 'pending' },
-        { customer_id: 3, business_name: 'Logistics Company', product_name: 'Transportation Management System', call_date: '2025-11-11', call_time: '13:15:00', audio_url: 'https://example.com/audio8.mp3', transcription_text: 'Discussed route optimization, real-time tracking and fuel cost management.', transcription_status: 'completed', analysis_summary: 'Customer interested in cost saving effect', analysis_status: 'completed', ai_tags: ['logistics_mgmt', 'route_optimization', 'cost_saving'], overall_status: 'pending' },
-        { customer_id: 4, business_name: 'Hotel Group', product_name: 'Booking Management System', call_date: '2025-11-11', call_time: '14:00:00', audio_url: 'https://example.com/audio9.mp3', transcription_text: 'Inquired about multi-language support, payment integration and customer relationship management functionality.', transcription_status: 'completed', analysis_summary: 'Customer planning to sign next month, needs final quote', analysis_status: 'completed', ai_tags: ['booking_mgmt', 'payment_integration', 'revenue_mgmt'], overall_status: 'pending' },
-        { customer_id: 5, business_name: 'Law Firm', product_name: 'Case Management System', call_date: '2025-11-11', call_time: '15:30:00', audio_url: 'https://example.com/audio10.mp3', transcription_text: 'Discussed document management, time tracking and billing functionality.', transcription_status: 'completed', analysis_summary: 'Customer satisfied with system features, expected decision this month', analysis_status: 'completed', ai_tags: ['case_mgmt', 'document_mgmt', 'time_tracking'], overall_status: 'pending' }
+        { customer_id: 1, business_name: '郭庭碩', product_name: '投資顧問', call_date: '2025-09-23', call_time: '09:24:00', audio_filename: '202409230001_0923_0924.mp3', duration: 1151, audio_url: 'https://example.com/audio1.mp3', transcription_text: '客戶詢問了系統的功能、定價和實施時間表。討論了集成能力、成本和技術支持。客戶對功能滿意，需要進一步的演示和集成測試。', transcription_status: 'completed', analysis_summary: '客戶對功能感興趣，需要進一步的演示和技術支持。預期下週做決定。', analysis_status: 'completed', ai_tags: ['感興趣', '需要演示', '預算充足'], overall_status: 'pending' },
+        { customer_id: 2, business_name: '鍾汶憲', product_name: '案例管理系統', call_date: '2025-05-27', call_time: '04:02:00', audio_filename: '202409230002_0527_0402.mp3', duration: 1724, audio_url: 'https://example.com/audio2.mp3', transcription_text: '詢問了多語言支持、支付集成和客戶關係管理功能。討論了報告功能和數據可視化。客戶計劃下月簽約，需要最終報價。', transcription_status: 'completed', analysis_summary: '客戶計劃下月簽約，需要最終報價和技術演示。', analysis_status: 'completed', ai_tags: ['投資管理', '風險評估', '數據分析'], overall_status: 'pending' },
+        { customer_id: 3, business_name: '何佳珊', product_name: '智能軟件', call_date: '2025-02-17', call_time: '12:15:00', audio_filename: '202409230003_0217_1215.mp3', duration: 870, audio_url: 'https://example.com/audio3.mp3', transcription_text: '討論了路線優化、實時追蹤和燃料成本管理。客戶對成本節省效果感興趣，要求進一步的成本分析。', transcription_status: 'completed', analysis_summary: '客戶對成本節省效果感興趣，要求進一步的成本分析。', analysis_status: 'completed', ai_tags: ['庫存管理', '系統集成', '成本有效'], overall_status: 'pending' },
+        { customer_id: 4, business_name: '何雨達', product_name: '案例管理系統', call_date: '2025-08-14', call_time: '22:26:00', audio_filename: '202409230004_0814_2226.mp3', duration: 1456, audio_url: 'https://example.com/audio4.mp3', transcription_text: '詢問了系統集成能力、成本和實施時間表。客戶對系統功能滿意，需要演示和集成測試。', transcription_status: 'completed', analysis_summary: '客戶對系統功能滿意，需要演示和集成測試。', analysis_status: 'completed', ai_tags: ['ERP', '生產管理', '定制化'], overall_status: 'pending' },
+        { customer_id: 5, business_name: '郭庭碩', product_name: '銷售管理系統', call_date: '2025-01-11', call_time: '20:51:00', audio_filename: '202409230005_0111_2051.mp3', duration: 498, audio_url: 'https://example.com/audio5.mp3', transcription_text: '討論了生產流程優化、報告功能和數據可視化。客戶需要定制化解決方案，預期下週做決定。', transcription_status: 'completed', analysis_summary: '客戶需要定制化解決方案，預期下週做決定。', analysis_status: 'completed', ai_tags: ['案例管理', '文檔管理', '時間追蹤'], overall_status: 'pending' },
+        { customer_id: 6, business_name: '郭庭碩', product_name: 'ERP系統', call_date: '2025-10-22', call_time: '09:25:00', audio_filename: '202409230006_1022_0925.mp3', duration: 982, audio_url: 'https://example.com/audio6.mp3', transcription_text: '討論了文檔管理、時間追蹤和計費功能。客戶對系統功能滿意，預期本月做決定。', transcription_status: 'completed', analysis_summary: '客戶對系統功能滿意，預期本月做決定。', analysis_status: 'completed', ai_tags: ['訂房管理', '支付集成', '收入管理'], overall_status: 'pending' },
+        { customer_id: 7, business_name: '何佳珊', product_name: '客戶服務系統', call_date: '2025-11-19', call_time: '20:14:00', audio_filename: '202409230007_1119_2014.mp3', duration: 1312, audio_url: 'https://example.com/audio7.mp3', transcription_text: '詢問了租戶服務、維護追蹤和自動計費功能。客戶需要進一步的技術支持和定制化方案。', transcription_status: 'completed', analysis_summary: '客戶需要進一步的技術支持和定制化方案。', analysis_status: 'completed', ai_tags: ['物流管理', '路線優化', '成本節省'], overall_status: 'pending' },
+        { customer_id: 8, business_name: '鍾汶憲', product_name: '客戶服務系統', call_date: '2025-01-02', call_time: '08:30:00', audio_filename: '202409230008_0102_0830.mp3', duration: 1436, audio_url: 'https://example.com/audio8.mp3', transcription_text: '討論了銷售流程自動化、客戶分析和報告功能。客戶對功能感興趣，需要價格談判。', transcription_status: 'completed', analysis_summary: '客戶對功能感興趣，需要價格談判。', analysis_status: 'completed', ai_tags: ['房產管理', '租戶服務', '自動計費'], overall_status: 'pending' },
+        { customer_id: 9, business_name: '何雨達', product_name: '庫存管理系統', call_date: '2025-03-15', call_time: '14:45:00', audio_filename: '202409230009_0315_1445.mp3', duration: 1205, audio_url: 'https://example.com/audio9.mp3', transcription_text: '詢問了客戶支持工具、知識庫和自動化功能。客戶計劃試用，需要培訓和技術支持。', transcription_status: 'completed', analysis_summary: '客戶計劃試用，需要培訓和技術支持。', analysis_status: 'completed', ai_tags: ['客戶支持', '知識庫', '自動化'], overall_status: 'pending' },
+        { customer_id: 10, business_name: '何佳珊', product_name: '訂房管理系統', call_date: '2025-07-08', call_time: '16:32:00', audio_filename: '202409230010_0708_1632.mp3', duration: 856, audio_url: 'https://example.com/audio10.mp3', transcription_text: '討論了系統安全性、數據備份和災難恢復。客戶關注數據安全，需要詳細的安全報告。', transcription_status: 'completed', analysis_summary: '客戶關注數據安全，需要詳細的安全報告。', analysis_status: 'completed', ai_tags: ['安全性', '數據備份', '災難恢復'], overall_status: 'pending' }
       ];
       
       for (const data of testData) {
-        await pool.query(`
-          INSERT INTO audio_recordings (customer_id, business_name, product_name, call_date, call_time, audio_url, transcription_text, transcription_status, analysis_summary, analysis_status, ai_tags, overall_status)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-        `, [
-          data.customer_id,
-          data.business_name,
-          data.product_name,
-          data.call_date,
-          data.call_time,
-          data.audio_url,
-          data.transcription_text,
-          data.transcription_status,
-          data.analysis_summary,
-          data.analysis_status,
-          JSON.stringify(data.ai_tags),
-          data.overall_status
-        ]);
+        try {
+          await pool.query(`
+            INSERT INTO audio_recordings (customer_id, business_name, product_name, call_date, call_time, audio_url, audio_filename, duration, transcription_text, transcription_status, analysis_summary, analysis_status, ai_tags, overall_status)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          `, [
+            data.customer_id,
+            data.business_name,
+            data.product_name,
+            data.call_date,
+            data.call_time,
+            data.audio_url,
+            data.audio_filename,
+            data.duration,
+            data.transcription_text,
+            data.transcription_status,
+            data.analysis_summary,
+            data.analysis_status,
+            JSON.stringify(data.ai_tags),
+            data.overall_status
+          ]);
+        } catch (err) {
+          addLog('error', `插入記錄 ${data.customer_id} 失敗: ${err.message}`);
+        }
       }
       addLog('info', '10 筆新測試資料已插入 audio_recordings 表');
     }
@@ -615,14 +668,16 @@ app.get('/api/customers/:id', async (req, res) => {
 // API: 刪除客戶
 
 // 音檔列表端點
+// 取得所有音檔清單
 app.get('/api/audio/list', async (req, res) => {
   try {
     const pool = pools.online;
+
     if (!pool) {
-      return res.status(500).json({ error: '數據庫未連接' });
+      return res.json([]); // DB 連不到也不要報錯
     }
 
-    const result = await pool.query(`
+    const query = `
       SELECT 
         id,
         customer_id,
@@ -631,24 +686,25 @@ app.get('/api/audio/list', async (req, res) => {
         call_date,
         call_time,
         audio_url,
+        audio_filename,
+        duration,
         transcription_text,
         transcription_status,
         analysis_summary,
         analysis_status,
         ai_tags,
-        overall_status,
-        created_at,
-        updated_at
+        created_at
       FROM audio_recordings
       ORDER BY created_at DESC
-      LIMIT 100
-    `);
-    
-    const audioList = result.rows || [];
-    res.json(audioList);
+    `;
+
+    const result = await pool.query(query);
+    res.json(result.rows);
+
   } catch (err) {
-    addLog('error', '獲取音檔列表失敗', err.message);
-    res.status(500).json({ error: err.message });
+    addLog('error', '❌ /api/audio/list 失敗', err.message);
+    console.error('Full SQL Error:', err);
+    res.status(200).json([]);
   }
 });
 
@@ -696,6 +752,7 @@ app.post('/api/audio/parse-filename', async (req, res) => {
     const callMonth = dateStr.substring(0, 2);
     const callDay = dateStr.substring(2, 4);
     const currentYear = new Date().getFullYear();
+    // 撥打日期使用當前年份（2025）+ 檔名中的月日
     const callDate = `${currentYear}-${callMonth}-${callDay}`;
 
     // 驗證撥打時間（4 位數字 HHMM）
@@ -725,95 +782,196 @@ app.post('/api/audio/parse-filename', async (req, res) => {
   }
 });
 
-// 音檔上傳端點
+// 音檔上傳端點（格式化後最終版本）
 app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: '沒有選擇文件' });
     }
 
-    // 使用原始檔名
+    // 原始檔名
     const fileName = req.file.originalname;
-    
-    // 從 req.body.data 中解析出客戶信息
+    addLog("info", "上傳檔案", { originalName: fileName });
+
+    // 嘗試解析 data
     let parsedData = {};
-    if (req.body.data) {
-      try {
+    try {
+      if (req.body.data) {
         parsedData = JSON.parse(req.body.data);
-      } catch (e) {
-        addLog('warn', '解析 data 字段失敗', e.message);
+      }
+    } catch (e) {
+      addLog('warn', '解析 data 失敗', e.message);
+    }
+
+    // 如果沒有 parsedData，從檔名自動解析
+    if (!parsedData.call_date || !parsedData.call_time) {
+      try {
+        // 移除副檔名
+        const nameWithoutExt = fileName.replace(/\.[^\/\.]+$/, '');
+        const parts = nameWithoutExt.split('_');
+        
+        if (parts.length >= 5) {
+          const [customerIdStr, salespersonName, productName, dateStr, timeStr] = parts;
+          
+          // 驗證並解析日期和時間
+          if (/^\d{4}$/.test(dateStr) && /^\d{4}$/.test(timeStr)) {
+            const callMonth = dateStr.substring(0, 2);
+            const callDay = dateStr.substring(2, 4);
+            const currentYear = new Date().getFullYear();
+            const callDate = `${currentYear}-${callMonth}-${callDay}`;
+            
+            const hour = timeStr.substring(0, 2);
+            const minute = timeStr.substring(2, 4);
+            const callTime = `${hour}:${minute}:00`;
+            
+            // 只在沒有提供時才使用自動解析的值
+            if (!parsedData.call_date) parsedData.call_date = callDate;
+            if (!parsedData.call_time) parsedData.call_time = callTime;
+            if (!parsedData.customer_id && /^\d{12}$/.test(customerIdStr)) {
+              parsedData.customer_id = customerIdStr.substring(8, 12);
+            }
+            if (!parsedData.salesperson_name) parsedData.salesperson_name = salespersonName;
+            if (!parsedData.product_name) parsedData.product_name = productName;
+            
+            addLog('info', '✅ 從檔名自動解析成功', { fileName, callDate, callTime });
+          }
+        }
+      } catch (parseErr) {
+        addLog('warn', '從檔名自動解析失敗', { fileName, error: parseErr.message });
       }
     }
 
-    // 第一步：直接上傳到 R2（不依賴數據庫）
-    // 使用時間戳作為 recordingId（如果數據庫連接失敗）
-    const timestamp = Date.now();
-    const fileKey = `inphic-crm/audio_recordings/${timestamp}/${fileName}`;
-    let audioUrl = '';
-    let recordingId = timestamp;
-    
+    // 預設 recordingId（如果 DB 寫入失敗）
+    let recordingId = Date.now();
+
+    // 🔵 先上傳 R2（不依賴資料庫）
+    // 使用一層目錄結構：audio-recordings/filename
+    // R2 使用 URL 編碼存儲（以避免 UTF-8 中文亂碼），數據庫保存原始檔名
+    const encodedFileName = encodeURIComponent(fileName);
+    const fileKey = `audio-recordings/${encodedFileName}`;
+    let audioUrl = "";
+
     try {
-      addLog('debug', 'R2 環境變數檢查', {
-        R2_BUCKET_NAME: process.env.R2_BUCKET_NAME ? '✓ 已設置' : '✗ 未設置',
-        R2_ENDPOINT: process.env.R2_ENDPOINT ? '✓ 已設置' : '✗ 未設置',
-        R2_PUBLIC_URL: process.env.R2_PUBLIC_URL ? '✓ 已設置' : '✗ 未設置',
-      });
-      
       const uploadCommand = new PutObjectCommand({
         Bucket: process.env.R2_BUCKET_NAME,
         Key: fileKey,
         Body: req.file.buffer,
         ContentType: req.file.mimetype,
       });
-      
-      addLog('info', '開始上傳到 R2', { fileKey, fileName, timestamp });
+
+      addLog("info", "開始上傳到 R2", { fileKey, encodedFileName, originalFileName: fileName });
       await r2Client.send(uploadCommand);
-      
-      // 生成 R2 公開 URL
-      const r2PublicUrl = process.env.R2_PUBLIC_URL || process.env.R2_ENDPOINT;
-      audioUrl = `${r2PublicUrl}/${fileKey}`;
-      
-      addLog('info', '✅ 音檔已成功上傳到 R2', { timestamp, fileName, fileKey, audioUrl });
-    } catch (r2Err) {
-      addLog('error', '❌ R2 上傳失敗', r2Err.message);
-      return res.status(500).json({ error: `R2 上傳失敗: ${r2Err.message}` });
+
+      // 公開 URL
+      const baseUrl = process.env.R2_PUBLIC_URL || process.env.R2_ENDPOINT;
+      audioUrl = `${baseUrl}/${fileKey}`;
+
+      addLog("info", "✅ 上傳 R2 成功（一層目錄，數據庫保存原始檔名）", { audioUrl, fileName, encodedFileName });
+    } catch (err) {
+      addLog("error", "❌ R2 上傳失敗", { message: err.message, fileName, encodedFileName, fileKey, stack: err.stack });
+      return res.status(500).json({ error: "R2 上傳失敗：" + err.message });
     }
 
-    // 第二步：嘗試在 audio_recordings 表中創建記錄（可選，失敗不影響上傳結果）
-    const pool = pools.online;
-    if (pool) {
-      try {
-        const customerNumber = parsedData.customer_id;
-        const businessName = parsedData.salesperson_name || '';
-        const productName = parsedData.product_name || '';
-        const callDate = parsedData.call_date || new Date().toISOString().split('T')[0];
-        const callTime = parsedData.call_time || '00:00:00';
+    // 🔵 再寫入資料庫（可選）
+    try {
+      const pool = pools.online;
+      if (pool) {
+        addLog("info", "開始寫入數據庫", { fileName, audioUrl });
         
-        const insertResult = await pool.query(
-          `INSERT INTO audio_recordings (customer_id, business_name, product_name, call_date, call_time, audio_url, transcription_status, analysis_status, overall_status, created_at, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $6, 'pending', 'pending', 'processing', NOW(), NOW())
-           RETURNING id`,
-          [customerNumber || null, businessName, productName, callDate, callTime, audioUrl]
+        const insert = await pool.query(
+          `
+          INSERT INTO audio_recordings 
+          (customer_id, business_name, product_name, call_date, call_time, audio_url, audio_filename, transcription_status, analysis_status, overall_status, created_at, updated_at)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', 'pending', 'processing', NOW(), NOW())
+          RETURNING id
+          `,
+          [
+            parsedData.customer_id || 0,
+            parsedData.salesperson_name || "",
+            parsedData.product_name || "",
+            parsedData.call_date || new Date().toISOString().split("T")[0],
+            parsedData.call_time || "00:00:00",
+            audioUrl,
+            fileName,
+          ]
         );
-        
-        recordingId = insertResult.rows[0].id;
-        addLog('info', '✅ 在 audio_recordings 表中創建記錄', { recordingId, customerNumber });
-      } catch (dbErr) {
-        addLog('warn', '⚠️ 創建 audio_recordings 記錄失敗（但 R2 上傳成功）', dbErr.message);
+
+        // 檢查是否成功插入
+        if (insert.rows && insert.rows.length > 0) {
+          // 使用 DB 自己的 recordingId
+          recordingId = insert.rows[0].id;
+          addLog("info", "✅ 寫入 DB 成功（原始檔名）", { recordingId, fileName, encodedFileName });
+        } else {
+          addLog("error", "❌ DB 插入失敗：沒有返回記錄", { fileName, audioUrl });
+        }
+      } else {
+        addLog("warn", "⚠️ 資料庫未連接，僅上傳 R2（一層目錄）", { fileName });
       }
-    } else {
-      addLog('warn', '⚠️ 數據庫未連接（但 R2 上傳成功）');
+    } catch (dbErr) {
+      addLog("error", "❌ DB 寫入失敗（原始檔名）", { message: dbErr.message, fileName, encodedFileName, audioUrl, stack: dbErr.stack });
     }
 
-    // 返回成功結果
-    res.json({ 
-      success: true, 
+    // 上傳後進行 Whisper 轉錄和 AI 分析（非阻塞）
+    setImmediate(async () => {
+      try {
+        addLog("info", "開始進行 Whisper 轉錄和 AI 分析", { recordingId, audioUrl });
+        
+        // 1. 轉錄音檔
+        const transcriptionResult = await transcribeAudio(audioUrl);
+        addLog("info", "✅ Whisper 轉錄完成", { recordingId, transcriptionLength: transcriptionResult.length });
+        
+        // 2. AI 分析轉錄文本
+        const analysisResult = await analyzeTranscription(transcriptionResult);
+        addLog("info", "✅ AI 分析完成", { recordingId, analysis: analysisResult });
+        
+        // 3. 更新數據庫
+        if (pools.online && recordingId) {
+          await pools.online.query(
+            `
+            UPDATE audio_recordings
+            SET 
+              transcription_text = $1,
+              customer_id = $2,
+              business_name = $3,
+              product_name = $4,
+              analysis_summary = $5,
+              ai_tags = $6,
+              transcription_status = 'completed',
+              analysis_status = 'completed',
+              overall_status = 'completed',
+              updated_at = NOW()
+            WHERE id = $7
+            `,
+            [
+              transcriptionResult,
+              analysisResult.customer_id || 0,
+              analysisResult.business_name || "",
+              analysisResult.product_name || "",
+              analysisResult.analysis_summary || "",
+              analysisResult.ai_tags ? JSON.stringify(analysisResult.ai_tags) : "[]",
+              recordingId
+            ]
+          );
+          addLog("info", "✅ 數據庫更新成功", { recordingId });
+        }
+      } catch (err) {
+        addLog("error", "❌ Whisper/AI 处理失敗", { recordingId, error: err.message });
+      }
+    });
+    
+    // 回傳成功
+    addLog("info", "✅ 上傳完成，回傳給前端（原始檔名）", { recordingId, audioUrl, fileName, encodedFileName });
+    return res.json({
+      success: true,
       recording_id: recordingId,
       audio_url: audioUrl,
-      message: '✅ 音檔已成功上傳到 R2' 
+      message: "音檔已成功上傳到 R2，正在進行轉錄和分析...",
+      fileName: fileName,
+      originalFileName: fileName,
+      timestamp: new Date().toISOString(),
     });
   } catch (err) {
-    addLog('error', '❌ 音檔上傳失敗', err.message);
+    addLog("error", "❌ 音檔上傳發生例外（原始檔名）", { message: err.message, stack: err.stack });
     res.status(500).json({ error: err.message });
   }
 });
@@ -1871,17 +2029,6 @@ app.post('/api/get-table-data', async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 });
-// SPA 路由 - 所有未匹配的路由都返回 index.html
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'), (err) => {
-    if (err) {
-      // 如果 dist 不存在，嘗試 client
-      res.sendFile(path.join(__dirname, 'client', 'index.html'))
-    }
-  })
-});
-
-
 // 獲取單個客戶詳細信息
 app.get('/api/customers/:id', async (req, res) => {
   const pool = pools.online;
@@ -1990,35 +2137,6 @@ app.use((err, req, res, next) => {
 
 
 // 音檔上傳 API
-app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, error: '沒有選擇文件' });
-    }
-
-    const customerId = req.body.customerId;
-    const fileName = `${customerId}-${Date.now()}-${req.file.originalname}`;
-    const filePath = path.join('uploads', 'audio', fileName);
-    
-    // 確保目錄存在
-    const dir = path.dirname(filePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    
-    // 保存文件
-    fs.writeFileSync(filePath, req.file.buffer);
-    
-    res.json({ 
-      success: true, 
-      audioUrl: `/uploads/audio/${fileName}`,
-      message: '音檔上傳成功'
-    });
-  } catch (error) {
-    console.error('音檔上傳錯誤:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
 
 // 音檔刪除 API
 app.delete('/api/audio/delete/:customerId', async (req, res) => {
@@ -2354,18 +2472,18 @@ app.get('/api/init-test-data', async (req, res) => {
       return res.status(500).json({ error: '數據庫未連接' });
     }
 
-    // 10 筆測試數據
+    // 10 筆測試數據（AI 標籤使用 2 字符格式）
     const testData = [
-      { customer_id: 1, business_name: '科技公司', product_name: 'AI 軟件', call_date: '2025-11-10', call_time: '09:30', audio_url: 'https://example.com/audio1.mp3', transcription_text: '客戶詢問 AI 軟件的功能、價格和實施時間。我們介紹了系統的核心功能，包括自然語言處理、機器學習和數據分析。客戶對我們的解決方案很感興趣，要求進一步的技術演示和報價。', transcription_status: 'completed', analysis_summary: '客戶對 AI 軟件感興趣，需要進一步報價和技術演示', analysis_status: 'completed', ai_tags: ["感興趣", "需要演示", "預算充足"], overall_status: 'pending' },
-      { customer_id: 2, business_name: '金融服務', product_name: '投資顧問', call_date: '2025-11-10', call_time: '10:15', audio_url: 'https://example.com/audio2.mp3', transcription_text: '討論投資組合管理、風險評估和市場分析工具。客戶詢問系統如何處理複雜的投資策略和實時數據更新。我們展示了系統的實時分析能力和自定義報表功能。', transcription_status: 'completed', analysis_summary: '客戶要求進一步的投資方案和成本分析', analysis_status: 'completed', ai_tags: ["投資管理", "風險評估", "數據分析"], overall_status: 'pending' },
-      { customer_id: 3, business_name: '零售商', product_name: '庫存管理系統', call_date: '2025-11-10', call_time: '11:00', audio_url: 'https://example.com/audio3.mp3', transcription_text: '詢問系統的集成能力、成本和實施周期。客戶關注系統如何與現有的 POS 系統和供應鏈管理系統集成。我們介紹了 API 集成方案和數據同步功能。', transcription_status: 'completed', analysis_summary: '客戶對系統功能滿意，需要演示和集成測試', analysis_status: 'completed', ai_tags: ["庫存管理", "系統集成", "成本效益"], overall_status: 'pending' },
-      { customer_id: 4, business_name: '製造業', product_name: 'ERP 系統', call_date: '2025-11-10', call_time: '14:30', audio_url: 'https://example.com/audio4.mp3', transcription_text: '討論生產流程優化、報表功能和數據可視化。客戶詢問系統如何支持多工廠管理和跨部門協作。我們介紹了系統的模塊化設計和定制化方案。', transcription_status: 'completed', analysis_summary: '客戶需要定制化方案，預計下周決定', analysis_status: 'completed', ai_tags: ["ERP", "生產管理", "定制化"], overall_status: 'pending' },
-      { customer_id: 5, business_name: '醫療機構', product_name: '患者管理系統', call_date: '2025-11-10', call_time: '15:45', audio_url: 'https://example.com/audio5.mp3', transcription_text: '詢問系統的安全性、合規性和患者數據隱私保護。客戶關注 HIPAA 和其他醫療數據保護法規的合規性。我們介紹了系統的加密、訪問控制和審計日誌功能。', transcription_status: 'completed', analysis_summary: '客戶關注數據隱私，需要合規證書和安全評估', analysis_status: 'completed', ai_tags: ["醫療合規", "數據安全", "隱私保護"], overall_status: 'pending' },
-      { customer_id: 1, business_name: '教育機構', product_name: '在線教學平台', call_date: '2025-11-11', call_time: '09:00', audio_url: 'https://example.com/audio6.mp3', transcription_text: '討論課程管理、學生互動和在線考試功能。客戶詢問系統如何支持實時互動、錄製課程和學習分析。我們展示了系統的直播功能和學習進度追蹤。', transcription_status: 'completed', analysis_summary: '客戶對平台功能感興趣，計劃試用', analysis_status: 'completed', ai_tags: ["在線教育", "互動功能", "學習分析"], overall_status: 'pending' },
-      { customer_id: 2, business_name: '房地產', product_name: '物業管理系統', call_date: '2025-11-11', call_time: '10:30', audio_url: 'https://example.com/audio7.mp3', transcription_text: '詢問租戶管理、維護工單和費用計算功能。客戶關注系統如何支持多物業管理和自動化計費。我們介紹了系統的租戶門戶和移動應用。', transcription_status: 'completed', analysis_summary: '客戶需要多物業支持，需要報價', analysis_status: 'completed', ai_tags: ["物業管理", "租戶服務", "自動計費"], overall_status: 'pending' },
-      { customer_id: 3, business_name: '物流公司', product_name: '運輸管理系統', call_date: '2025-11-11', call_time: '13:15', audio_url: 'https://example.com/audio8.mp3', transcription_text: '討論路線優化、實時追蹤和燃油成本管理。客戶詢問系統如何幫助降低運輸成本和提高交付效率。我們展示了系統的 GPS 追蹤和路線規劃算法。', transcription_status: 'completed', analysis_summary: '客戶對成本節省效果感興趣', analysis_status: 'completed', ai_tags: ["物流管理", "路線優化", "成本節省"], overall_status: 'pending' },
-      { customer_id: 4, business_name: '酒店集團', product_name: '預訂管理系統', call_date: '2025-11-11', call_time: '14:00', audio_url: 'https://example.com/audio9.mp3', transcription_text: '詢問多語言支持、支付集成和客戶關係管理功能。客戶關注系統如何與 OTA 平台集成和管理預訂。我們介紹了系統的多渠道預訂和收益管理功能。', transcription_status: 'completed', analysis_summary: '客戶計劃下月簽約，需要最終報價', analysis_status: 'completed', ai_tags: ["預訂管理", "支付集成", "收益管理"], overall_status: 'pending' },
-      { customer_id: 5, business_name: '律師事務所', product_name: '案件管理系統', call_date: '2025-11-11', call_time: '15:30', audio_url: 'https://example.com/audio10.mp3', transcription_text: '討論文件管理、時間追蹤和計費功能。客戶詢問系統如何支持案件協作和客戶溝通。我們展示了系統的文件版本控制和自動計費功能。', transcription_status: 'completed', analysis_summary: '客戶對系統功能滿意，預計本月決定', analysis_status: 'completed', ai_tags: ["案件管理", "文件管理", "時間追蹤"], overall_status: 'pending' }
+      { customer_id: 1, business_name: '何雨達', product_name: 'AI 軟件', call_date: '2025-09-23', call_time: '09:24', audio_url: 'https://r2.example.com/audio-recordings/202409230001_何雨達_AI軟件_0923_0924.mp3', audio_filename: '202409230001_何雨達_AI軟件_0923_0924.mp3', duration: 1151, transcription_text: '客戶詢問 AI 軟件的功能、價格和實施時間。我們介紹了系統的核心功能，包括自然語言處理、機器學習和數據分析。客戶對我們的解決方案很感興趣，要求進一步的技術演示和報價。', transcription_status: 'completed', analysis_summary: '客戶對 AI 軟件感興趣，需要進一步報價和技術演示', analysis_status: 'completed', ai_tags: ["感興", "需要", "預算"], overall_status: 'pending' },
+      { customer_id: 2, business_name: '郭庭碩', product_name: '投資顧問', call_date: '2025-09-23', call_time: '10:15', audio_url: 'https://r2.example.com/audio-recordings/202409230002_郭庭碩_投資顧問_0923_1015.mp3', audio_filename: '202409230002_郭庭碩_投資顧問_0923_1015.mp3', duration: 945, transcription_text: '討論投資組合管理、風險評估和市場分析工具。客戶詢問系統如何處理複雜的投資策略和實時數據更新。我們展示了系統的實時分析能力和自定義報表功能。', transcription_status: 'completed', analysis_summary: '客戶要求進一步的投資方案和成本分析', analysis_status: 'completed', ai_tags: ["投資", "風險", "分析"], overall_status: 'pending' },
+      { customer_id: 3, business_name: '鍾汶憲', product_name: '庫存管理', call_date: '2025-09-23', call_time: '11:00', audio_url: 'https://r2.example.com/audio-recordings/202409230003_鍾汶憲_庫存管理_0923_1100.mp3', audio_filename: '202409230003_鍾汶憲_庫存管理_0923_1100.mp3', duration: 1320, transcription_text: '詢問系統的集成能力、成本和實施周期。客戶關注系統如何與現有的 POS 系統和供應鏈管理系統集成。我們介紹了 API 集成方案和數據同步功能。', transcription_status: 'completed', analysis_summary: '客戶對系統功能滿意，需要演示和集成測試', analysis_status: 'completed', ai_tags: ["庫存", "集成", "成本"], overall_status: 'pending' },
+      { customer_id: 4, business_name: '何佳珊', product_name: 'ERP 系統', call_date: '2025-09-23', call_time: '14:30', audio_url: 'https://r2.example.com/audio-recordings/202409230004_何佳珊_ERP系統_0923_1430.mp3', audio_filename: '202409230004_何佳珊_ERP系統_0923_1430.mp3', duration: 1680, transcription_text: '討論生產流程優化、報表功能和數據可視化。客戶詢問系統如何支持多工廠管理和跨部門協作。我們介紹了系統的模塊化設計和定制化方案。', transcription_status: 'completed', analysis_summary: '客戶需要定制化方案，預計下周決定', analysis_status: 'completed', ai_tags: ["生產", "定制", "協作"], overall_status: 'pending' },
+      { customer_id: 5, business_name: '何雨達', product_name: '患者管理', call_date: '2025-09-23', call_time: '15:45', audio_url: 'https://r2.example.com/audio-recordings/202409230005_何雨達_患者管理_0923_1545.mp3', audio_filename: '202409230005_何雨達_患者管理_0923_1545.mp3', duration: 1456, transcription_text: '詢問系統的安全性、合規性和患者數據隱私保護。客戶關注 HIPAA 和其他醫療數據保護法規的合規性。我們介紹了系統的加密、訪問控制和審計日誌功能。', transcription_status: 'completed', analysis_summary: '客戶關注數據隱私，需要合規證書和安全評估', analysis_status: 'completed', ai_tags: ["醫療", "安全", "隱私"], overall_status: 'pending' },
+      { customer_id: 1, business_name: '郭庭碩', product_name: '在線教學', call_date: '2025-09-24', call_time: '09:00', audio_url: 'https://r2.example.com/audio-recordings/202409230006_郭庭碩_在線教學_0924_0900.mp3', audio_filename: '202409230006_郭庭碩_在線教學_0924_0900.mp3', duration: 1245, transcription_text: '討論課程管理、學生互動和在線考試功能。客戶詢問系統如何支持實時互動、錄製課程和學習分析。我們展示了系統的直播功能和學習進度追蹤。', transcription_status: 'completed', analysis_summary: '客戶對平台功能感興趣，計劃試用', analysis_status: 'completed', ai_tags: ["教育", "互動", "分析"], overall_status: 'pending' },
+      { customer_id: 2, business_name: '鍾汶憲', product_name: '物業管理', call_date: '2025-09-24', call_time: '10:30', audio_url: 'https://r2.example.com/audio-recordings/202409230007_鍾汶憲_物業管理_0924_1030.mp3', audio_filename: '202409230007_鍾汶憲_物業管理_0924_1030.mp3', duration: 1560, transcription_text: '詢問租戶管理、維護工單和費用計算功能。客戶關注系統如何支持多物業管理和自動化計費。我們介紹了系統的租戶門戶和移動應用。', transcription_status: 'completed', analysis_summary: '客戶需要多物業支持，需要報價', analysis_status: 'completed', ai_tags: ["物業", "租戶", "計費"], overall_status: 'pending' },
+      { customer_id: 3, business_name: '何佳珊', product_name: '運輸管理', call_date: '2025-09-24', call_time: '13:15', audio_url: 'https://r2.example.com/audio-recordings/202409230008_何佳珊_運輸管理_0924_1315.mp3', audio_filename: '202409230008_何佳珊_運輸管理_0924_1315.mp3', duration: 1890, transcription_text: '討論路線優化、實時追蹤和燃油成本管理。客戶詢問系統如何幫助降低運輸成本和提高交付效率。我們展示了系統的 GPS 追蹤和路線規劃算法。', transcription_status: 'completed', analysis_summary: '客戶對成本節省效果感興趣', analysis_status: 'completed', ai_tags: ["物流", "優化", "成本"], overall_status: 'pending' },
+      { customer_id: 4, business_name: '何雨達', product_name: '預訂管理', call_date: '2025-09-24', call_time: '14:00', audio_url: 'https://r2.example.com/audio-recordings/202409230009_何雨達_預訂管理_0924_1400.mp3', audio_filename: '202409230009_何雨達_預訂管理_0924_1400.mp3', duration: 1234, transcription_text: '詢問多語言支持、支付集成和客戶關係管理功能。客戶關注系統如何與 OTA 平台集成和管理預訂。我們介紹了系統的多渠道預訂和收益管理功能。', transcription_status: 'completed', analysis_summary: '客戶計劃下月簽約，需要最終報價', analysis_status: 'completed', ai_tags: ["預訂", "支付", "管理"], overall_status: 'pending' },
+      { customer_id: 5, business_name: '郭庭碩', product_name: '案件管理', call_date: '2025-09-24', call_time: '15:30', audio_url: 'https://r2.example.com/audio-recordings/202409230010_郭庭碩_案件管理_0924_1530.mp3', audio_filename: '202409230010_郭庭碩_案件管理_0924_1530.mp3', duration: 1567, transcription_text: '討論文件管理、時間追蹤和計費功能。客戶詢問系統如何支持案件協作和客戶溝通。我們展示了系統的文件版本控制和自動計費功能。', transcription_status: 'completed', analysis_summary: '客戶對系統功能滿意，預計本月決定', analysis_status: 'completed', ai_tags: ["案件", "文件", "追蹤"], overall_status: 'pending' }
     ];
 
     // 清空現有數據
@@ -2515,49 +2633,8 @@ app.post('/api/audio/parse-and-update', async (req, res) => {
 });
 
 // R2 音檔上傳端點
-app.post('/api/audio/upload', upload.single('audio'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: '沒有文件上傳' });
-    }
 
-    const { originalname, buffer, mimetype } = req.file;
-    const timestamp = Date.now();
-    const key = `audio/${timestamp}_${originalname}`;
-
-    // 上傳到 R2
-    const command = new PutObjectCommand({
-      Bucket: process.env.R2_BUCKET_NAME,
-      Key: key,
-      Body: buffer,
-      ContentType: mimetype,
-      ACL: 'public-read',
-    });
-
-    await r2Client.send(command);
-
-    // 構建公開 URL
-    const publicUrl = `${process.env.R2_PUBLIC_URL}/${key}`;
-
-    addLog('info', '音檔上傳成功', { filename: originalname, url: publicUrl });
-
-    res.json({
-      success: true,
-      message: '文件上傳成功',
-      data: {
-        filename: originalname,
-        url: publicUrl,
-        key: key,
-        size: buffer.length,
-      }
-    });
-  } catch (error) {
-    addLog('error', 'R2 上傳失敗', error.message);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   addLog('info', `CRM 3.0 服務器啟動成功，監聽端口 ${PORT}`);
   console.log(`
 ╔════════════════════════════════════════╗
@@ -2583,3 +2660,280 @@ process.on('SIGTERM', async () => {
   }
   process.exit(0);
 });
+
+// ============ 部署監控 API ============
+
+// WebSocket 連接處理
+wss.on('connection', (ws) => {
+  const clientId = uuidv4();
+  wsClients.set(clientId, ws);
+  
+  console.log(`[WebSocket] Client connected: ${clientId}`);
+  
+  ws.send(JSON.stringify({
+    type: 'connection',
+    clientId,
+    message: 'Connected to deployment monitoring'
+  }));
+  
+  ws.on('close', () => {
+    wsClients.delete(clientId);
+    console.log(`[WebSocket] Client disconnected: ${clientId}`);
+  });
+  
+  ws.on('error', (error) => {
+    console.error(`[WebSocket] Error: ${error.message}`);
+  });
+});
+
+// 部署歷史 API
+app.get('/api/deployments/history', (req, res) => {
+  const limit = parseInt(req.query.limit) || 20;
+  const offset = parseInt(req.query.offset) || 0;
+  
+  const history = deploymentHistory.slice(offset, offset + limit);
+  
+  res.json({
+    success: true,
+    total: deploymentHistory.length,
+    limit,
+    offset,
+    data: history
+  });
+});
+
+// 部署詳情 API
+app.get('/api/deployments/:deploymentId', (req, res) => {
+  const { deploymentId } = req.params;
+  
+  const deployment = deploymentHistory.find(d => d.id === deploymentId);
+  if (!deployment) {
+    return res.status(404).json({ error: 'Deployment not found' });
+  }
+  
+  const logs = deploymentLogs.get(deploymentId) || [];
+  
+  res.json({
+    success: true,
+    deployment,
+    logs
+  });
+});
+
+// 觸發部署 API
+app.post('/api/deployments/trigger', (req, res) => {
+  const { serviceName, environment = 'production' } = req.body;
+  
+  const deploymentId = uuidv4();
+  const deployment = {
+    id: deploymentId,
+    service_name: serviceName,
+    environment,
+    status: 'PENDING',
+    message: 'Deployment started',
+    started_at: new Date().toISOString(),
+    completed_at: null,
+    created_by: 'system',
+    created_at: new Date().toISOString()
+  };
+  
+  addDeploymentHistory(deployment);
+  addDeploymentLog(deploymentId, 'info', 'Deployment started', `Service: ${serviceName}`);
+  
+  res.json({
+    success: true,
+    deployment
+  });
+});
+
+// 更新部署狀態 API
+app.put('/api/deployments/:deploymentId/status', (req, res) => {
+  const { deploymentId } = req.params;
+  const { status, message } = req.body;
+  
+  const deployment = deploymentHistory.find(d => d.id === deploymentId);
+  if (!deployment) {
+    return res.status(404).json({ error: 'Deployment not found' });
+  }
+  
+  deployment.status = status;
+  deployment.message = message;
+  
+  if (status === 'SUCCESS' || status === 'FAILED') {
+    deployment.completed_at = new Date().toISOString();
+  }
+  
+  addDeploymentLog(deploymentId, status === 'SUCCESS' ? 'info' : 'error', message);
+  broadcastDeploymentUpdate(deploymentId, { status, message });
+  
+  res.json({
+    success: true,
+    deployment
+  });
+});
+
+// 添加部署日誌 API
+app.post('/api/deployments/:deploymentId/logs', (req, res) => {
+  const { deploymentId } = req.params;
+  const { level = 'info', message, details = '' } = req.body;
+  
+  const log = addDeploymentLog(deploymentId, level, message, details);
+  
+  res.json({
+    success: true,
+    log
+  });
+});
+
+// 獲取部署統計 API
+app.get('/api/deployments/stats', (req, res) => {
+  const stats = {
+    total: deploymentHistory.length,
+    success: deploymentHistory.filter(d => d.status === 'SUCCESS').length,
+    failed: deploymentHistory.filter(d => d.status === 'FAILED').length,
+    pending: deploymentHistory.filter(d => d.status === 'PENDING').length,
+    recent: deploymentHistory.slice(0, 10)
+  };
+  
+  res.json({
+    success: true,
+    stats
+  });
+});
+
+// 獲取所有日誌 API
+app.get('/api/logs', (req, res) => {
+  const limit = parseInt(req.query.limit) || 100;
+  const level = req.query.level || null;
+  
+  let filteredLogs = logs;
+  if (level) {
+    filteredLogs = logs.filter(l => l.level === level);
+  }
+  
+  res.json({
+    success: true,
+    total: filteredLogs.length,
+    data: filteredLogs.slice(0, limit)
+  });
+});
+
+// Whisper 轉錄函數
+async function transcribeAudio(audioUrl) {
+  try {
+    // 下載音檔
+    const response = await fetch(audioUrl);
+    if (!response.ok) throw new Error(`下載音檔失敗: ${response.status}`);
+    const audioBuffer = await response.buffer();
+    
+    // 設置 FormData
+    const formData = new FormData();
+    formData.append('file', audioBuffer, 'audio.mp3');
+    formData.append('model', 'whisper-1');
+    formData.append('language', 'zh');
+    
+    // 调用 OpenAI Whisper API
+    const transcriptionResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`
+      },
+      body: formData
+    });
+    
+    if (!transcriptionResponse.ok) {
+      const error = await transcriptionResponse.json();
+      throw new Error(`Whisper API 錯誤: ${error.error?.message || transcriptionResponse.statusText}`);
+    }
+    
+    const result = await transcriptionResponse.json();
+    return result.text || '';
+  } catch (err) {
+    addLog('error', '❌ Whisper 轉錄失敗', { error: err.message });
+    throw err;
+  }
+}
+
+// AI 分析函數
+async function analyzeTranscription(transcriptionText) {
+  try {
+    const prompt = `你是一个专业的销售分析专家。今天你接到了一份销售通话的转録文本。
+请分析转録文本，提取以下信息，并以 JSON 格式返回：
+
+{
+  "customer_id": "客户编号（应为 1-9999 之间的整数，如果找不到则返回 0）",
+  "business_name": "业务人员姓名",
+  "product_name": "产品名称",
+  "analysis_summary": "销售活动的简要总结，描述2-3句",
+  "ai_tags": ["标签1", "标签2", "标签3"]
+}
+
+转録文本：
+${transcriptionText}
+
+请仅返回 JSON，不要有任何其他文本。`;
+    
+    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: '你是一个专业的销售分析专家。'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 500
+      })
+    });
+    
+    if (!openaiResponse.ok) {
+      const error = await openaiResponse.json();
+      throw new Error(`OpenAI API 錯誤: ${error.error?.message || openaiResponse.statusText}`);
+    }
+    
+    const result = await openaiResponse.json();
+    const content = result.choices[0].message.content;
+    
+    // 解析 JSON
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('不能解析 AI 响应为 JSON');
+    }
+    
+    const analysisResult = JSON.parse(jsonMatch[0]);
+    
+    // 确保 customer_id 是整数
+    if (analysisResult.customer_id) {
+      analysisResult.customer_id = parseInt(analysisResult.customer_id) || 0;
+    } else {
+      analysisResult.customer_id = 0;
+    }
+    
+    return analysisResult;
+  } catch (err) {
+    addLog('error', '❌ AI 分析失敗', { error: err.message });
+    throw err;
+  }
+}
+
+// SPA 路由 - 所有未匹配的路由都返回 index.html
+// 注意：這個路由必須放在所有 API 路由之後，否則會攻擊 API 請求
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'), (err) => {
+    if (err) {
+      // 如果 dist 不存在，嘗試 client
+      res.sendFile(path.join(__dirname, 'client', 'index.html'))
+    }
+  })
+});
+

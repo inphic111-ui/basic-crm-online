@@ -221,8 +221,10 @@ export default function Recordings() {
     if (playingId === recordingId && audioRef.current) {
       if (audioRef.current.paused) {
         audioRef.current.play();
+        setPlayingId(recordingId); // 確保狀態已更新
       } else {
         audioRef.current.pause();
+        setPlayingId(null); // 暫停時重置狀態
       }
       return;
     }

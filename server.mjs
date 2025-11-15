@@ -2824,7 +2824,10 @@ async function transcribeAudio(audioUrl) {
     // 下載音檔
     const response = await fetch(audioUrl);
     if (!response.ok) throw new Error(`下載音檔失敗: ${response.status}`);
-    const audioBuffer = await response.buffer();
+    
+    // 使用 arrayBuffer() 代替 buffer()
+    const arrayBuffer = await response.arrayBuffer();
+    const audioBuffer = Buffer.from(arrayBuffer);
     
     // 設置 FormData
     const formData = new FormData();
