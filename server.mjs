@@ -1,5 +1,5 @@
 import express from 'express';
-import { convert } from 'opencc-js';
+import OpenCC from 'opencc-js';
 import multer from 'multer';
 import cors from 'cors';
 import { Pool } from 'pg';
@@ -27,7 +27,8 @@ const BUILT_IN_FORGE_API_URL = process.env.BUILT_IN_FORGE_API_URL;
 // 初始化 OpenAI 客戶端
 const openaiClient = new OpenAI({ apiKey: OPENAI_API_KEY });
 
-// 簡繁轉換函數已在下方定義
+// 初始化簡繁轉換 - 從簡體中文轉換為繁體中文
+const converter = OpenCC.Converter({ from: 'cn', to: 'tw' });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -2983,7 +2984,7 @@ async function convertToTraditional(text) {
   try {
     if (!text) return '';
     // 使用 opencc-js 將簡體字轉換為繁體字
-    return convert(text, 's2t.json');
+    return converter(text);
   } catch (err) {
     addLog('warn', '簡繁轉換失敗，返回原始文本', { error: err.message });
     return text; // 失敗時返回原始文本
