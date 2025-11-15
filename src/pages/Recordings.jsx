@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import AudioPlayer from 'react-h5-audio-player';
-import 'react-h5-audio-player/lib/styles.css';
 import '../styles/recordings.css';
 
 export default function Recordings() {
@@ -202,11 +200,26 @@ export default function Recordings() {
   
   // 播放音檔
   const [playingRecordId, setPlayingRecordId] = useState(null);
-  const [playingUrl, setPlayingUrl] = useState(null);
+  const audioRef = useRef(null);
 
   const handlePlayAudio = (record) => {
-    setPlayingRecordId(record.id);
-    setPlayingUrl(record.audio_url);
+    if (playingRecordId === record.id && audioRef.current) {
+      // 如果已在播放此音檔，則暫停
+      if (audioRef.current.paused) {
+        audioRef.current.play();
+      } else {
+        audioRef.current.pause();
+      }
+    } else {
+      // 播放新音檔
+      setPlayingRecordId(record.id);
+      setTimeout(() => {
+        if (audioRef.current) {
+          audioRef.current.src = record.audio_url;
+          audioRef.current.play();
+        }
+      }, 0);
+    }
   };
 
   const handleCloseSummaryModal = () => {
@@ -431,25 +444,8 @@ export default function Recordings() {
         </div>
       )}
 
-      {/* 音檔播放器 */}
-      {playingUrl && (
-        <div className="audio-player-container">
-          <div className="audio-player-wrapper">
-            <div className="player-header">
-              <span className="player-title">正在播放</span>
-              <button className="player-close-btn" onClick={() => {setPlayingUrl(null); setPlayingRecordId(null);}}>✕</button>
-            </div>
-            <AudioPlayer
-              autoPlay
-              src={playingUrl}
-              onEnded={() => {setPlayingUrl(null); setPlayingRecordId(null);}}
-              layout="stacked-reverse"
-              customProgressBarSection={['CURRENT_TIME', 'PROGRESS_BAR', 'DURATION']}
-              customControlsSection={['PLAY_PAUSE', 'VOLUME']}
-            />
-          </div>
-        </div>
-      )}
+      {/* 隱藏的音檔元素 */}
+      <audio ref={audioRef} />
 
     </div>
   );
