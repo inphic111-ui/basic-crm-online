@@ -1,0 +1,9 @@
+{
+  "query": "DROP TABLE IF EXISTS audio_recordings;\n\nCREATE TABLE audio_recordings (\n  id int AUTO_INCREMENT PRIMARY KEY,\n  customer_id int,\n  business_name varchar(100),\n  product_name varchar(100),\n  call_date date,\n  call_time time,\n  audio_url varchar(512),\n  audio_filename varchar(255),\n  duration varchar(20),\n  transcription_text text,\n  transcription_status varchar(50),\n  analysis_summary text,\n  analysis_status varchar(50),\n  ai_tags json,\n  created_at timestamp DEFAULT CURRENT_TIMESTAMP\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 29rDkMc4estG6xm.4c132c16006a --database WrczB9FbLtLbFuhmSGfDzu --execute DROP TABLE IF EXISTS audio_recordings;\n\nCREATE TABLE audio_recordings (\n  id int AUTO_INCREMENT PRIMARY KEY,\n  customer_id int,\n  business_name varchar(100),\n  product_name varchar(100),\n  call_date date,\n  call_time time,\n  audio_url varchar(512),\n  audio_filename varchar(255),\n  duration varchar(20),\n  transcription_text text,\n  transcription_status varchar(50),\n  analysis_summary text,\n  analysis_status varchar(50),\n  ai_tags json,\n  created_at timestamp DEFAULT CURRENT_TIMESTAMP\n)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2198
+}
