@@ -289,6 +289,9 @@
   cursor: pointer;
   width: 16px;
   height: 16px;
+  vertical-align: middle;
+  margin: 0;
+  display: inline-block;
 }
 
 /* 播放按鈕 */
