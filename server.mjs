@@ -1,5 +1,5 @@
 import express from 'express';
-import { OpenCC } from 'opencc-js';
+import OpenCC from 'opencc-js';
 import multer from 'multer';
 import cors from 'cors';
 import { Pool } from 'pg';
