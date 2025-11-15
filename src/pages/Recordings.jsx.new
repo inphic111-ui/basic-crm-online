@@ -1,0 +1,290 @@
+import React, { useState, useEffect, useRef } from 'react';
+import '../styles/recordings.css';
+
+export default function Recordings() {
+  const [recordings, setRecordings] = useState([]);
+  const [filteredRecordings, setFilteredRecordings] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedBusiness, setSelectedBusiness] = useState('');
+  const [selectAll, setSelectAll] = useState(false);
+  const [selectedRecordings, setSelectedRecordings] = useState(new Set());
+  const [uploading, setUploading] = useState(false);
+  const [showTranscriptionModal, setShowTranscriptionModal] = useState(false);
+  const [selectedTranscription, setSelectedTranscription] = useState('');
+  const [selectedRecordingName, setSelectedRecordingName] = useState('');
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [selectedSummary, setSelectedSummary] = useState('');
+  const [selectedSummaryName, setSelectedSummaryName] = useState('');
+  
+  // 分類彈窗狀態
+  const [showClassifyModal, setShowClassifyModal] = useState(false);
+  const [classifyingRecord, setClassifyingRecord] = useState(null);
+  const [classifyForm, setClassifyForm] = useState({ customer_id: '', business_name: '' });
+  const [customers, setCustomers] = useState([]);
+  
+  const fileInputRef = useRef(null);
+
+  const businessNames = ['何雨達', '郭庭碩', '鍾汶憲', '何佳珊'];
+  const customerNames = ['王小明', '李四', '張三', '黃五', '朱六', '劉七', '吳八', '黃九', '周十', '林十一'];
+
+  // 獲取錄音列表
+  const fetchRecords = async () => {
+    try {
+      const response = await fetch('/api/audio/list');
+      if (!response.ok) throw new Error('Failed to fetch');
+      const data = await response.json();
+      console.log('獲取錄音列表:', data);
+      setRecordings(data || []);
+      filterRecords(data || [], searchTerm, selectedBusiness);
+    } catch (error) {
+      console.error('Failed to fetch recordings:', error);
+    }
+  };
+
+  // 篩選記錄
+  const filterRecords = (records, search, business) => {
+    let filtered = records;
+
+    if (search) {
+      filtered = filtered.filter(r =>
+        (r.id || '').toString().toLowerCase().includes(search.toLowerCase()) ||
+        (r.business_name || '').includes(search) ||
+        (r.product_name || '').includes(search) ||
+        (r.customer_id || '').toString().includes(search)
+      );
+    }
+
+    if (business) {
+      filtered = filtered.filter(r => r.business_name === business);
+    }
+
+    setFilteredRecordings(filtered);
+  };
+
+  // 獲取客戶列表
+  const fetchCustomers = async () => {
+    try {
+      const response = await fetch('/api/customers');
+      if (!response.ok) throw new Error('Failed to fetch customers');
+      const data = await response.json();
+      setCustomers(data || []);
+    } catch (error) {
+      console.error('Failed to fetch customers:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchRecords();
+    fetchCustomers();
+  }, []);
+
+  // 搜尋和篩選
+  const handleSearch = (value) => {
+    setSearchTerm(value);
+    filterRecords(recordings, value, selectedBusiness);
+  };
+
+  const handleBusinessFilter = (value) => {
+    setSelectedBusiness(value);
+    filterRecords(recordings, searchTerm, value);
+  };
+
+  // 複選框處理
+  const handleSelectAll = (e) => {
+    const checked = e.target.checked;
+    setSelectAll(checked);
+    if (checked) {
+      setSelectedRecordings(new Set(filteredRecordings.map(r => r.id)));
+    } else {
+      setSelectedRecordings(new Set());
+    }
+  };
+
+  const handleSelectRecording = (id) => {
+    const newSelected = new Set(selectedRecordings);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedRecordings(newSelected);
+    setSelectAll(newSelected.size === filteredRecordings.length);
+  };
+
+  // 上傳音檔
+  const handleFileSelect = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    setUploading(true);
+    const uploadedFiles = [];
+    const failedFiles = [];
+
+    for (const file of files) {
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('/api/audio/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        
+        if (result.success && result.audio_url) {
+          uploadedFiles.push({
+            name: file.name,
+            url: result.audio_url,
+            recording_id: result.recording_id
+          });
+          console.log(`✅ 上傳成功: ${file.name}`, result);
+          
+          // 顯示成功通知
+          alert(`✅ 音檔上傳成功！\n檔名: ${file.name}`);
+        } else {
+          throw new Error(result.error || '上傳失敗');
+        }
+      } catch (error) {
+        console.error(`❌ 上傳失敗: ${file.name}`, error);
+        failedFiles.push(file.name);
+        alert(`❌ 上傳失敗: ${file.name}\n錯誤: ${error.message}`);
+      }
+    }
+
+    setUploading(false);
+    
+    // 上傳完成後立即重新獲取列表
+    if (uploadedFiles.length > 0) {
+      console.log(`已上傳 ${uploadedFiles.length} 個文件，重新加載列表...`);
+      // 稍微延遲以確保後端已完成寫入
+      setTimeout(() => {
+        fetchRecords();
+      }, 500);
+    }
+    
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const formatDateTime = (date, time) => {
+    if (!date) return '-';
+    // 处理 ISO 格式的日期時間（例如 2025-07-08T00:00:00.000Z）
+    let dateStr = date;
+    if (typeof date === 'string' && date.includes('T')) {
+      // 提取前 10 个字符（YYYY-MM-DD）
+      dateStr = date.substring(0, 10);
+    }
+    const timeOnly = time ? time.substring(0, 5) : '00:00';
+    return `${dateStr} ${timeOnly}`;
+  };
+
+  const formatDuration = (duration) => {
+    if (!duration) return '-';
+    // 轉換為 分:秒 格式
+    const minutes = Math.floor(duration / 60);
+    const seconds = duration % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const getStatusText = (status) => {
+    if (status === 'completed') return '已完成';
+    if (status === 'pending') return '待處理';
+    return status || '-';
+  };
+
+  const handleViewTranscription = (transcriptionText, recordingName) => {
+    setSelectedTranscription(transcriptionText || '');
+    setSelectedRecordingName(recordingName || '未命名');
+    setShowTranscriptionModal(true);
+  };
+
+  const handleCloseTranscriptionModal = () => {
+    setShowTranscriptionModal(false);
+    setSelectedTranscription('');
+    setSelectedRecordingName('');
+  };
+
+  const handleViewSummary = (summaryText, recordingName) => {
+    setSelectedSummary(summaryText || '');
+    setSelectedSummaryName(recordingName || 'Unnamed');
+    setShowSummaryModal(true);
+  };
+
+  
+  // 播放音檔
+  const [playingRecordId, setPlayingRecordId] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef(null);
+
+  const handlePlayAudio = (record) => {
+    console.log('播放按鈕被點擊:', record.id, record.audio_url);
+    
+    if (!record.audio_url) {
+      console.error('音檔 URL 不存在:', record);
+      alert('音檔 URL 不可用');
+      return;
+    }
+    
+    if (playingRecordId === record.id && audioRef.current) {
+      // 如果已在播放此音檔，則暫停/繼續
+      if (audioRef.current.paused) {
+        console.log('繼續播放');
+        audioRef.current.play().catch(err => console.error('播放失敗:', err));
+        setIsPlaying(true);
+      } else {
+        console.log('暫停播放');
+        audioRef.current.pause();
+        setIsPlaying(false);
+      }
+    } else {
+      // 播放新音檔
+      console.log('播放新音檔:', record.audio_url);
+      setPlayingRecordId(record.id);
+      setIsPlaying(true);
+      
+      if (audioRef.current) {
+        audioRef.current.src = record.audio_url;
+        audioRef.current.play().catch(err => console.error('播放失敗:', err));
+      }
+    }
+  };
+  
+  // 監聽音檔播放結束
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setPlayingRecordId(null);
+    };
+    
+    const handlePause = () => {
+      setIsPlaying(false);
+    };
+    
+    const handlePlay = () => {
+      setIsPlaying(true);
+    };
+    
+    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('pause', handlePause);
+    audio.addEventListener('play', handlePlay);
+    
+    return () => {
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('pause', handlePause);
+      audio.removeEventListener('play', handlePlay);
+    };
+  }, []);
+
+  const handleCloseSummaryModal = () => {
+    setShowSummaryModal(false);
+    setSelectedSummary('');
+    setSelectedSummaryName('');

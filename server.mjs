@@ -286,6 +286,7 @@ async function initializeDatabase() {
           analysis_status VARCHAR(50),
           ai_tags JSONB,
           overall_status VARCHAR(50),
+          is_manual_confirmed BOOLEAN DEFAULT FALSE,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -908,8 +909,8 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
         const insert = await pool.query(
           `
           INSERT INTO audio_recordings 
-          (customer_id, business_name, product_name, call_date, call_time, audio_url, audio_filename, duration, transcription_status, analysis_status, overall_status, created_at, updated_at)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', 'pending', 'processing', NOW(), NOW())
+          (customer_id, business_name, product_name, call_date, call_time, audio_url, audio_filename, duration, transcription_status, analysis_status, overall_status, is_manual_confirmed, created_at, updated_at)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', 'pending', 'processing', FALSE, NOW(), NOW())
           RETURNING id
           `,
           [
@@ -2475,11 +2476,9 @@ app.get('/api/init-test-data', async (req, res) => {
     let insertedCount = 0;
     for (const data of testData) {
       const query = `
-        INSERT INTO audio_recordings 
-        (customer_id, business_name, product_name, call_date, call_time, audio_url, 
-         transcription_text, transcription_status, analysis_summary, analysis_status, 
-         ai_tags, overall_status, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
+        INSERT INTO audio_recordings
+        (customer_id, business_name, product_name, call_date, call_time, audio_url, audio_filename, duration, transcription_text, transcription_status, analysis_summary, analysis_status, ai_tags, overall_status, is_manual_confirmed, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, FALSE, NOW(), NOW())
       `;
       
       const values = [
@@ -2489,6 +2488,8 @@ app.get('/api/init-test-data', async (req, res) => {
         data.call_date,
         data.call_time,
         data.audio_url,
+        data.audio_filename,
+        data.duration,
         data.transcription_text,
         data.transcription_status,
         data.analysis_summary,
@@ -2583,6 +2584,7 @@ app.post('/api/audio/parse-and-update', async (req, res) => {
         call_date = $4,
         call_time = $5,
         audio_url = $6,
+        is_manual_confirmed = TRUE,
         updated_at = NOW()
       WHERE id = $7
       RETURNING *

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import ClassifyModal from '../components/ClassifyModal';
 import '../styles/recordings.css';
 
 export default function Recordings() {
@@ -20,6 +19,7 @@ export default function Recordings() {
   // 分類彈窗狀態
   const [showClassifyModal, setShowClassifyModal] = useState(false);
   const [classifyingRecord, setClassifyingRecord] = useState(null);
+  const [classifyForm, setClassifyForm] = useState({ customer_id: '', business_name: '' });
   const [customers, setCustomers] = useState([]);
   
   const fileInputRef = useRef(null);
@@ -174,8 +174,10 @@ export default function Recordings() {
 
   const formatDateTime = (date, time) => {
     if (!date) return '-';
+    // 处理 ISO 格式的日期時間（例如 2025-07-08T00:00:00.000Z）
     let dateStr = date;
     if (typeof date === 'string' && date.includes('T')) {
+      // 提取前 10 个字符（YYYY-MM-DD）
       dateStr = date.substring(0, 10);
     }
     const timeOnly = time ? time.substring(0, 5) : '00:00';
@@ -184,6 +186,7 @@ export default function Recordings() {
 
   const formatDuration = (duration) => {
     if (!duration) return '-';
+    // 轉換為 分:秒 格式
     const minutes = Math.floor(duration / 60);
     const seconds = duration % 60;
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
@@ -213,6 +216,7 @@ export default function Recordings() {
     setShowSummaryModal(true);
   };
 
+  
   // 播放音檔
   const [playingRecordId, setPlayingRecordId] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -228,6 +232,7 @@ export default function Recordings() {
     }
     
     if (playingRecordId === record.id && audioRef.current) {
+      // 如果已在播放此音檔，則暫停/繼續
       if (audioRef.current.paused) {
         console.log('繼續播放');
         audioRef.current.play().catch(err => console.error('播放失敗:', err));
@@ -238,6 +243,7 @@ export default function Recordings() {
         setIsPlaying(false);
       }
     } else {
+      // 播放新音檔
       console.log('播放新音檔:', record.audio_url);
       setPlayingRecordId(record.id);
       setIsPlaying(true);
@@ -284,20 +290,30 @@ export default function Recordings() {
     setSelectedSummaryName('');
   };
 
-  // 打開分類彈窗
+  // Open classify modal
   const handleOpenClassifyModal = (record) => {
     setClassifyingRecord(record);
+    setClassifyForm({
+      customer_id: record.customer_id || '',
+      business_name: record.business_name || ''
+    });
     setShowClassifyModal(true);
   };
 
-  // 關閉分類彈窗
+  // Close classify modal
   const handleCloseClassifyModal = () => {
     setShowClassifyModal(false);
     setClassifyingRecord(null);
+    setClassifyForm({ customer_id: '', business_name: '' });
   };
 
-  // 保存分類
-  const handleSaveClassify = async (formData) => {
+  // Save classification
+  const handleSaveClassify = async () => {
+    if (!classifyForm.customer_id || !classifyForm.business_name) {
+      alert('Please fill in customer and business');
+      return;
+    }
+
     try {
       const response = await fetch('/api/audio/parse-and-update', {
         method: 'POST',
@@ -305,22 +321,22 @@ export default function Recordings() {
         body: JSON.stringify({
           recordId: classifyingRecord.id,
           filename: classifyingRecord.audio_filename,
-          customerId: formData.customer_id,
-          businessName: formData.business_name
+          customerId: classifyForm.customer_id,
+          businessName: classifyForm.business_name
         })
       });
 
       if (!response.ok) throw new Error('Failed to save classification');
       
       const result = await response.json();
-      console.log('✅ 分類已保存並鎖定', result);
+      console.log('Classification saved', result);
       
       fetchRecords();
       handleCloseClassifyModal();
-      alert('✅ 分類已保存並鎖定');
+      alert('Classification saved successfully');
     } catch (error) {
-      console.error('❌ 保存分類失敗:', error);
-      alert(`❌ 保存失敗: ${error.message}`);
+      console.error('Failed to save classification:', error);
+      alert(`Save failed: ${error.message}`);
     }
   };
 
@@ -429,16 +445,7 @@ export default function Recordings() {
                   </button>
                 </td>
                 <td className="col-filename">{record.audio_filename || `錄音_${record.id}`}</td>
-                <td className="col-customer">
-                  {record.is_manual_confirmed ? (
-                    <span className="locked-status">✅ {customerNames[Math.min(record.customer_id - 1, customerNames.length - 1)] || `客戶${record.customer_id}`} (已鎖定)</span>
-                  ) : (
-                    <div className="unclassified-status">
-                      <span>🟡 未分類</span>
-                      <button className="edit-btn" onClick={() => handleOpenClassifyModal(record)} title="編輯分類">編輯</button>
-                    </div>
-                  )}
-                </td>
+                <td className="col-customer">{customerNames[Math.min(record.customer_id - 1, customerNames.length - 1)] || `客戶${record.customer_id}`}</td>
                 <td className="col-business">{record.business_name || '-'}</td>
                 <td className="col-time">{formatDateTime(record.call_date, record.call_time)}</td>
                 <td className="col-duration">{formatDuration(record.duration)}</td>
@@ -557,54 +564,9 @@ export default function Recordings() {
         </div>
       )}
 
-      {/* 分類彈窗 */}
-      <ClassifyModal
-        isOpen={showClassifyModal}
-        record={classifyingRecord}
-        onClose={handleCloseClassifyModal}
-        onSave={handleSaveClassify}
-        customers={customers}
-        businessNames={businessNames}
-      />
-
       {/* 隱藏的音檔元素 */}
       <audio ref={audioRef} />
 
-      <style jsx>{`
-        .unclassified-status {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .edit-btn {
-          background: #2196F3;
-          color: white;
-          border: none;
-          padding: 4px 8px;
-          border-radius: 4px;
-          cursor: pointer;
-          font-size: 12px;
-          font-weight: 500;
-          transition: all 0.2s;
-        }
-
-        .edit-btn:hover {
-          background: #1976D2;
-        }
-
-        .edit-btn:active {
-          transform: scale(0.95);
-        }
-
-        .locked-status {
-          color: #4CAF50;
-          font-weight: 500;
-          display: flex;
-          align-items: center;
-          gap: 4px;
-        }
-      `}</style>
     </div>
   );
 }
