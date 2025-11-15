@@ -121,7 +121,15 @@ export default function Recordings() {
 
   const formatDateTime = (date, time) => {
     if (!date) return '-';
-    return `${date} ${time || ''}`.trim();
+    const timeOnly = time ? time.substring(0, 5) : '00:00';
+    return `${date} ${timeOnly}`;
+  };
+
+  const formatDuration = (duration) => {
+    if (!duration) return '-';
+    const minutes = Math.floor(duration / 60);
+    const seconds = duration % 60;
+    return `${minutes}分${seconds}秒`;
   };
 
   const getStatusText = (status) => {
@@ -234,7 +242,7 @@ export default function Recordings() {
                 <td className="col-customer">{record.customer_id || '-'}</td>
                 <td className="col-business">{record.business_name || '-'}</td>
                 <td className="col-time">{formatDateTime(record.call_date, record.call_time)}</td>
-                <td className="col-duration">-</td>
+                <td className="col-duration">{formatDuration(record.duration)}</td>
                 <td className="col-transcription">
                   {record.transcription_text ? (
                     <button
@@ -267,7 +275,7 @@ export default function Recordings() {
         <div className="modal-overlay" onClick={handleCloseTranscriptionModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>轉錄文本</h2>
+              <h2>原始轉錄文本</h2>
               <button className="modal-close" onClick={handleCloseTranscriptionModal}>✕</button>
             </div>
             <div className="modal-body">
