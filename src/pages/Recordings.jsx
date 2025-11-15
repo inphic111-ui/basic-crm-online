@@ -15,7 +15,7 @@ export default function Recordings() {
   const fileInputRef = useRef(null);
 
   const businessNames = ['何雨達', '郭庭碩', '鍾汶憲', '何佳珊'];
-  const customerNames = ['科技有限公司', '金融服務公司', '製造業集團', '零售連鎖店', '物流公司', '房地產開發商', '教育機構', '醫療保健集團', '餐飲連鎖', '電信運營商'];
+  const customerNames = ['王小明', '李四', '張三', '黃五', '朱六', '劉七', '吳八', '黃九', '周十', '林十一'];
 
   // 獲取錄音列表
   const fetchRecords = async () => {
@@ -122,9 +122,14 @@ export default function Recordings() {
 
   const formatDateTime = (date, time) => {
     if (!date) return '-';
-    // 移除時間中的多餘零
+    // 处理 ISO 格式的日期時間（例如 2025-07-08T00:00:00.000Z）
+    let dateStr = date;
+    if (typeof date === 'string' && date.includes('T')) {
+      // 提取前 10 个字符（YYYY-MM-DD）
+      dateStr = date.substring(0, 10);
+    }
     const timeOnly = time ? time.substring(0, 5) : '00:00';
-    return `${date} ${timeOnly}`;
+    return `${dateStr} ${timeOnly}`;
   };
 
   const formatDuration = (duration) => {
