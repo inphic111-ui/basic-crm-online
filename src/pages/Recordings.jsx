@@ -265,21 +265,32 @@ export default function Recordings() {
                   )}
                 </td>
                 <td className="col-tags">
-                  {record.ai_tags && Array.isArray(record.ai_tags) && record.ai_tags.length > 0 ? (
-                    <div className="tags-container">
-                      {record.ai_tags.slice(0, 3).map((tag, idx) => {
-                        const colors = ['#2ecc71', '#f39c12', '#9b59b6', '#3498db', '#e74c3c'];
-                        const bgColor = colors[idx % colors.length];
-                        return (
-                          <span key={idx} className="tag-badge" style={{ backgroundColor: bgColor }}>
+                  {(() => {
+                    let tags = [];
+                    if (record.ai_tags) {
+                      if (typeof record.ai_tags === 'string') {
+                        try {
+                          tags = JSON.parse(record.ai_tags);
+                        } catch (e) {
+                          tags = [];
+                        }
+                      } else if (Array.isArray(record.ai_tags)) {
+                        tags = record.ai_tags;
+                      }
+                    }
+                    
+                    return tags && tags.length > 0 ? (
+                      <div className="tags-container">
+                        {tags.slice(0, 3).map((tag, idx) => (
+                          <span key={idx} className="tag-badge">
                             {tag}
                           </span>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <span>-</span>
-                  )}
+                        ))}
+                      </div>
+                    ) : (
+                      <span>-</span>
+                    );
+                  })()}
                 </td>
                 <td className="col-summary">{(record.analysis_summary || '').substring(0, 50) || '-'}</td>
               </tr>

@@ -236,22 +236,24 @@
   align-items: center;
 }
 
-/* AI 標籤徽章 */
+/* AI 標籤徽章 - 灰底風格 */
 .tag-badge {
   display: inline-block;
-  padding: 4px 10px;
-  border-radius: 12px;
+  padding: 5px 12px;
+  border-radius: 14px;
   font-size: 12px;
   font-weight: 500;
-  color: white;
+  color: #555;
+  background-color: #e8e8e8;
   white-space: nowrap;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  box-shadow: none;
+  border: 1px solid #d0d0d0;
   transition: all 0.2s;
 }
 
 .tag-badge:hover {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-  transform: translateY(-1px);
+  background-color: #ddd;
+  border-color: #b0b0b0;
 }
 
 .col-summary {
