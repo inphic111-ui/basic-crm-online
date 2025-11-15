@@ -2969,7 +2969,28 @@ ${transcriptionText}
       analysisResult.customer_id = 0;
     }
     
-    // 注意：Whisper 已配置為直接輸出繁體中文，無需額外轉換
+    // 轉換 AI 分析結果中的簡體為繁體（雙重保障）
+    try {
+      const OpenCC = require('opencc-js');
+      const converter = OpenCC.Converter({ from: 'cn', to: 'tw' });
+      
+      if (analysisResult.business_name) {
+        analysisResult.business_name = converter(analysisResult.business_name);
+      }
+      if (analysisResult.product_name) {
+        analysisResult.product_name = converter(analysisResult.product_name);
+      }
+      if (analysisResult.analysis_summary) {
+        analysisResult.analysis_summary = converter(analysisResult.analysis_summary);
+      }
+      if (analysisResult.ai_tags && Array.isArray(analysisResult.ai_tags)) {
+        analysisResult.ai_tags = analysisResult.ai_tags.map(tag => converter(String(tag)));
+      }
+      
+      addLog('info', 'AI analysis result converted to Traditional Chinese');
+    } catch (ccErr) {
+      addLog('warn', 'OpenCC conversion failed for AI analysis result', { error: ccErr.message });
+    }
     
     return analysisResult;
   } catch (err) {
