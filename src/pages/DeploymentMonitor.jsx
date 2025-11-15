@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/deployment-monitor.css';
-import DeploymentPreCheckList from '../components/DeploymentPreCheckList';
 
 export default function DeploymentMonitor() {
   const [deployments, setDeployments] = useState([]);
@@ -148,9 +147,6 @@ export default function DeploymentMonitor() {
 
   return (
     <div className="deployment-monitor">
-      {/* 部署前檢查清單 */}
-      <DeploymentPreCheckList />
-      
       <div className="monitor-header">
         <h1>🚀 部署監控中心</h1>
         <button 

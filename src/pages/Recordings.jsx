@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import ClassifyModal from '../components/ClassifyModal';
 import '../styles/recordings.css';
 
 export default function Recordings() {
@@ -16,12 +15,6 @@ export default function Recordings() {
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [selectedSummary, setSelectedSummary] = useState('');
   const [selectedSummaryName, setSelectedSummaryName] = useState('');
-  
-  // 分類彈窗狀態
-  const [showClassifyModal, setShowClassifyModal] = useState(false);
-  const [classifyingRecord, setClassifyingRecord] = useState(null);
-  const [customers, setCustomers] = useState([]);
-  
   const fileInputRef = useRef(null);
 
   const businessNames = ['何雨達', '郭庭碩', '鍾汶憲', '何佳珊'];
@@ -61,21 +54,8 @@ export default function Recordings() {
     setFilteredRecordings(filtered);
   };
 
-  // 獲取客戶列表
-  const fetchCustomers = async () => {
-    try {
-      const response = await fetch('/api/customers');
-      if (!response.ok) throw new Error('Failed to fetch customers');
-      const data = await response.json();
-      setCustomers(data || []);
-    } catch (error) {
-      console.error('Failed to fetch customers:', error);
-    }
-  };
-
   useEffect(() => {
     fetchRecords();
-    fetchCustomers();
   }, []);
 
   // 搜尋和篩選
@@ -174,8 +154,10 @@ export default function Recordings() {
 
   const formatDateTime = (date, time) => {
     if (!date) return '-';
+    // 处理 ISO 格式的日期時間（例如 2025-07-08T00:00:00.000Z）
     let dateStr = date;
     if (typeof date === 'string' && date.includes('T')) {
+      // 提取前 10 个字符（YYYY-MM-DD）
       dateStr = date.substring(0, 10);
     }
     const timeOnly = time ? time.substring(0, 5) : '00:00';
@@ -184,6 +166,7 @@ export default function Recordings() {
 
   const formatDuration = (duration) => {
     if (!duration) return '-';
+    // 轉換為 分:秒 格式
     const minutes = Math.floor(duration / 60);
     const seconds = duration % 60;
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
@@ -213,115 +196,10 @@ export default function Recordings() {
     setShowSummaryModal(true);
   };
 
-  // 播放音檔
-  const [playingRecordId, setPlayingRecordId] = useState(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const audioRef = useRef(null);
-
-  const handlePlayAudio = (record) => {
-    console.log('播放按鈕被點擊:', record.id, record.audio_url);
-    
-    if (!record.audio_url) {
-      console.error('音檔 URL 不存在:', record);
-      alert('音檔 URL 不可用');
-      return;
-    }
-    
-    if (playingRecordId === record.id && audioRef.current) {
-      if (audioRef.current.paused) {
-        console.log('繼續播放');
-        audioRef.current.play().catch(err => console.error('播放失敗:', err));
-        setIsPlaying(true);
-      } else {
-        console.log('暫停播放');
-        audioRef.current.pause();
-        setIsPlaying(false);
-      }
-    } else {
-      console.log('播放新音檔:', record.audio_url);
-      setPlayingRecordId(record.id);
-      setIsPlaying(true);
-      
-      if (audioRef.current) {
-        audioRef.current.src = record.audio_url;
-        audioRef.current.play().catch(err => console.error('播放失敗:', err));
-      }
-    }
-  };
-  
-  // 監聽音檔播放結束
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    
-    const handleEnded = () => {
-      setIsPlaying(false);
-      setPlayingRecordId(null);
-    };
-    
-    const handlePause = () => {
-      setIsPlaying(false);
-    };
-    
-    const handlePlay = () => {
-      setIsPlaying(true);
-    };
-    
-    audio.addEventListener('ended', handleEnded);
-    audio.addEventListener('pause', handlePause);
-    audio.addEventListener('play', handlePlay);
-    
-    return () => {
-      audio.removeEventListener('ended', handleEnded);
-      audio.removeEventListener('pause', handlePause);
-      audio.removeEventListener('play', handlePlay);
-    };
-  }, []);
-
   const handleCloseSummaryModal = () => {
     setShowSummaryModal(false);
     setSelectedSummary('');
     setSelectedSummaryName('');
-  };
-
-  // 打開分類彈窗
-  const handleOpenClassifyModal = (record) => {
-    setClassifyingRecord(record);
-    setShowClassifyModal(true);
-  };
-
-  // 關閉分類彈窗
-  const handleCloseClassifyModal = () => {
-    setShowClassifyModal(false);
-    setClassifyingRecord(null);
-  };
-
-  // 保存分類
-  const handleSaveClassify = async (formData) => {
-    try {
-      const response = await fetch('/api/audio/parse-and-update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recordId: classifyingRecord.id,
-          filename: classifyingRecord.audio_filename,
-          customerId: formData.customer_id,
-          businessName: formData.business_name
-        })
-      });
-
-      if (!response.ok) throw new Error('Failed to save classification');
-      
-      const result = await response.json();
-      console.log('✅ 分類已保存並鎖定', result);
-      
-      fetchRecords();
-      handleCloseClassifyModal();
-      alert('✅ 分類已保存並鎖定');
-    } catch (error) {
-      console.error('❌ 保存分類失敗:', error);
-      alert(`❌ 保存失敗: ${error.message}`);
-    }
   };
 
   return (
@@ -410,35 +288,14 @@ export default function Recordings() {
                   />
                 </td>
                 <td className="col-play">
-                  <button 
-                    className={`play-btn ${playingRecordId === record.id && isPlaying ? 'playing' : ''}`}
-                    title={playingRecordId === record.id && isPlaying ? '暫停' : '播放'} 
-                    onClick={() => handlePlayAudio(record)}
-                    type="button"
-                  >
-                    {playingRecordId === record.id && isPlaying ? (
-                      <svg viewBox="0 0 24 24" width="20" height="20" style={{fill: '#2196F3'}}>
-                        <rect x="6" y="4" width="4" height="16" />
-                        <rect x="14" y="4" width="4" height="16" />
-                      </svg>
-                    ) : (
-                      <svg viewBox="0 0 24 24" width="20" height="20" style={{fill: 'none', stroke: '#2196F3', strokeWidth: 2}}>
-                        <polygon points="6,4 20,12 6,20" />
-                      </svg>
-                    )}
+                  <button className="play-btn" title="播放">
+                    <svg viewBox="0 0 24 24" width="16" height="16" style={{fill: 'none', stroke: '#2196F3', strokeWidth: 2}}>
+                      <polygon points="6,4 20,12 6,20" />
+                    </svg>
                   </button>
                 </td>
                 <td className="col-filename">{record.audio_filename || `錄音_${record.id}`}</td>
-                <td className="col-customer">
-                  {record.is_manual_confirmed ? (
-                    <span className="locked-status">✅ {customerNames[Math.min(record.customer_id - 1, customerNames.length - 1)] || `客戶${record.customer_id}`} (已鎖定)</span>
-                  ) : (
-                    <div className="unclassified-status">
-                      <span>🟡 未分類</span>
-                      <button className="edit-btn" onClick={() => handleOpenClassifyModal(record)} title="編輯分類">編輯</button>
-                    </div>
-                  )}
-                </td>
+                <td className="col-customer">{customerNames[Math.min(record.customer_id - 1, customerNames.length - 1)] || `客戶${record.customer_id}`}</td>
                 <td className="col-business">{record.business_name || '-'}</td>
                 <td className="col-time">{formatDateTime(record.call_date, record.call_time)}</td>
                 <td className="col-duration">{formatDuration(record.duration)}</td>
@@ -556,55 +413,6 @@ export default function Recordings() {
           </div>
         </div>
       )}
-
-      {/* 分類彈窗 */}
-      <ClassifyModal
-        isOpen={showClassifyModal}
-        record={classifyingRecord}
-        onClose={handleCloseClassifyModal}
-        onSave={handleSaveClassify}
-        customers={customers}
-        businessNames={businessNames}
-      />
-
-      {/* 隱藏的音檔元素 */}
-      <audio ref={audioRef} />
-
-      <style jsx>{`
-        .unclassified-status {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .edit-btn {
-          background: #2196F3;
-          color: white;
-          border: none;
-          padding: 4px 8px;
-          border-radius: 4px;
-          cursor: pointer;
-          font-size: 12px;
-          font-weight: 500;
-          transition: all 0.2s;
-        }
-
-        .edit-btn:hover {
-          background: #1976D2;
-        }
-
-        .edit-btn:active {
-          transform: scale(0.95);
-        }
-
-        .locked-status {
-          color: #4CAF50;
-          font-weight: 500;
-          display: flex;
-          align-items: center;
-          gap: 4px;
-        }
-      `}</style>
     </div>
   );
 }

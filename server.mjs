@@ -9,7 +9,6 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
 import http from 'http';
 import { WebSocketServer } from 'ws';
-import { parseBuffer } from 'music-metadata';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -286,7 +285,6 @@ async function initializeDatabase() {
           analysis_status VARCHAR(50),
           ai_tags JSONB,
           overall_status VARCHAR(50),
-          is_manual_confirmed BOOLEAN DEFAULT FALSE,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -806,51 +804,31 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
         const nameWithoutExt = fileName.replace(/\.[^\/\.]+$/, '');
         const parts = nameWithoutExt.split('_');
         
-        addLog('info', '檔名分割結果', { fileName, parts, partsLength: parts.length });
-        
-        let customerIdStr, salespersonName, productName, dateStr, timeStr;
-        
-        // 支持兩種格式：
-        // 格式1（完整）：YYYYMMDDNNNN_業務名_產品名_MMDD_HHMM.mp3（5個部分）
-        // 格式2（簡化）：YYYYMMDDNNNN_MMDD_HHMM.mp3（3個部分）
-        
-        if (parts.length === 5) {
-          // 完整格式
-          [customerIdStr, salespersonName, productName, dateStr, timeStr] = parts;
-        } else if (parts.length === 3) {
-          // 簡化格式
-          [customerIdStr, dateStr, timeStr] = parts;
-          salespersonName = '';
-          productName = '';
-        } else {
-          addLog('warn', '檔名格式不符合預期', { fileName, parts, partsLength: parts.length });
-          throw new Error(`檔名格式不符合預期，期望3或5個部分，實際${parts.length}個`);
-        }
-        
-        // 驗證並解析日期和時間
-        if (/^\d{4}$/.test(dateStr) && /^\d{4}$/.test(timeStr)) {
-          const callMonth = dateStr.substring(0, 2);
-          const callDay = dateStr.substring(2, 4);
-          const currentYear = new Date().getFullYear();
-          const callDate = `${currentYear}-${callMonth}-${callDay}`;
+        if (parts.length >= 5) {
+          const [customerIdStr, salespersonName, productName, dateStr, timeStr] = parts;
           
-          const hour = timeStr.substring(0, 2);
-          const minute = timeStr.substring(2, 4);
-          const callTime = `${hour}:${minute}:00`;
-          
-          // 只在沒有提供時才使用自動解析的值
-          if (!parsedData.call_date) parsedData.call_date = callDate;
-          if (!parsedData.call_time) parsedData.call_time = callTime;
-          if (!parsedData.customer_id && /^\d{12}$/.test(customerIdStr)) {
-            parsedData.customer_id = customerIdStr.substring(8, 12);
+          // 驗證並解析日期和時間
+          if (/^\d{4}$/.test(dateStr) && /^\d{4}$/.test(timeStr)) {
+            const callMonth = dateStr.substring(0, 2);
+            const callDay = dateStr.substring(2, 4);
+            const currentYear = new Date().getFullYear();
+            const callDate = `${currentYear}-${callMonth}-${callDay}`;
+            
+            const hour = timeStr.substring(0, 2);
+            const minute = timeStr.substring(2, 4);
+            const callTime = `${hour}:${minute}:00`;
+            
+            // 只在沒有提供時才使用自動解析的值
+            if (!parsedData.call_date) parsedData.call_date = callDate;
+            if (!parsedData.call_time) parsedData.call_time = callTime;
+            if (!parsedData.customer_id && /^\d{12}$/.test(customerIdStr)) {
+              parsedData.customer_id = customerIdStr.substring(8, 12);
+            }
+            if (!parsedData.salesperson_name) parsedData.salesperson_name = salespersonName;
+            if (!parsedData.product_name) parsedData.product_name = productName;
+            
+            addLog('info', '✅ 從檔名自動解析成功', { fileName, callDate, callTime });
           }
-          if (!parsedData.salesperson_name && salespersonName) parsedData.salesperson_name = salespersonName;
-          if (!parsedData.product_name && productName) parsedData.product_name = productName;
-          
-          addLog('info', '✅ 從檔名自動解析成功', { fileName, callDate, callTime, customerIdStr, salespersonName, productName });
-        } else {
-          addLog('warn', '日期或時間格式不符合預期', { fileName, dateStr, timeStr });
-          throw new Error(`日期或時間格式不符合預期：${dateStr}, ${timeStr}`);
         }
       } catch (parseErr) {
         addLog('warn', '從檔名自動解析失敗', { fileName, error: parseErr.message });
@@ -859,18 +837,6 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
 
     // 預設 recordingId（如果 DB 寫入失敗）
     let recordingId = Date.now();
-    
-    // 🔵 提取音檔長度
-    let duration = 0; // 秒數
-    try {
-      const metadata = await parseBuffer(req.file.buffer, { mimeType: req.file.mimetype });
-      if (metadata.format.duration) {
-        duration = Math.round(metadata.format.duration); // 四捨五入到秒
-        addLog('info', '✅ 音檔長度提取成功', { fileName, durationFormatted: `${Math.floor(duration / 60)}:${String(duration % 60).padStart(2, '0')}` });
-      }
-    } catch (durationErr) {
-      addLog('warn', '⚠️ 音檔長度提取失敗，使用默認值 0', { fileName, error: durationErr.message });
-    }
 
     // 🔵 先上傳 R2（不依賴資料庫）
     // 使用一層目錄結構：audio-recordings/filename
@@ -909,8 +875,8 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
         const insert = await pool.query(
           `
           INSERT INTO audio_recordings 
-          (customer_id, business_name, product_name, call_date, call_time, audio_url, audio_filename, duration, transcription_status, analysis_status, overall_status, is_manual_confirmed, created_at, updated_at)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', 'pending', 'processing', FALSE, NOW(), NOW())
+          (customer_id, business_name, product_name, call_date, call_time, audio_url, audio_filename, transcription_status, analysis_status, overall_status, created_at, updated_at)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', 'pending', 'processing', NOW(), NOW())
           RETURNING id
           `,
           [
@@ -921,7 +887,6 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
             parsedData.call_time || "00:00:00",
             audioUrl,
             fileName,
-            duration,
           ]
         );
 
@@ -941,21 +906,20 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
     }
 
     // 回傳成功
-    addLog("info", "✅ 上傳完成，回傳給前端（原始檔名）", { recordingId, audioUrl, fileName, encodedFileName, duration });
+    addLog("info", "✅ 上傳完成，回傳給前端（原始檔名）", { recordingId, audioUrl, fileName, encodedFileName });
     return res.json({
       success: true,
       recording_id: recordingId,
       audio_url: audioUrl,
-      duration: duration,
       message: "音檔已成功上傳到 R2",
       fileName: fileName,
       originalFileName: fileName,
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
-      addLog("error", "❌ 音檔上傳發生例外（原始檔名）", { message: err.message, duration, stack: err.stack });
-      res.status(500).json({ error: err.message });
-    }
+    addLog("error", "❌ 音檔上傳發生例外（原始檔名）", { message: err.message, stack: err.stack });
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // 音檔刪除端點
@@ -2476,9 +2440,11 @@ app.get('/api/init-test-data', async (req, res) => {
     let insertedCount = 0;
     for (const data of testData) {
       const query = `
-        INSERT INTO audio_recordings
-        (customer_id, business_name, product_name, call_date, call_time, audio_url, audio_filename, duration, transcription_text, transcription_status, analysis_summary, analysis_status, ai_tags, overall_status, is_manual_confirmed, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, FALSE, NOW(), NOW())
+        INSERT INTO audio_recordings 
+        (customer_id, business_name, product_name, call_date, call_time, audio_url, 
+         transcription_text, transcription_status, analysis_summary, analysis_status, 
+         ai_tags, overall_status, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
       `;
       
       const values = [
@@ -2488,8 +2454,6 @@ app.get('/api/init-test-data', async (req, res) => {
         data.call_date,
         data.call_time,
         data.audio_url,
-        data.audio_filename,
-        data.duration,
         data.transcription_text,
         data.transcription_status,
         data.analysis_summary,
@@ -2584,7 +2548,6 @@ app.post('/api/audio/parse-and-update', async (req, res) => {
         call_date = $4,
         call_time = $5,
         audio_url = $6,
-        is_manual_confirmed = TRUE,
         updated_at = NOW()
       WHERE id = $7
       RETURNING *
@@ -2782,287 +2745,6 @@ app.get('/api/deployments/stats', (req, res) => {
     success: true,
     stats
   });
-});
-
-// 部署前檢查 API - 多層預防性驗證
-app.post('/api/deployments/pre-check', async (req, res) => {
-  const checks = [];
-  
-  try {
-    // 1. 項目配置層 - 檢查 package.json
-    try {
-      const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
-      const hasPostgresConfig = packageJson.database === 'postgresql';
-      const hasPgDep = packageJson.dependencies?.pg || packageJson.devDependencies?.pg;
-      
-      checks.push({
-        id: 'project-config',
-        name: '檢查 package.json 中的 database 字段',
-        layer: '項目配置層',
-        status: hasPostgresConfig && hasPgDep ? 'passed' : 'failed',
-        message: hasPostgresConfig ? '✓ 已正確配置 PostgreSQL' : '✗ 未配置 PostgreSQL',
-        error: !hasPostgresConfig ? '需要在 package.json 中添加 "database": "postgresql"' : null,
-        suggestions: !hasPostgresConfig ? [
-          '在 package.json 中添加 "database": "postgresql"',
-          '確保已安裝 pg 驅動: npm install pg'
-        ] : []
-      });
-    } catch (error) {
-      checks.push({
-        id: 'project-config',
-        name: '檢查 package.json 中的 database 字段',
-        layer: '項目配置層',
-        status: 'failed',
-        error: error.message
-      });
-    }
-    
-    // 2. 項目配置層 - 檢查 drizzle.config.ts
-    try {
-      const drizzleConfigPath = path.join(__dirname, 'drizzle.config.ts');
-      if (fs.existsSync(drizzleConfigPath)) {
-        const drizzleConfig = fs.readFileSync(drizzleConfigPath, 'utf8');
-        const hasPostgresDriver = drizzleConfig.includes('driver: "pg"') || drizzleConfig.includes("driver: 'pg'");
-        
-        checks.push({
-          id: 'drizzle-config',
-          name: '檢查 drizzle.config.ts 配置',
-          layer: '項目配置層',
-          status: hasPostgresDriver ? 'passed' : 'failed',
-          message: hasPostgresDriver ? '✓ 已正確配置 PostgreSQL 驅動' : '✗ 未配置 PostgreSQL 驅動',
-          error: !hasPostgresDriver ? 'drizzle.config.ts 中的 driver 應為 "pg"' : null,
-          suggestions: !hasPostgresDriver ? [
-            '編輯 drizzle.config.ts',
-            '設置 driver: "pg"',
-            '確保 schema 路徑正確'
-          ] : []
-        });
-      } else {
-        checks.push({
-          id: 'drizzle-config',
-          name: '檢查 drizzle.config.ts 配置',
-          layer: '項目配置層',
-          status: 'failed',
-          error: 'drizzle.config.ts 文件不存在'
-        });
-      }
-    } catch (error) {
-      checks.push({
-        id: 'drizzle-config',
-        name: '檢查 drizzle.config.ts 配置',
-        layer: '項目配置層',
-        status: 'failed',
-        error: error.message
-      });
-    }
-    
-    // 3. 代碼檢查層 - 驗證 schema 文件
-    try {
-      const schemaPath = path.join(__dirname, 'drizzle', 'schema.ts');
-      if (fs.existsSync(schemaPath)) {
-        const schemaContent = fs.readFileSync(schemaPath, 'utf8');
-        const hasMysqlTable = schemaContent.includes('mysqlTable');
-        const hasPgTable = schemaContent.includes('pgTable');
-        
-        checks.push({
-          id: 'schema-validation',
-          name: '驗證 schema 文件使用 pgTable',
-          layer: '代碼檢查層',
-          status: hasPgTable && !hasMysqlTable ? 'passed' : 'failed',
-          message: hasPgTable && !hasMysqlTable ? '✓ 正確使用 pgTable' : '✗ 檢測到 mysqlTable 或缺少 pgTable',
-          error: hasMysqlTable ? '發現 mysqlTable 的使用，應改為 pgTable' : !hasPgTable ? '未找到 pgTable 的使用' : null,
-          suggestions: hasMysqlTable ? [
-            '將所有 mysqlTable 替換為 pgTable',
-            '更新導入語句: from "drizzle-orm/pg-core"',
-            '運行 pnpm db:push 更新數據庫'
-          ] : []
-        });
-      } else {
-        checks.push({
-          id: 'schema-validation',
-          name: '驗證 schema 文件使用 pgTable',
-          layer: '代碼檢查層',
-          status: 'warning',
-          message: '⚠️ schema.ts 文件不存在'
-        });
-      }
-    } catch (error) {
-      checks.push({
-        id: 'schema-validation',
-        name: '驗證 schema 文件使用 pgTable',
-        layer: '代碼檢查層',
-        status: 'failed',
-        error: error.message
-      });
-    }
-    
-    // 4. 部署檢查層 - 驗證 DATABASE_URL
-    try {
-      const dbUrl = process.env.DATABASE_URL;
-      if (dbUrl) {
-        const isPostgresUrl = dbUrl.startsWith('postgresql://') || dbUrl.startsWith('postgres://');
-        checks.push({
-          id: 'env-validation',
-          name: '驗證 DATABASE_URL 格式',
-          layer: '部署檢查層',
-          status: isPostgresUrl ? 'passed' : 'failed',
-          message: isPostgresUrl ? '✓ DATABASE_URL 格式正確' : '✗ DATABASE_URL 格式不正確',
-          error: !isPostgresUrl ? 'DATABASE_URL 應為 PostgreSQL 連接字符串 (postgresql://...)' : null,
-          suggestions: !isPostgresUrl ? [
-            '更新 DATABASE_URL 環境變數',
-            '格式應為: postgresql://user:password@host:port/database',
-            '確保包含 ?sslmode=require 用於 SSL 連接'
-          ] : []
-        });
-      } else {
-        checks.push({
-          id: 'env-validation',
-          name: '驗證 DATABASE_URL 格式',
-          layer: '部署檢查層',
-          status: 'failed',
-          error: 'DATABASE_URL 環境變數未設置'
-        });
-      }
-    } catch (error) {
-      checks.push({
-        id: 'env-validation',
-        name: '驗證 DATABASE_URL 格式',
-        layer: '部署檢查層',
-        status: 'failed',
-        error: error.message
-      });
-    }
-    
-    // 5. 運行時檢查層 - 測試數據庫連接
-    try {
-      const dbUrl = process.env.DATABASE_URL;
-      if (dbUrl) {
-        const client = new Pool({ connectionString: dbUrl });
-        try {
-          const result = await client.query('SELECT 1 as test');
-          checks.push({
-            id: 'db-connection',
-            name: '測試數據庫連接',
-            layer: '運行時檢查層',
-            status: 'passed',
-            message: '✓ 數據庫連接成功'
-          });
-        } catch (connError) {
-          checks.push({
-            id: 'db-connection',
-            name: '測試數據庫連接',
-            layer: '運行時檢查層',
-            status: 'failed',
-            error: connError.message,
-            suggestions: [
-              '檢查 DATABASE_URL 是否正確',
-              '驗證數據庫服務器是否運行',
-              '確保防火牆允許連接',
-              '檢查 SSL 連接配置'
-            ]
-          });
-        } finally {
-          await client.end();
-        }
-      } else {
-        checks.push({
-          id: 'db-connection',
-          name: '測試數據庫連接',
-          layer: '運行時檢查層',
-          status: 'warning',
-          message: '⚠️ 無法測試連接 - DATABASE_URL 未設置'
-        });
-      }
-    } catch (error) {
-      checks.push({
-        id: 'db-connection',
-        name: '測試數據庫連接',
-        layer: '運行時檢查層',
-        status: 'failed',
-        error: error.message
-      });
-    }
-    
-    // 6. 開發工作流層 - 檢查遷移
-    try {
-      const migrationsPath = path.join(__dirname, 'drizzle', 'migrations');
-      if (fs.existsSync(migrationsPath)) {
-        const migrations = fs.readdirSync(migrationsPath).filter(f => f.endsWith('.sql'));
-        checks.push({
-          id: 'migration-check',
-          name: '檢查待處理遷移',
-          layer: '開發工作流層',
-          status: migrations.length > 0 ? 'warning' : 'passed',
-          message: migrations.length > 0 ? `⚠️ 發現 ${migrations.length} 個遷移文件` : '✓ 沒有待處理的遷移',
-          suggestions: migrations.length > 0 ? [
-            '運行 pnpm db:push 應用遷移',
-            '驗證所有遷移已成功應用'
-          ] : []
-        });
-      } else {
-        checks.push({
-          id: 'migration-check',
-          name: '檢查待處理遷移',
-          layer: '開發工作流層',
-          status: 'passed',
-          message: '✓ 遷移目錄結構正確'
-        });
-      }
-    } catch (error) {
-      checks.push({
-        id: 'migration-check',
-        name: '檢查待處理遷移',
-        layer: '開發工作流層',
-        status: 'warning',
-        error: error.message
-      });
-    }
-    
-    // 7. 文檔層 - 驗證文檔
-    try {
-      const docPath = path.join(__dirname, 'DATABASE_SETUP.md');
-      if (fs.existsSync(docPath)) {
-        const docContent = fs.readFileSync(docPath, 'utf8');
-        const hasPostgresDoc = docContent.toLowerCase().includes('postgresql');
-        checks.push({
-          id: 'documentation',
-          name: '驗證 DATABASE_SETUP.md 文檔',
-          layer: '文檔層',
-          status: hasPostgresDoc ? 'passed' : 'warning',
-          message: hasPostgresDoc ? '✓ 文檔包含 PostgreSQL 配置' : '⚠️ 文檔可能不完整'
-        });
-      } else {
-        checks.push({
-          id: 'documentation',
-          name: '驗證 DATABASE_SETUP.md 文檔',
-          layer: '文檔層',
-          status: 'warning',
-          message: '⚠️ DATABASE_SETUP.md 文檔不存在'
-        });
-      }
-    } catch (error) {
-      checks.push({
-        id: 'documentation',
-        name: '驗證 DATABASE_SETUP.md 文檔',
-        layer: '文檔層',
-        status: 'warning',
-        error: error.message
-      });
-    }
-    
-    res.json({
-      success: true,
-      checks,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Pre-check error:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      checks
-    });
-  }
 });
 
 // 獲取所有日誌 API
