@@ -254,6 +254,8 @@ async function initializeDatabase() {
           call_date DATE,
           call_time TIME,
           audio_url TEXT,
+          audio_filename VARCHAR(255),
+          duration INTEGER,
           transcription_text TEXT,
           transcription_status VARCHAR(50),
           analysis_summary TEXT,
@@ -282,8 +284,8 @@ async function initializeDatabase() {
       
       for (const data of testData) {
         await pool.query(`
-          INSERT INTO audio_recordings (customer_id, business_name, product_name, call_date, call_time, audio_url, transcription_text, transcription_status, analysis_summary, analysis_status, ai_tags, overall_status)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          INSERT INTO audio_recordings (customer_id, business_name, product_name, call_date, call_time, audio_url, audio_filename, duration, transcription_text, transcription_status, analysis_summary, analysis_status, ai_tags, overall_status)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         `, [
           data.customer_id,
           data.business_name,
@@ -291,6 +293,8 @@ async function initializeDatabase() {
           data.call_date,
           data.call_time,
           data.audio_url,
+          data.audio_filename,
+          data.duration,
           data.transcription_text,
           data.transcription_status,
           data.analysis_summary,
@@ -323,8 +327,8 @@ async function initializeDatabase() {
       
       for (const data of testData) {
         await pool.query(`
-          INSERT INTO audio_recordings (customer_id, business_name, product_name, call_date, call_time, audio_url, transcription_text, transcription_status, analysis_summary, analysis_status, ai_tags, overall_status)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          INSERT INTO audio_recordings (customer_id, business_name, product_name, call_date, call_time, audio_url, audio_filename, duration, transcription_text, transcription_status, analysis_summary, analysis_status, ai_tags, overall_status)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         `, [
           data.customer_id,
           data.business_name,
@@ -332,6 +336,8 @@ async function initializeDatabase() {
           data.call_date,
           data.call_time,
           data.audio_url,
+          data.audio_filename,
+          data.duration,
           data.transcription_text,
           data.transcription_status,
           data.analysis_summary,
@@ -643,9 +649,13 @@ app.get('/api/audio/list', async (req, res) => {
         call_date,
         call_time,
         audio_url,
+        audio_filename,
+        duration,
         transcription_text,
         transcription_status,
+        analysis_summary,
         analysis_status,
+        ai_tags,
         created_at
       FROM audio_recordings
       ORDER BY created_at DESC
