@@ -154,12 +154,35 @@ export default function Recordings() {
     }
   };
 
-  const formatDateTime = (date, time) => {
-    if (!date) return '-';
-    // 处理 ISO 格式的日期時間（例如 2025-07-08T00:00:00.000Z）
+  const formatDateTime = (date, time, filename) => {
+    if (!date && !filename) return '-';
+    
+    // 先尝試從檔名中提取時間
+    // 檔名格式：202509110003_015_1600.mp3
+    // 前 8 位：日期 (20250911)
+    // 最後 4 位：時間 (1600 = 16:00)
+    if (filename && filename.includes('_')) {
+      const parts = filename.split('_');
+      if (parts.length >= 3) {
+        const dateStr = filename.substring(0, 8);
+        const timeStr = parts[2].substring(0, 4); // 取最後一个部分的前 4 位
+        
+        if (dateStr.length === 8 && timeStr.length === 4) {
+          // 格式化日期和時間
+          const year = dateStr.substring(0, 4);
+          const month = dateStr.substring(4, 6);
+          const day = dateStr.substring(6, 8);
+          const hour = timeStr.substring(0, 2);
+          const minute = timeStr.substring(2, 4);
+          
+          return `${year}-${month}-${day} ${hour}:${minute}`;
+        }
+      }
+    }
+    
+    // 後備：從 date 和 time 字段提取
     let dateStr = date;
     if (typeof date === 'string' && date.includes('T')) {
-      // 提取前 10 个字符（YYYY-MM-DD）
       dateStr = date.substring(0, 10);
     }
     const timeOnly = time ? time.substring(0, 5) : '00:00';
@@ -357,8 +380,8 @@ export default function Recordings() {
                 </td>
                 <td className="col-filename">{record.audio_filename || `錄音_${record.id}`}</td>
                 <td className="col-customer">-</td>
-                <td className="col-business">{record.business_name || '-'}</td>
-                <td className="col-time">{formatDateTime(record.call_date, record.call_time)}</td>
+                <td className="col-business">-</td>
+                <td className="col-time">{formatDateTime(record.call_date, record.call_time, record.audio_filename)}</td>
                 <td className="col-duration">{formatDuration(record.duration)}</td>
                 <td className="col-transcription">
                   {record.transcription_text && record.transcription_text.trim() ? (

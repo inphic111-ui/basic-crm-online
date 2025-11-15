@@ -1,4 +1,5 @@
 import express from 'express';
+import { OpenCC } from 'opencc-js';
 import multer from 'multer';
 import cors from 'cors';
 import { Pool } from 'pg';
@@ -25,6 +26,9 @@ const BUILT_IN_FORGE_API_URL = process.env.BUILT_IN_FORGE_API_URL;
 
 // 初始化 OpenAI 客戶端
 const openaiClient = new OpenAI({ apiKey: OPENAI_API_KEY });
+
+// 初始化簡繁轉換
+const converter = new OpenCC('s2twp.json');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -931,8 +935,16 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
         const transcriptionResult = await transcribeAudio(audioUrl);
         addLog("info", "✅ Whisper 轉錄完成", { recordingId, transcriptionLength: transcriptionResult.length });
         
+        // 1.5 說話者分離
+        const separatedText = await separateSpeakers(transcriptionResult);
+        addLog("info", "✅ 說話者分離完成", { recordingId, separatedLength: separatedText.length });
+        
+        // 1.7 簡繁轉換
+        const traditionalText = await convertToTraditional(separatedText);
+        addLog("info", "✅ 簡繁轉換完成", { recordingId, traditionalLength: traditionalText.length });
+        
         // 2. AI 分析轉錄文本
-        const analysisResult = await analyzeTranscription(transcriptionResult);
+        const analysisResult = await analyzeTranscription(traditionalText);
         addLog("info", "✅ AI 分析完成", { recordingId, analysis: analysisResult });
         
         // 3. 更新數據庫
@@ -955,7 +967,7 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
             WHERE id = $8
             `,
             [
-              transcriptionResult,
+              traditionalText,
               duration,
               analysisResult.customer_id || 0,
               analysisResult.business_name || "",
@@ -2950,9 +2962,90 @@ ${transcriptionText}
       analysisResult.customer_id = 0;
     }
     
+    // 簡繁轉換 AI 分析結果
+    if (analysisResult.analysis_summary) {
+      analysisResult.analysis_summary = await convertToTraditional(analysisResult.analysis_summary);
+    }
+    if (analysisResult.ai_tags && Array.isArray(analysisResult.ai_tags)) {
+      analysisResult.ai_tags = await Promise.all(
+        analysisResult.ai_tags.map(tag => convertToTraditional(tag))
+      );
+    }
+    
     return analysisResult;
   } catch (err) {
     addLog('error', '❌ AI 分析失敗', { error: err.message });
+    throw err;
+  }
+}
+
+// 簡繁轉換函數
+async function convertToTraditional(text) {
+  try {
+    if (!text) return '';
+    // 使用 opencc-js 將簡體字轉換為繁體字
+    return await converter.convert(text);
+  } catch (err) {
+    addLog('warn', '簡繁轉換失敗，返回原始文本', { error: err.message });
+    return text; // 失敗時返回原始文本
+  }
+}
+
+// 說話者分離函數 - 使用 GPT 分析轉錄文本
+async function separateSpeakers(transcriptionText) {
+  try {
+    if (!transcriptionText) return '';
+    
+    addLog('info', '開始說話者分離', { textLength: transcriptionText.length });
+    
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: `你是一个专业的轉录文本分析员。你的任务是分析轉录文本，区分业务人员和客户的对话。
+
+下面是你需要执行的任务：
+1. 分析轉录文本，区分业务人员和客户的对话
+2. 业务人员通常是主动提出问题、介绍产品、提供解决方案
+3. 客户通常是回答问题、表达需求、表达疑虫
+4. 为每一句话添加「业务：」或「客户：」的标签
+5. 保持原始的段落结构、不要修改内容
+
+输出格式：
+业务：第一句话
+客户：第二句话
+业务：第三句话
+……`
+          },
+          {
+            role: 'user',
+            content: `请分析下面的轉录文本\n\n${transcriptionText}`
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 2000
+      })
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(`OpenAI API 错误: ${error.error?.message || response.statusText}`);
+    }
+    
+    const result = await response.json();
+    const separatedText = result.choices[0].message.content;
+    
+    addLog('info', '✅ 說話者分離完成', { resultLength: separatedText.length });
+    return separatedText;
+  } catch (err) {
+    addLog('error', '❌ 說話者分離失敗', { error: err.message });
     throw err;
   }
 }
