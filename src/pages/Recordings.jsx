@@ -295,7 +295,7 @@ export default function Recordings() {
                   </button>
                 </td>
                 <td className="col-filename">{record.audio_filename || `錄音_${record.id}`}</td>
-                <td className="col-customer">{customerNames[Math.min(record.customer_id - 1, customerNames.length - 1)] || `客戶${record.customer_id}`}</td>
+                <td className="col-customer">-</td>
                 <td className="col-business">{record.business_name || '-'}</td>
                 <td className="col-time">{formatDateTime(record.call_date, record.call_time)}</td>
                 <td className="col-duration">{formatDuration(record.duration)}</td>
