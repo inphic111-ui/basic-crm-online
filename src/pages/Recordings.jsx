@@ -26,6 +26,7 @@ export default function Recordings() {
       const response = await fetch('/api/audio/list');
       if (!response.ok) throw new Error('Failed to fetch');
       const data = await response.json();
+      console.log('獲取錄音列表:', data);
       setRecordings(data || []);
       filterRecords(data || [], searchTerm, selectedBusiness);
     } catch (error) {
@@ -96,6 +97,9 @@ export default function Recordings() {
     if (files.length === 0) return;
 
     setUploading(true);
+    const uploadedFiles = [];
+    const failedFiles = [];
+
     for (const file of files) {
       try {
         const formData = new FormData();
@@ -107,17 +111,42 @@ export default function Recordings() {
         });
 
         if (!response.ok) {
-          throw new Error('Upload failed');
+          throw new Error(`HTTP ${response.status}`);
         }
 
-        console.log(`✅ 上傳成功: ${file.name}`);
+        const result = await response.json();
+        
+        if (result.success && result.audio_url) {
+          uploadedFiles.push({
+            name: file.name,
+            url: result.audio_url,
+            recording_id: result.recording_id
+          });
+          console.log(`✅ 上傳成功: ${file.name}`, result);
+          
+          // 顯示成功通知
+          alert(`✅ 音檔上傳成功！\n檔名: ${file.name}`);
+        } else {
+          throw new Error(result.error || '上傳失敗');
+        }
       } catch (error) {
         console.error(`❌ 上傳失敗: ${file.name}`, error);
+        failedFiles.push(file.name);
+        alert(`❌ 上傳失敗: ${file.name}\n錯誤: ${error.message}`);
       }
     }
 
     setUploading(false);
-    fetchRecords();
+    
+    // 上傳完成後立即重新獲取列表
+    if (uploadedFiles.length > 0) {
+      console.log(`已上傳 ${uploadedFiles.length} 個文件，重新加載列表...`);
+      // 稍微延遲以確保後端已完成寫入
+      setTimeout(() => {
+        fetchRecords();
+      }, 500);
+    }
+    
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
