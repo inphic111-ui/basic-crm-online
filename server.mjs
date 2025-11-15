@@ -746,6 +746,7 @@ app.post('/api/audio/parse-filename', async (req, res) => {
     const callMonth = dateStr.substring(0, 2);
     const callDay = dateStr.substring(2, 4);
     const currentYear = new Date().getFullYear();
+    // 撥打日期使用當前年份（2025）+ 檔名中的月日
     const callDate = `${currentYear}-${callMonth}-${callDay}`;
 
     // 驗證撥打時間（4 位數字 HHMM）
@@ -794,6 +795,44 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
       }
     } catch (e) {
       addLog('warn', '解析 data 失敗', e.message);
+    }
+
+    // 如果沒有 parsedData，從檔名自動解析
+    if (!parsedData.call_date || !parsedData.call_time) {
+      try {
+        // 移除副檔名
+        const nameWithoutExt = fileName.replace(/\.[^\/\.]+$/, '');
+        const parts = nameWithoutExt.split('_');
+        
+        if (parts.length >= 5) {
+          const [customerIdStr, salespersonName, productName, dateStr, timeStr] = parts;
+          
+          // 驗證並解析日期和時間
+          if (/^\d{4}$/.test(dateStr) && /^\d{4}$/.test(timeStr)) {
+            const callMonth = dateStr.substring(0, 2);
+            const callDay = dateStr.substring(2, 4);
+            const currentYear = new Date().getFullYear();
+            const callDate = `${currentYear}-${callMonth}-${callDay}`;
+            
+            const hour = timeStr.substring(0, 2);
+            const minute = timeStr.substring(2, 4);
+            const callTime = `${hour}:${minute}:00`;
+            
+            // 只在沒有提供時才使用自動解析的值
+            if (!parsedData.call_date) parsedData.call_date = callDate;
+            if (!parsedData.call_time) parsedData.call_time = callTime;
+            if (!parsedData.customer_id && /^\d{12}$/.test(customerIdStr)) {
+              parsedData.customer_id = customerIdStr.substring(8, 12);
+            }
+            if (!parsedData.salesperson_name) parsedData.salesperson_name = salespersonName;
+            if (!parsedData.product_name) parsedData.product_name = productName;
+            
+            addLog('info', '✅ 從檔名自動解析成功', { fileName, callDate, callTime });
+          }
+        }
+      } catch (parseErr) {
+        addLog('warn', '從檔名自動解析失敗', { fileName, error: parseErr.message });
+      }
     }
 
     // 預設 recordingId（如果 DB 寫入失敗）
