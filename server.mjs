@@ -804,31 +804,51 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
         const nameWithoutExt = fileName.replace(/\.[^\/\.]+$/, '');
         const parts = nameWithoutExt.split('_');
         
-        if (parts.length >= 5) {
-          const [customerIdStr, salespersonName, productName, dateStr, timeStr] = parts;
+        addLog('info', '檔名分割結果', { fileName, parts, partsLength: parts.length });
+        
+        let customerIdStr, salespersonName, productName, dateStr, timeStr;
+        
+        // 支持兩種格式：
+        // 格式1（完整）：YYYYMMDDNNNN_業務名_產品名_MMDD_HHMM.mp3（5個部分）
+        // 格式2（簡化）：YYYYMMDDNNNN_MMDD_HHMM.mp3（3個部分）
+        
+        if (parts.length === 5) {
+          // 完整格式
+          [customerIdStr, salespersonName, productName, dateStr, timeStr] = parts;
+        } else if (parts.length === 3) {
+          // 簡化格式
+          [customerIdStr, dateStr, timeStr] = parts;
+          salespersonName = '';
+          productName = '';
+        } else {
+          addLog('warn', '檔名格式不符合預期', { fileName, parts, partsLength: parts.length });
+          throw new Error(`檔名格式不符合預期，期望3或5個部分，實際${parts.length}個`);
+        }
+        
+        // 驗證並解析日期和時間
+        if (/^\d{4}$/.test(dateStr) && /^\d{4}$/.test(timeStr)) {
+          const callMonth = dateStr.substring(0, 2);
+          const callDay = dateStr.substring(2, 4);
+          const currentYear = new Date().getFullYear();
+          const callDate = `${currentYear}-${callMonth}-${callDay}`;
           
-          // 驗證並解析日期和時間
-          if (/^\d{4}$/.test(dateStr) && /^\d{4}$/.test(timeStr)) {
-            const callMonth = dateStr.substring(0, 2);
-            const callDay = dateStr.substring(2, 4);
-            const currentYear = new Date().getFullYear();
-            const callDate = `${currentYear}-${callMonth}-${callDay}`;
-            
-            const hour = timeStr.substring(0, 2);
-            const minute = timeStr.substring(2, 4);
-            const callTime = `${hour}:${minute}:00`;
-            
-            // 只在沒有提供時才使用自動解析的值
-            if (!parsedData.call_date) parsedData.call_date = callDate;
-            if (!parsedData.call_time) parsedData.call_time = callTime;
-            if (!parsedData.customer_id && /^\d{12}$/.test(customerIdStr)) {
-              parsedData.customer_id = customerIdStr.substring(8, 12);
-            }
-            if (!parsedData.salesperson_name) parsedData.salesperson_name = salespersonName;
-            if (!parsedData.product_name) parsedData.product_name = productName;
-            
-            addLog('info', '✅ 從檔名自動解析成功', { fileName, callDate, callTime });
+          const hour = timeStr.substring(0, 2);
+          const minute = timeStr.substring(2, 4);
+          const callTime = `${hour}:${minute}:00`;
+          
+          // 只在沒有提供時才使用自動解析的值
+          if (!parsedData.call_date) parsedData.call_date = callDate;
+          if (!parsedData.call_time) parsedData.call_time = callTime;
+          if (!parsedData.customer_id && /^\d{12}$/.test(customerIdStr)) {
+            parsedData.customer_id = customerIdStr.substring(8, 12);
           }
+          if (!parsedData.salesperson_name && salespersonName) parsedData.salesperson_name = salespersonName;
+          if (!parsedData.product_name && productName) parsedData.product_name = productName;
+          
+          addLog('info', '✅ 從檔名自動解析成功', { fileName, callDate, callTime, customerIdStr, salespersonName, productName });
+        } else {
+          addLog('warn', '日期或時間格式不符合預期', { fileName, dateStr, timeStr });
+          throw new Error(`日期或時間格式不符合預期：${dateStr}, ${timeStr}`);
         }
       } catch (parseErr) {
         addLog('warn', '從檔名自動解析失敗', { fileName, error: parseErr.message });
