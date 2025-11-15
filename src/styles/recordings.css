@@ -204,7 +204,7 @@
 .play-btn {
   width: 28px;
   height: 28px;
-  border: 2px solid #81D4FA;
+  border: 2px solid #2196F3;
   background-color: transparent;
   border-radius: 50%;
   cursor: pointer;
@@ -215,27 +215,29 @@
   padding: 0;
   position: relative;
   vertical-align: middle;
+  flex-shrink: 0;
 }
 
 .play-btn:hover {
-  border-color: #4FC3F7;
-  background-color: rgba(129, 212, 250, 0.1);
+  border-color: #1976D2;
+  background-color: rgba(33, 150, 243, 0.1);
 }
 
 /* 三角形播放圖標 */
-.play-btn::after {
+.play-btn::before {
   content: '';
+  display: block;
   width: 0;
   height: 0;
-  border-left: 6px solid #81D4FA;
+  border-left: 6px solid #2196F3;
   border-top: 4px solid transparent;
   border-bottom: 4px solid transparent;
   margin-left: 2px;
   transition: border-left-color 0.3s;
 }
 
-.play-btn:hover::after {
-  border-left-color: #4FC3F7;
+.play-btn:hover::before {
+  border-left-color: #1976D2;
 }
 
 .col-filename {
