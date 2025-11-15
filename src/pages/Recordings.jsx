@@ -12,6 +12,9 @@ export default function Recordings() {
   const [showTranscriptionModal, setShowTranscriptionModal] = useState(false);
   const [selectedTranscription, setSelectedTranscription] = useState('');
   const [selectedRecordingName, setSelectedRecordingName] = useState('');
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [selectedSummary, setSelectedSummary] = useState('');
+  const [selectedSummaryName, setSelectedSummaryName] = useState('');
   const fileInputRef = useRef(null);
 
   const businessNames = ['何雨達', '郭庭碩', '鍾汶憲', '何佳珊'];
@@ -158,6 +161,18 @@ export default function Recordings() {
     setSelectedRecordingName('');
   };
 
+  const handleViewSummary = (summaryText, recordingName) => {
+    setSelectedSummary(summaryText || '');
+    setSelectedSummaryName(recordingName || 'Unnamed');
+    setShowSummaryModal(true);
+  };
+
+  const handleCloseSummaryModal = () => {
+    setShowSummaryModal(false);
+    setSelectedSummary('');
+    setSelectedSummaryName('');
+  };
+
   return (
     <div className="recordings-container">
       {/* 頁面頭部 */}
@@ -281,18 +296,33 @@ export default function Recordings() {
                     
                     return tags && tags.length > 0 ? (
                       <div className="tags-container">
-                        {tags.slice(0, 3).map((tag, idx) => (
-                          <span key={idx} className="tag-badge">
-                            {tag}
-                          </span>
-                        ))}
+                        {tags.slice(0, 3).map((tag, idx) => {
+                          const truncatedTag = tag.substring(0, 2);
+                          return (
+                            <span key={idx} className="tag-badge" title={tag}>
+                              {truncatedTag}
+                            </span>
+                          );
+                        })}
                       </div>
                     ) : (
                       <span>-</span>
                     );
                   })()}
                 </td>
-                <td className="col-summary">{(record.analysis_summary || '').substring(0, 50) || '-'}</td>
+                <td className="col-summary">
+                  {record.analysis_summary ? (
+                    <button
+                      className="transcription-btn"
+                      onClick={() => handleViewSummary(record.analysis_summary, record.audio_filename || `Recording_${record.id}`)}
+                      title="View analysis summary"
+                    >
+                      📋 View
+                    </button>
+                  ) : (
+                    <span>-</span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -323,6 +353,29 @@ export default function Recordings() {
             </div>
             <div className="modal-footer">
               <button className="btn-close" onClick={handleCloseTranscriptionModal}>關閉</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 分析總結模態框 */}
+      {showSummaryModal && (
+        <div className="modal-overlay" onClick={handleCloseSummaryModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>分析總結</h2>
+              <button className="modal-close" onClick={handleCloseSummaryModal}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="transcription-info">
+                <p><strong>檔案名稱：</strong> {selectedSummaryName}</p>
+              </div>
+              <div className="transcription-text">
+                {selectedSummary || '無分析總結'}
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-close" onClick={handleCloseSummaryModal}>關閉</button>
             </div>
           </div>
         </div>

@@ -247,6 +247,8 @@
   gap: 6px;
   flex-wrap: wrap;
   align-items: center;
+  flex-direction: row;
+  max-width: 150px;
 }
 
 /* AI 標籤徽章 - 灰底風格 */
@@ -263,6 +265,9 @@
   border: 1px solid #e0e0e0;
   transition: all 0.2s;
   line-height: 1.4;
+  max-width: 50px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tag-badge:hover {
