@@ -2884,9 +2884,20 @@ async function transcribeAudio(audioUrl) {
       language: 'zh'
     });
 
-    const transcribedText = transcript.text || '';
-    addLog('info', '✅ Whisper API 成功 (台灣繁體)', { text: transcribedText.substring(0, 100) });
-    return transcribedText;
+    const simplifiedText = transcript.text || '';
+    addLog('info', '✅ Whisper API 成功 (原始文本)', { text: simplifiedText.substring(0, 100) });
+
+    // 轉換簡體中文為台灣繁體
+    try {
+      const OpenCC = require('opencc-js');
+      const converter = OpenCC.Converter({ from: 'cn', to: 'tw' });
+      const traditionalText = converter(simplifiedText);
+      addLog('info', '✅ 簡體轉繁體成功 (台灣繁體)', { text: traditionalText.substring(0, 100) });
+      return traditionalText;
+    } catch (ccErr) {
+      addLog('warn', '⚠️ OpenCC 轉換失敗，使用原始文本', { error: ccErr.message });
+      return simplifiedText;
+    }
   } catch (err) {
     addLog('error', '❌ Whisper 轉錄失敗', { error: err.message });
     throw err;
