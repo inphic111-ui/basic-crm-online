@@ -2884,20 +2884,9 @@ async function transcribeAudio(audioUrl) {
       language: 'zh'
     });
 
-    const simplifiedText = transcript.text || '';
-    addLog('info', '✅ Whisper API 成功 (簡體)', { text: simplifiedText.substring(0, 100) });
-
-    // 轉換簡體中文為台灣繁體
-    try {
-      const OpenCC = await import('opencc-js');
-      const converter = OpenCC.Converter({ from: 'cn', to: 'tw' });
-      const traditionalText = converter(simplifiedText);
-      addLog('info', '✅ OpenCC 轉換成功 (台灣繁體)', { text: traditionalText.substring(0, 100) });
-      return traditionalText;
-    } catch (ccErr) {
-      addLog('warn', '⚠️ OpenCC 轉換失敗，使用簡體文本', { error: ccErr.message });
-      return simplifiedText;
-    }
+    const transcribedText = transcript.text || '';
+    addLog('info', '✅ Whisper API 成功 (台灣繁體)', { text: transcribedText.substring(0, 100) });
+    return transcribedText;
   } catch (err) {
     addLog('error', '❌ Whisper 轉錄失敗', { error: err.message });
     throw err;
