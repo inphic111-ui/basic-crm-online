@@ -15,6 +15,10 @@ export default function Recordings() {
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [selectedSummary, setSelectedSummary] = useState('');
   const [selectedSummaryName, setSelectedSummaryName] = useState('');
+    const [showAudioPlayer, setShowAudioPlayer] = useState(false);
+  const [currentAudio, setCurrentAudio] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef(null);
   const fileInputRef = useRef(null);
 
   const businessNames = ['何雨達', '郭庭碩', '鍾汶憲', '何佳珊'];
@@ -196,6 +200,37 @@ export default function Recordings() {
     setShowSummaryModal(true);
   };
 
+  
+  // 播放音檔
+  const handlePlayAudio = (record) => {
+    setCurrentAudio(record);
+    setShowAudioPlayer(true);
+    setIsPlaying(true);
+  };
+
+  // 關閉播放器
+  const handleCloseAudioPlayer = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    setShowAudioPlayer(false);
+    setCurrentAudio(null);
+    setIsPlaying(false);
+  };
+
+  // 播放/暫停
+  const handleTogglePlay = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        audioRef.current.play();
+        setIsPlaying(true);
+      }
+    }
+  };
+
   const handleCloseSummaryModal = () => {
     setShowSummaryModal(false);
     setSelectedSummary('');
@@ -288,7 +323,7 @@ export default function Recordings() {
                   />
                 </td>
                 <td className="col-play">
-                  <button className="play-btn" title="播放">
+                  <button className="play-btn" title="播放" onClick={() => handlePlayAudio(record)}>
                     <svg viewBox="0 0 24 24" width="16" height="16" style={{fill: 'none', stroke: '#2196F3', strokeWidth: 2}}>
                       <polygon points="6,4 20,12 6,20" />
                     </svg>
@@ -409,6 +444,42 @@ export default function Recordings() {
             </div>
             <div className="modal-footer">
               <button className="btn-close" onClick={handleCloseSummaryModal}>關閉</button>
+            </div>
+          </div>
+        </div>
+
+
+      {/* 音檔播放器模態框 */}
+      {showAudioPlayer && currentAudio && (
+        <div className="modal-overlay" onClick={handleCloseAudioPlayer}>
+          <div className="modal-content audio-player-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>播放音檔</h2>
+              <button className="modal-close" onClick={handleCloseAudioPlayer}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="audio-info">
+                <p><strong>檔案名稱：</strong> {currentAudio.audio_filename}</p>
+                <p><strong>撥打時間：</strong> {formatDateTime(currentAudio.call_date, currentAudio.call_time)}</p>
+                <p><strong>長度：</strong> {formatDuration(currentAudio.duration)}</p>
+              </div>
+              <div className="audio-player">
+                <audio
+                  ref={audioRef}
+                  src={currentAudio.audio_url}
+                  onEnded={() => setIsPlaying(false)}
+                />
+                <button 
+                  className="play-pause-btn"
+                  onClick={handleTogglePlay}
+                  title={isPlaying ? '暫停' : '播放'}
+                >
+                  {isPlaying ? '⏸ 暫停' : '▶ 播放'}
+                </button>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-close" onClick={handleCloseAudioPlayer}>關閉</button>
             </div>
           </div>
         </div>

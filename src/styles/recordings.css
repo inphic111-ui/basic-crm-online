@@ -637,3 +637,57 @@
     padding: 10px;
   }
 }
+
+
+/* 音檔播放器樣式 */
+.audio-player-modal {
+  max-width: 500px;
+}
+
+.audio-info {
+  background-color: #f5f5f5;
+  padding: 15px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+.audio-info p {
+  margin: 8px 0;
+  font-size: 14px;
+  color: #333;
+}
+
+.audio-info strong {
+  color: #1976d2;
+}
+
+.audio-player {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+}
+
+.play-pause-btn {
+  padding: 10px 20px;
+  background-color: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.3s;
+  white-space: nowrap;
+}
+
+.play-pause-btn:hover {
+  background-color: #1565c0;
+}
+
+.play-pause-btn:active {
+  background-color: #0d47a1;
+}
