@@ -1,5 +1,5 @@
 import express from 'express';
-import OpenCC from 'opencc-js';
+// opencc-js 已移除 - Whisper 直接輸出繁體中文
 import multer from 'multer';
 import cors from 'cors';
 import { Pool } from 'pg';
@@ -27,8 +27,7 @@ const BUILT_IN_FORGE_API_URL = process.env.BUILT_IN_FORGE_API_URL;
 // 初始化 OpenAI 客戶端
 const openaiClient = new OpenAI({ apiKey: OPENAI_API_KEY });
 
-// 初始化簡繁轉換 - 從簡體中文轉換為繁體中文
-const converter = OpenCC.Converter({ from: 'cn', to: 'tw' });
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -939,12 +938,8 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
         const separatedText = await separateSpeakers(transcriptionResult);
         addLog("info", "✅ 說話者分離完成", { recordingId, separatedLength: separatedText.length });
         
-        // 1.7 簡繁轉換
-        const traditionalText = await convertToTraditional(separatedText);
-        addLog("info", "✅ 簡繁轉換完成", { recordingId, traditionalLength: traditionalText.length });
-        
         // 2. AI 分析轉錄文本
-        const analysisResult = await analyzeTranscription(traditionalText);
+        const analysisResult = await analyzeTranscription(separatedText);
         addLog("info", "✅ AI 分析完成", { recordingId, analysis: analysisResult });
         
         // 3. 更新數據庫
@@ -967,7 +962,7 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
             WHERE id = $8
             `,
             [
-              traditionalText,
+              separatedText,
               duration,
               analysisResult.customer_id || 0,
               analysisResult.business_name || "",
@@ -2886,7 +2881,7 @@ async function transcribeAudio(audioUrl) {
     const transcript = await openaiClient.audio.transcriptions.create({
       file,
       model: 'whisper-1',
-      language: 'zh',
+      language: 'zh-tw',
     });
 
     addLog('info', '✅ Whisper API 成功', { text: transcript.text?.substring(0, 100) });
@@ -2962,15 +2957,7 @@ ${transcriptionText}
       analysisResult.customer_id = 0;
     }
     
-    // 簡繁轉換 AI 分析結果
-    if (analysisResult.analysis_summary) {
-      analysisResult.analysis_summary = await convertToTraditional(analysisResult.analysis_summary);
-    }
-    if (analysisResult.ai_tags && Array.isArray(analysisResult.ai_tags)) {
-      analysisResult.ai_tags = await Promise.all(
-        analysisResult.ai_tags.map(tag => convertToTraditional(tag))
-      );
-    }
+    // 注意：Whisper 已配置為直接輸出繁體中文，無需額外轉換
     
     return analysisResult;
   } catch (err) {
@@ -2979,17 +2966,7 @@ ${transcriptionText}
   }
 }
 
-// 簡繁轉換函數
-async function convertToTraditional(text) {
-  try {
-    if (!text) return '';
-    // 使用 opencc-js 將簡體字轉換為繁體字
-    return converter(text);
-  } catch (err) {
-    addLog('warn', '簡繁轉換失敗，返回原始文本', { error: err.message });
-    return text; // 失敗時返回原始文本
-  }
-}
+// 簡繁轉換函數已移除 - Whisper 直接輸出繁體中文
 
 // 說話者分離函數 - 使用 GPT 分析轉錄文本
 async function separateSpeakers(transcriptionText) {
