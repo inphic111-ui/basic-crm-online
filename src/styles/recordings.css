@@ -172,10 +172,18 @@
 
 /* 欄位寬度 */
 .col-checkbox {
-  width: 40px;
+  width: 50px;
   text-align: center;
   vertical-align: middle;
-  padding: 0 !important;
+  padding: 0 12px !important;
+  line-height: 44px;
+  height: 44px;
+}
+
+.col-checkbox input[type="checkbox"] {
+  vertical-align: middle;
+  margin: 0;
+  cursor: pointer;
 }
 
 .col-play {
@@ -185,37 +193,37 @@
 }
 
 .col-filename {
-  width: 180px;
+  width: 220px;
   font-family: 'Courier New', monospace;
   font-size: 12px;
   vertical-align: middle;
 }
 
 .col-customer {
-  width: 60px;
+  width: 100px;
   text-align: left;
   vertical-align: middle;
 }
 
 .col-business {
-  width: 80px;
+  width: 120px;
   text-align: left;
   vertical-align: middle;
 }
 
 .col-time {
-  width: 140px;
+  width: 160px;
   vertical-align: middle;
 }
 
 .col-duration {
-  width: 60px;
+  width: 80px;
   text-align: left;
   vertical-align: middle;
 }
 
 .col-transcription {
-  width: 120px;
+  width: 140px;
   text-align: left;
   vertical-align: middle;
 }
@@ -239,7 +247,7 @@
 }
 
 .col-tags {
-  width: 150px;
+  width: 180px;
   text-align: left;
   vertical-align: middle;
 }
@@ -251,7 +259,7 @@
   flex-wrap: wrap;
   align-items: center;
   flex-direction: row;
-  max-width: 150px;
+  max-width: 180px;
 }
 
 /* AI 標籤徒章 - 灰底風格 */
