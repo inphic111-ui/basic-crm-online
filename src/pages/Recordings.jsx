@@ -9,6 +9,9 @@ export default function Recordings() {
   const [selectAll, setSelectAll] = useState(false);
   const [selectedRecordings, setSelectedRecordings] = useState(new Set());
   const [uploading, setUploading] = useState(false);
+  const [showTranscriptionModal, setShowTranscriptionModal] = useState(false);
+  const [selectedTranscription, setSelectedTranscription] = useState('');
+  const [selectedRecordingName, setSelectedRecordingName] = useState('');
   const fileInputRef = useRef(null);
 
   const businessNames = ['何雨達', '郭庭碩', '鍾汶憲', '何佳珊'];
@@ -127,6 +130,18 @@ export default function Recordings() {
     return status || '-';
   };
 
+  const handleViewTranscription = (transcriptionText, recordingName) => {
+    setSelectedTranscription(transcriptionText || '');
+    setSelectedRecordingName(recordingName || '未命名');
+    setShowTranscriptionModal(true);
+  };
+
+  const handleCloseTranscriptionModal = () => {
+    setShowTranscriptionModal(false);
+    setSelectedTranscription('');
+    setSelectedRecordingName('');
+  };
+
   return (
     <div className="recordings-container">
       {/* 頁面頭部 */}
@@ -220,7 +235,19 @@ export default function Recordings() {
                 <td className="col-business">{record.business_name || '-'}</td>
                 <td className="col-time">{formatDateTime(record.call_date, record.call_time)}</td>
                 <td className="col-duration">-</td>
-                <td className="col-transcription">{(record.transcription_text || '').substring(0, 50) || '-'}</td>
+                <td className="col-transcription">
+                  {record.transcription_text ? (
+                    <button
+                      className="transcription-btn"
+                      onClick={() => handleViewTranscription(record.transcription_text, record.audio_filename || `錄音_${record.id}`)}
+                      title="查看轉錄文本"
+                    >
+                      📄 查看
+                    </button>
+                  ) : (
+                    <span>-</span>
+                  )}
+                </td>
                 <td className="col-tags">-</td>
                 <td className="col-summary">{(record.analysis_summary || '').substring(0, 50) || '-'}</td>
               </tr>
@@ -234,6 +261,29 @@ export default function Recordings() {
           </div>
         )}
       </div>
+
+      {/* 轉錄文本模態框 */}
+      {showTranscriptionModal && (
+        <div className="modal-overlay" onClick={handleCloseTranscriptionModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>轉錄文本</h2>
+              <button className="modal-close" onClick={handleCloseTranscriptionModal}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="transcription-info">
+                <p><strong>檔案名稱：</strong> {selectedRecordingName}</p>
+              </div>
+              <div className="transcription-text">
+                {selectedTranscription || '無轉錄內容'}
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-close" onClick={handleCloseTranscriptionModal}>關閉</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

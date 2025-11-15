@@ -200,11 +200,28 @@
 }
 
 .col-transcription {
-  width: 150px;
-  max-width: 150px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  width: 120px;
+  text-align: center;
+}
+
+/* 轉錄文本按鈕 */
+.transcription-btn {
+  padding: 6px 12px;
+  background-color: #f0f0f0;
+  color: #1976d2;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.3s;
   white-space: nowrap;
+}
+
+.transcription-btn:hover {
+  background-color: #e0e0e0;
+  border-color: #1976d2;
+  color: #1565c0;
 }
 
 .col-tags {
@@ -256,6 +273,137 @@
   font-size: 14px;
 }
 
+/* 模態框樣式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #999;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s;
+}
+
+.modal-close:hover {
+  color: #333;
+}
+
+.modal-body {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.transcription-info {
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.transcription-info p {
+  margin: 0;
+  font-size: 13px;
+  color: #666;
+}
+
+.transcription-info strong {
+  color: #333;
+}
+
+.transcription-text {
+  background-color: #f9f9f9;
+  padding: 15px;
+  border-radius: 4px;
+  border: 1px solid #eee;
+  line-height: 1.6;
+  color: #333;
+  font-size: 13px;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.modal-footer {
+  padding: 15px 20px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btn-close {
+  padding: 8px 20px;
+  background-color: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background-color 0.3s;
+}
+
+.btn-close:hover {
+  background-color: #1565c0;
+}
+
 /* 響應式設計 */
 @media (max-width: 1200px) {
   .col-summary {
@@ -268,6 +416,10 @@
 
   .col-filename {
     width: 150px;
+  }
+
+  .modal-content {
+    max-width: 500px;
   }
 }
 
@@ -318,6 +470,23 @@
   .col-time {
     width: 100px;
   }
+
+  .modal-content {
+    width: 95%;
+    max-height: 90vh;
+  }
+
+  .modal-header {
+    padding: 15px;
+  }
+
+  .modal-body {
+    padding: 15px;
+  }
+
+  .modal-footer {
+    padding: 10px 15px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -346,5 +515,19 @@
     width: 28px;
     height: 28px;
     font-size: 12px;
+  }
+
+  .modal-content {
+    width: 98%;
+    max-height: 95vh;
+  }
+
+  .modal-header h2 {
+    font-size: 16px;
+  }
+
+  .transcription-text {
+    font-size: 12px;
+    padding: 10px;
   }
 }
