@@ -158,24 +158,28 @@ export default function Recordings() {
     if (!date && !filename) return '-';
     
     // 先尝試從檔名中提取時間
-    // 檔名格式：202509110003_015_1600.mp3
-    // 前 8 位：日期 (20250911)
-    // 最後 4 位：時間 (1600 = 16:00)
+    // 檔名格式：YYYYMMDDNNNN_MMDD_HHMM.mp3
+    // 例子：202312110004_1007_1143.mp3
+    // MMDD = 月日 (1007 = 10月7日)
+    // HHMM = 時間 (1143 = 11:43)
+    // 年份 = 當前年份 (2025)
     if (filename && filename.includes('_')) {
       const parts = filename.split('_');
       if (parts.length >= 3) {
-        const dateStr = filename.substring(0, 8);
-        const timeStr = parts[2].substring(0, 4); // 取最後一个部分的前 4 位
+        const mmddStr = parts[1]; // 月日，例如 "1007"
+        const hhmmStr = parts[2].substring(0, 4); // 時間，例如 "1143"
         
-        if (dateStr.length === 8 && timeStr.length === 4) {
-          // 格式化日期和時間
-          const year = dateStr.substring(0, 4);
-          const month = dateStr.substring(4, 6);
-          const day = dateStr.substring(6, 8);
-          const hour = timeStr.substring(0, 2);
-          const minute = timeStr.substring(2, 4);
+        if (mmddStr.length === 4 && hhmmStr.length === 4) {
+          // 提取月日和時間
+          const month = mmddStr.substring(0, 2);
+          const day = mmddStr.substring(2, 4);
+          const hour = hhmmStr.substring(0, 2);
+          const minute = hhmmStr.substring(2, 4);
           
-          return `${year}-${month}-${day} ${hour}:${minute}`;
+          // 使用當前年份
+          const currentYear = new Date().getFullYear();
+          
+          return `${currentYear}-${month}-${day} ${hour}:${minute}`;
         }
       }
     }
