@@ -175,6 +175,7 @@
   width: 40px;
   text-align: center;
   vertical-align: middle;
+  padding: 0 !important;
 }
 
 .col-play {
@@ -222,8 +223,8 @@
 /* 按鈐樣式 */
 .view-btn {
   padding: 6px 12px;
-  background-color: #2196F3;
-  color: white;
+  background-color: #81D4FA;
+  color: #333;
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -234,7 +235,7 @@
 }
 
 .view-btn:hover {
-  background-color: #1976D2;
+  background-color: #4FC3F7;
 }
 
 .col-tags {
@@ -253,15 +254,15 @@
   max-width: 150px;
 }
 
-/* AI 標籤徽章 - 灰底風格 */
+/* AI 標籤徒章 - 馬卡龍色系 */
 .tag-badge {
   display: inline-block;
   padding: 4px 10px;
   border-radius: 12px;
   font-size: 12px;
   font-weight: 400;
-  color: #555;
-  background-color: #e8e8e8;
+  color: #333;
+  background-color: #e8f5e9;
   white-space: nowrap;
   box-shadow: none;
   border: none;
@@ -272,8 +273,16 @@
   text-overflow: ellipsis;
 }
 
+.tag-badge:nth-child(2n) {
+  background-color: #f3e5f5;
+}
+
+.tag-badge:nth-child(3n) {
+  background-color: #fffde7;
+}
+
 .tag-badge:hover {
-  background-color: #d8d8d8;
+  opacity: 0.8;
 }
 
 .col-summary {
@@ -299,23 +308,20 @@
 
 .recordings-table th .col-checkbox,
 .recordings-table td .col-checkbox {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  height: 100%;
+  padding: 0 !important;
+  line-height: 44px;
 }
 
 /* 播放按鈐 */
 .play-btn {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background-color: transparent;
   color: #2196F3;
-  border: 2px solid #2196F3;
+  border: 1.5px solid #2196F3;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -325,8 +331,7 @@
 }
 
 .play-btn:hover {
-  color: #1976D2;
-  border-color: #1976D2;
+  background-color: rgba(33, 150, 243, 0.05);
 }
 
 /* 空狀態 */
