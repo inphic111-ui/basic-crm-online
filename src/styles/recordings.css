@@ -137,6 +137,7 @@
   vertical-align: middle;
   height: 44px;
   line-height: 1.2;
+  display: table-cell;
 }
 
 .recordings-table th:last-child {
@@ -292,6 +293,17 @@
   vertical-align: middle;
   margin: 0;
   display: inline-block;
+  position: relative;
+  top: 0;
+}
+
+.recordings-table th .col-checkbox,
+.recordings-table td .col-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  height: 100%;
 }
 
 /* 播放按鈐 */
