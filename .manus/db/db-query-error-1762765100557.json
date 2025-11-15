@@ -1,8 +1,0 @@
-{
-  "query": "ALTER TABLE customers DROP COLUMN audio_file CASCADE;",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 29rDkMc4estG6xm.4c132c16006a --database WrczB9FbLtLbFuhmSGfDzu --execute ALTER TABLE customers DROP COLUMN audio_file CASCADE;",
-  "returncode": 1,
-  "logs": [
-    "ERROR 1091 (42000) at line 1: Can't DROP 'audio_file'; check that column/key exists"
-  ]
-}
