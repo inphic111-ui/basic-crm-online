@@ -167,11 +167,18 @@ export default function Recordings() {
   };
 
   const formatDuration = (duration) => {
-    if (!duration) return '-';
+    if (!duration && duration !== 0) return '-';
+    if (duration < 0) return '-';
+    
     // 轉換為 分:秒 格式
-    const minutes = Math.floor(duration / 60);
-    const seconds = duration % 60;
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    const totalSeconds = Math.floor(duration);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    
+    if (minutes > 0) {
+      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+    return `0:${seconds.toString().padStart(2, '0')}`;
   };
 
   const getStatusText = (status) => {
@@ -329,12 +336,21 @@ export default function Recordings() {
                 <td className="col-play">
                   <button 
                     className="play-btn" 
-                    title="播放"
+                    title={playingId === record.id ? "暫停" : "播放"}
                     onClick={() => handlePlayAudio(record.audio_url, record.id)}
                   >
-                    <svg viewBox="0 0 24 24" width="16" height="16" style={{fill: playingId === record.id ? '#2196F3' : 'none', stroke: '#2196F3', strokeWidth: 2}}>
-                      <polygon points="6,4 20,12 6,20" />
-                    </svg>
+                    {playingId === record.id ? (
+                      /* 暫停圖標 */
+                      <svg viewBox="0 0 24 24" width="16" height="16" style={{fill: '#2196F3', stroke: 'none'}}>
+                        <rect x="6" y="4" width="4" height="16" />
+                        <rect x="14" y="4" width="4" height="16" />
+                      </svg>
+                    ) : (
+                      /* 播放圖標 */
+                      <svg viewBox="0 0 24 24" width="16" height="16" style={{fill: 'none', stroke: '#2196F3', strokeWidth: 2}}>
+                        <polygon points="6,4 20,12 6,20" />
+                      </svg>
+                    )}
                   </button>
                 </td>
                 <td className="col-filename">{record.audio_filename || `錄音_${record.id}`}</td>
@@ -343,13 +359,13 @@ export default function Recordings() {
                 <td className="col-time">{formatDateTime(record.call_date, record.call_time)}</td>
                 <td className="col-duration">{formatDuration(record.duration)}</td>
                 <td className="col-transcription">
-                  {record.transcription_text ? (
+                  {record.transcription_text && record.transcription_text.trim() ? (
                     <button
                       className="view-btn"
                       onClick={() => handleViewTranscription(record.transcription_text, record.audio_filename || `錄音_${record.id}`)}
                       title="查看轉錄文本"
                     >
-                      📄
+                      📄 查看
                     </button>
                   ) : (
                     <span>-</span>
@@ -363,7 +379,7 @@ export default function Recordings() {
                         try {
                           tags = JSON.parse(record.ai_tags);
                         } catch (e) {
-                          tags = [];
+                          tags = record.ai_tags.split(',').map(t => t.trim()).filter(t => t);
                         }
                       } else if (Array.isArray(record.ai_tags)) {
                         tags = record.ai_tags;
@@ -372,14 +388,15 @@ export default function Recordings() {
                     
                     return tags && tags.length > 0 ? (
                       <div className="tags-container">
-                        {tags.slice(0, 3).map((tag, idx) => {
-                          const truncatedTag = tag.substring(0, 2);
+                        {tags.slice(0, 5).map((tag, idx) => {
+                          const displayTag = String(tag).substring(0, 15);
                           return (
-                            <span key={idx} className="tag-badge" title={tag}>
-                              {truncatedTag}
+                            <span key={idx} className="tag-badge" title={String(tag)}>
+                              {displayTag}
                             </span>
                           );
                         })}
+                        {tags.length > 5 && <span style={{fontSize: '12px', color: '#999'}}>+{tags.length - 5}</span>}
                       </div>
                     ) : (
                       <span>-</span>
@@ -387,13 +404,13 @@ export default function Recordings() {
                   })()}
                 </td>
                 <td className="col-summary">
-                  {record.analysis_summary ? (
+                  {record.analysis_summary && record.analysis_summary.trim() ? (
                     <button
                       className="view-btn"
-                      onClick={() => handleViewSummary(record.analysis_summary, record.audio_filename || `Recording_${record.id}`)}
-                      title="View analysis summary"
+                      onClick={() => handleViewSummary(record.analysis_summary, record.audio_filename || `錄音_${record.id}`)}
+                      title="查看分析總結"
                     >
-                      📋
+                      📋 查看
                     </button>
                   ) : (
                     <span>-</span>
