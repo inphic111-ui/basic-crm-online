@@ -203,22 +203,32 @@ export default function Recordings() {
   const audioRef = useRef(null);
 
   const handlePlayAudio = (record) => {
+    console.log('播放按鈕被點擊:', record.id, record.audio_url);
+    
+    if (!record.audio_url) {
+      console.error('音檔 URL 不存在:', record);
+      alert('音檔 URL 不可用');
+      return;
+    }
+    
     if (playingRecordId === record.id && audioRef.current) {
-      // 如果已在播放此音檔，則暫停
+      // 如果已在播放此音檔，則暫停/繼續
       if (audioRef.current.paused) {
-        audioRef.current.play();
+        console.log('繼續播放');
+        audioRef.current.play().catch(err => console.error('播放失敗:', err));
       } else {
+        console.log('暫停播放');
         audioRef.current.pause();
       }
     } else {
       // 播放新音檔
+      console.log('播放新音檔:', record.audio_url);
       setPlayingRecordId(record.id);
-      setTimeout(() => {
-        if (audioRef.current) {
-          audioRef.current.src = record.audio_url;
-          audioRef.current.play();
-        }
-      }, 0);
+      
+      if (audioRef.current) {
+        audioRef.current.src = record.audio_url;
+        audioRef.current.play().catch(err => console.error('播放失敗:', err));
+      }
     }
   };
 
@@ -318,8 +328,9 @@ export default function Recordings() {
                     className={`play-btn ${playingRecordId === record.id ? 'playing' : ''}`}
                     title="播放" 
                     onClick={() => handlePlayAudio(record)}
+                    type="button"
                   >
-                    <svg viewBox="0 0 24 24" width="16" height="16" style={{fill: 'none', stroke: '#2196F3', strokeWidth: 2}}>
+                    <svg viewBox="0 0 24 24" width="20" height="20" style={{fill: 'none', stroke: '#2196F3', strokeWidth: 2}}>
                       <polygon points="6,4 20,12 6,20" />
                     </svg>
                   </button>
