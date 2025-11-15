@@ -254,15 +254,15 @@
   max-width: 150px;
 }
 
-/* AI 標籤徒章 - 馬卡龍色系 */
+/* AI 標籤徒章 - 灰底風格 */
 .tag-badge {
   display: inline-block;
   padding: 4px 10px;
   border-radius: 12px;
   font-size: 12px;
   font-weight: 400;
-  color: #333;
-  background-color: #e8f5e9;
+  color: #555;
+  background-color: #e8e8e8;
   white-space: nowrap;
   box-shadow: none;
   border: none;
@@ -273,16 +273,8 @@
   text-overflow: ellipsis;
 }
 
-.tag-badge:nth-child(2n) {
-  background-color: #f3e5f5;
-}
-
-.tag-badge:nth-child(3n) {
-  background-color: #fffde7;
-}
-
 .tag-badge:hover {
-  opacity: 0.8;
+  background-color: #d8d8d8;
 }
 
 .col-summary {
