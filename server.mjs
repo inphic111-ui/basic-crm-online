@@ -9,9 +9,15 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
 import http from 'http';
 import { WebSocketServer } from 'ws';
+import FormData from 'form-data';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// 初始化 OpenAI 客戶端
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const BUILT_IN_FORGE_API_KEY = process.env.BUILT_IN_FORGE_API_KEY;
+const BUILT_IN_FORGE_API_URL = process.env.BUILT_IN_FORGE_API_URL;
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -905,13 +911,61 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
       addLog("error", "❌ DB 寫入失敗（原始檔名）", { message: dbErr.message, fileName, encodedFileName, audioUrl, stack: dbErr.stack });
     }
 
+    // 上傳後進行 Whisper 轉錄和 AI 分析（非阻塞）
+    setImmediate(async () => {
+      try {
+        addLog("info", "開始進行 Whisper 轉錄和 AI 分析", { recordingId, audioUrl });
+        
+        // 1. 轉錄音檔
+        const transcriptionResult = await transcribeAudio(audioUrl);
+        addLog("info", "✅ Whisper 轉錄完成", { recordingId, transcriptionLength: transcriptionResult.length });
+        
+        // 2. AI 分析轉錄文本
+        const analysisResult = await analyzeTranscription(transcriptionResult);
+        addLog("info", "✅ AI 分析完成", { recordingId, analysis: analysisResult });
+        
+        // 3. 更新數據庫
+        if (pools.online && recordingId) {
+          await pools.online.query(
+            `
+            UPDATE audio_recordings
+            SET 
+              transcription_text = $1,
+              customer_id = $2,
+              business_name = $3,
+              product_name = $4,
+              analysis_summary = $5,
+              ai_tags = $6,
+              transcription_status = 'completed',
+              analysis_status = 'completed',
+              overall_status = 'completed',
+              updated_at = NOW()
+            WHERE id = $7
+            `,
+            [
+              transcriptionResult,
+              analysisResult.customer_id || 0,
+              analysisResult.business_name || "",
+              analysisResult.product_name || "",
+              analysisResult.analysis_summary || "",
+              analysisResult.ai_tags ? JSON.stringify(analysisResult.ai_tags) : "[]",
+              recordingId
+            ]
+          );
+          addLog("info", "✅ 數據庫更新成功", { recordingId });
+        }
+      } catch (err) {
+        addLog("error", "❌ Whisper/AI 处理失敗", { recordingId, error: err.message });
+      }
+    });
+    
     // 回傳成功
     addLog("info", "✅ 上傳完成，回傳給前端（原始檔名）", { recordingId, audioUrl, fileName, encodedFileName });
     return res.json({
       success: true,
       recording_id: recordingId,
       audio_url: audioUrl,
-      message: "音檔已成功上傳到 R2",
+      message: "音檔已成功上傳到 R2，正在進行轉錄和分析...",
       fileName: fileName,
       originalFileName: fileName,
       timestamp: new Date().toISOString(),
@@ -2764,8 +2818,116 @@ app.get('/api/logs', (req, res) => {
   });
 });
 
+// Whisper 轉錄函數
+async function transcribeAudio(audioUrl) {
+  try {
+    // 下載音檔
+    const response = await fetch(audioUrl);
+    if (!response.ok) throw new Error(`下載音檔失敗: ${response.status}`);
+    const audioBuffer = await response.buffer();
+    
+    // 設置 FormData
+    const formData = new FormData();
+    formData.append('file', audioBuffer, 'audio.mp3');
+    formData.append('model', 'whisper-1');
+    formData.append('language', 'zh');
+    
+    // 调用 OpenAI Whisper API
+    const transcriptionResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`
+      },
+      body: formData
+    });
+    
+    if (!transcriptionResponse.ok) {
+      const error = await transcriptionResponse.json();
+      throw new Error(`Whisper API 錯誤: ${error.error?.message || transcriptionResponse.statusText}`);
+    }
+    
+    const result = await transcriptionResponse.json();
+    return result.text || '';
+  } catch (err) {
+    addLog('error', '❌ Whisper 轉錄失敗', { error: err.message });
+    throw err;
+  }
+}
+
+// AI 分析函數
+async function analyzeTranscription(transcriptionText) {
+  try {
+    const prompt = `你是一个专业的销售分析专家。今天你接到了一份销售通话的转録文本。
+请分析转録文本，提取以下信息，并以 JSON 格式返回：
+
+{
+  "customer_id": "客户编号（应为 1-9999 之间的整数，如果找不到则返回 0）",
+  "business_name": "业务人员姓名",
+  "product_name": "产品名称",
+  "analysis_summary": "销售活动的简要总结，描述2-3句",
+  "ai_tags": ["标签1", "标签2", "标签3"]
+}
+
+转録文本：
+${transcriptionText}
+
+请仅返回 JSON，不要有任何其他文本。`;
+    
+    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: '你是一个专业的销售分析专家。'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 500
+      })
+    });
+    
+    if (!openaiResponse.ok) {
+      const error = await openaiResponse.json();
+      throw new Error(`OpenAI API 錯誤: ${error.error?.message || openaiResponse.statusText}`);
+    }
+    
+    const result = await openaiResponse.json();
+    const content = result.choices[0].message.content;
+    
+    // 解析 JSON
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('不能解析 AI 响应为 JSON');
+    }
+    
+    const analysisResult = JSON.parse(jsonMatch[0]);
+    
+    // 确保 customer_id 是整数
+    if (analysisResult.customer_id) {
+      analysisResult.customer_id = parseInt(analysisResult.customer_id) || 0;
+    } else {
+      analysisResult.customer_id = 0;
+    }
+    
+    return analysisResult;
+  } catch (err) {
+    addLog('error', '❌ AI 分析失敗', { error: err.message });
+    throw err;
+  }
+}
+
 // SPA 路由 - 所有未匹配的路由都返回 index.html
-// 注意：這個路由必須放在所有 API 路由之後，否則會攔截 API 請求
+// 注意：這個路由必須放在所有 API 路由之後，否則會攻擊 API 請求
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'), (err) => {
     if (err) {

@@ -75,11 +75,18 @@
 - [ ] 推送到 GitHub 並驗證 Railway 部署
 
 ### 音檔上傳、轉錄和分析（第二十四階段）
-- [ ] 實現音檔上傳 UI（在客戶詳情中）
-- [ ] 實現音檔上傳後端 API
-- [ ] 集成 Whisper API 進行音檔轉錄
-- [ ] 集成 AI 分析給出客戶建議
-- [ ] 測試音檔功能
+- [x] 實現音檔上傳 UI（在客戶詳情中）
+- [x] 實現音檔上傳後端 API
+- [x] 集成 Whisper API 進行音檔轉錄
+- [x] 集成 AI 分析給出客戶建議
+- [x] 測試音檔功能
+- [ ] 推送到 GitHub 並驗證 Railway 部署
+
+### 自動化 Whisper 轉錄和 AI 分析（第三十階段）
+- [x] 添加 Whisper 轉錄函數
+- [x] 添加 AI 分析函數
+- [x] 修改上傳 API，上傳二進制進行 Whisper 轉錄和 AI 分析
+- [x] 測試 Whisper API 和 OpenAI API 連接
 - [ ] 推送到 GitHub 並驗證 Railway 部署
 
 ### 訂單管理與購買歷史（第二十五階段）
