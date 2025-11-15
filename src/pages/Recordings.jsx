@@ -15,6 +15,7 @@ export default function Recordings() {
   const fileInputRef = useRef(null);
 
   const businessNames = ['何雨達', '郭庭碩', '鍾汶憲', '何佳珊'];
+  const customerNames = ['科技有限公司', '金融服務公司', '製造業集團', '零售連鎖店', '物流公司', '房地產開發商', '教育機構', '醫療保健集團', '餐飲連鎖', '電信運營商'];
 
   // 獲取錄音列表
   const fetchRecords = async () => {
@@ -121,15 +122,17 @@ export default function Recordings() {
 
   const formatDateTime = (date, time) => {
     if (!date) return '-';
+    // 移除時間中的多餘零
     const timeOnly = time ? time.substring(0, 5) : '00:00';
     return `${date} ${timeOnly}`;
   };
 
   const formatDuration = (duration) => {
     if (!duration) return '-';
+    // 轉換為 分:秒 格式
     const minutes = Math.floor(duration / 60);
     const seconds = duration % 60;
-    return `${minutes}分${seconds}秒`;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
   const getStatusText = (status) => {
@@ -239,7 +242,7 @@ export default function Recordings() {
                   <button className="play-btn" title="播放">▶</button>
                 </td>
                 <td className="col-filename">{record.audio_filename || `錄音_${record.id}`}</td>
-                <td className="col-customer">{record.customer_id || '-'}</td>
+                <td className="col-customer">{customerNames[Math.min(record.customer_id - 1, customerNames.length - 1)] || `客戶${record.customer_id}`}</td>
                 <td className="col-business">{record.business_name || '-'}</td>
                 <td className="col-time">{formatDateTime(record.call_date, record.call_time)}</td>
                 <td className="col-duration">{formatDuration(record.duration)}</td>
