@@ -2895,9 +2895,40 @@ async function transcribeAudio(audioUrl) {
 // AI 分析函數
 async function analyzeTranscription(transcriptionText) {
   try {
+    // 標籤詞庫
+    const tagLibrary = [
+      { name: "簽約", weight: 20 },
+      { name: "急單", weight: 18 },
+      { name: "試用", weight: 18 },
+      { name: "決策", weight: 17 },
+      { name: "高需求", weight: 14 },
+      { name: "有預算", weight: 12 },
+      { name: "明確", weight: 12 },
+      { name: "老客戶", weight: 10 },
+      { name: "感興趣", weight: 7 },
+      { name: "諮詢", weight: 5 },
+      { name: "了解中", weight: 3 },
+      { name: "演示", weight: 10 },
+      { name: "報價", weight: 10 },
+      { name: "技術", weight: 8 },
+      { name: "收集中", weight: 4 },
+      { name: "評估中", weight: 3 },
+      { name: "待反饋", weight: 2 },
+      { name: "時間急", weight: -5 },
+      { name: "模糊", weight: -5 },
+      { name: "預算緊", weight: -4 },
+      { name: "猶豫", weight: -12 },
+      { name: "比較中", weight: -11 },
+      { name: "低價", weight: -10 },
+      { name: "競品", weight: -16 },
+      { name: "低預算", weight: -18 },
+      { name: "延期", weight: -20 }
+    ];
+    
+    const tagNames = tagLibrary.map(t => t.name).join('、');
+    
     const prompt = `你是一位專業的銷售分析專家。今天你接到了一份銷售通話的轉錄文本。
 請分析轉錄文本，提取以下信息，並以 JSON 格式返回。
-
 【重要】所有回應必須使用台灣繁體中文，不要使用簡體中文。
 
 {
@@ -2909,9 +2940,10 @@ async function analyzeTranscription(transcriptionText) {
 }
 
 【AI 標籤要求】
-- 每個標籤最多 2 個字
+- 必須從以下標籤中選擇：${tagNames}
 - 最多 3 個標籤
-- 從轉錄文本的語意判斷核心指標
+- 根據轉錄文本的語意判斷最相關的標籤
+- 選擇最能反映客戶需求強度的標籤
 
 轉錄文本：
 ${transcriptionText}

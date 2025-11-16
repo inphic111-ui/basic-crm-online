@@ -1,0 +1,197 @@
+{
+  "tagLibrary": [
+    {
+      "id": 1,
+      "name": "簽約",
+      "weight": 20,
+      "category": "strong_positive",
+      "description": "客戶明確表示有簽約意向"
+    },
+    {
+      "id": 2,
+      "name": "急單",
+      "weight": 18,
+      "category": "strong_positive",
+      "description": "客戶有時間壓力，需要快速決定"
+    },
+    {
+      "id": 3,
+      "name": "試用",
+      "weight": 18,
+      "category": "strong_positive",
+      "description": "客戶願意試用或要求演示"
+    },
+    {
+      "id": 4,
+      "name": "決策",
+      "weight": 17,
+      "category": "strong_positive",
+      "description": "客戶是決策者或有決策權"
+    },
+    {
+      "id": 5,
+      "name": "高需求",
+      "weight": 14,
+      "category": "medium_positive",
+      "description": "客戶表達明確的產品需求"
+    },
+    {
+      "id": 6,
+      "name": "有預算",
+      "weight": 12,
+      "category": "medium_positive",
+      "description": "客戶提及有預算或報價"
+    },
+    {
+      "id": 7,
+      "name": "明確",
+      "weight": 12,
+      "category": "medium_positive",
+      "description": "客戶的需求非常具體清晰"
+    },
+    {
+      "id": 8,
+      "name": "老客戶",
+      "weight": 10,
+      "category": "medium_positive",
+      "description": "曾經購買過的客戶"
+    },
+    {
+      "id": 9,
+      "name": "感興趣",
+      "weight": 7,
+      "category": "weak_positive",
+      "description": "客戶表示感興趣但沒有明確行動"
+    },
+    {
+      "id": 10,
+      "name": "諮詢",
+      "weight": 5,
+      "category": "weak_positive",
+      "description": "客戶進行初步諮詢和了解"
+    },
+    {
+      "id": 11,
+      "name": "了解中",
+      "weight": 3,
+      "category": "weak_positive",
+      "description": "客戶正在了解產品"
+    },
+    {
+      "id": 12,
+      "name": "演示",
+      "weight": 10,
+      "category": "strong_neutral",
+      "description": "客戶需要進一步的演示或展示"
+    },
+    {
+      "id": 13,
+      "name": "報價",
+      "weight": 10,
+      "category": "strong_neutral",
+      "description": "客戶需要報價信息"
+    },
+    {
+      "id": 14,
+      "name": "技術",
+      "weight": 8,
+      "category": "strong_neutral",
+      "description": "客戶需要技術支持或諮詢"
+    },
+    {
+      "id": 15,
+      "name": "收集中",
+      "weight": 4,
+      "category": "weak_neutral",
+      "description": "客戶正在收集信息"
+    },
+    {
+      "id": 16,
+      "name": "評估中",
+      "weight": 3,
+      "category": "weak_neutral",
+      "description": "客戶正在對比評估"
+    },
+    {
+      "id": 17,
+      "name": "待反饋",
+      "weight": 2,
+      "category": "weak_neutral",
+      "description": "客戶等待反饋或決定"
+    },
+    {
+      "id": 18,
+      "name": "時間急",
+      "weight": -5,
+      "category": "weak_negative",
+      "description": "客戶表示沒有時間決定"
+    },
+    {
+      "id": 19,
+      "name": "模糊",
+      "weight": -5,
+      "category": "weak_negative",
+      "description": "客戶的需求模糊不清"
+    },
+    {
+      "id": 20,
+      "name": "預算緊",
+      "weight": -4,
+      "category": "weak_negative",
+      "description": "客戶表示預算有限或緊張"
+    },
+    {
+      "id": 21,
+      "name": "猶豫",
+      "weight": -12,
+      "category": "medium_negative",
+      "description": "客戶有疑慮或猶豫不決"
+    },
+    {
+      "id": 22,
+      "name": "比較中",
+      "weight": -11,
+      "category": "medium_negative",
+      "description": "客戶在比較多個方案或廠商"
+    },
+    {
+      "id": 23,
+      "name": "低價",
+      "weight": -10,
+      "category": "medium_negative",
+      "description": "客戶主要關注價格"
+    },
+    {
+      "id": 24,
+      "name": "競品",
+      "weight": -16,
+      "category": "strong_negative",
+      "description": "客戶已經決定用競品"
+    },
+    {
+      "id": 25,
+      "name": "低預算",
+      "weight": -18,
+      "category": "strong_negative",
+      "description": "客戶預算明確不足"
+    },
+    {
+      "id": 26,
+      "name": "延期",
+      "weight": -20,
+      "category": "strong_negative",
+      "description": "客戶決定延期或暫停"
+    }
+  ],
+  "baseConversionRates": {
+    "未處理": 10,
+    "追單": 40,
+    "購買": 100,
+    "售後": 100,
+    "流失": 0
+  },
+  "conversionRateLimits": {
+    "min": 5,
+    "max": 95
+  }
+}
