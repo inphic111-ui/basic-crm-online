@@ -163,7 +163,6 @@
   padding: 14px 12px;
   border-right: none;
   color: #333;
-  word-break: break-word;
   height: 44px;
   vertical-align: middle;
   display: table-cell;
@@ -235,6 +234,9 @@
   font-family: 'Courier New', monospace;
   font-size: 12px;
   vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .col-customer {
