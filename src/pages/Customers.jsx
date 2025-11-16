@@ -905,8 +905,7 @@ function Customers() {
                   <th>公司名稱</th>
                   <th>詢問產品</th>
                   <th>報價</th>
-                  <th>預算</th>
-                  <th>最後聯繫時間</th>
+                  <th onClick={() => handleSort("lastContact")} style={{ cursor: "pointer" }}>最後聯繫時間</th>
                   <th>訂單狀態</th>
                   <th>總消費</th>
                   <th>評級</th>
