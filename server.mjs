@@ -1,5 +1,5 @@
 import express from 'express';
-// opencc-js 已移除 - Whisper 直接輸出繁體中文
+import OpenCC from 'opencc-js';
 import multer from 'multer';
 import cors from 'cors';
 import { Pool } from 'pg';
@@ -2971,7 +2971,6 @@ ${transcriptionText}
     
     // 轉換 AI 分析結果中的簡體為繁體（雙重保障）
     try {
-      const OpenCC = require('opencc-js');
       const converter = OpenCC.Converter({ from: 'cn', to: 'tw' });
       
       if (analysisResult.business_name) {
@@ -2983,13 +2982,21 @@ ${transcriptionText}
       if (analysisResult.analysis_summary) {
         analysisResult.analysis_summary = converter(analysisResult.analysis_summary);
       }
+      
+      // 優化 AI 標籤：改為最多 2 字格式（最多 3 個標籤）
       if (analysisResult.ai_tags && Array.isArray(analysisResult.ai_tags)) {
-        analysisResult.ai_tags = analysisResult.ai_tags.map(tag => converter(String(tag)));
+        analysisResult.ai_tags = analysisResult.ai_tags
+          .slice(0, 3) // 最多 3 個標籤
+          .map(tag => {
+            const converted = converter(String(tag));
+            // 截斷為最多 2 個字
+            return converted.substring(0, 2);
+          });
       }
       
-      addLog('info', 'AI analysis result converted to Traditional Chinese');
+      addLog('info', '✅ 簡體轉繁體成功 (AI 分析結果)', { tags: analysisResult.ai_tags });
     } catch (ccErr) {
-      addLog('warn', 'OpenCC conversion failed for AI analysis result', { error: ccErr.message });
+      addLog('warn', '⚠️ OpenCC 轉換失敗 (AI 分析結果)', { error: ccErr.message });
     }
     
     return analysisResult;
