@@ -1467,9 +1467,10 @@ function Customers() {
                       if (history && Array.isArray(history)) {
                         history.forEach((record) => {
                           timelineRecords.push({
-                            type: 'text',
+                            type: record.type || 'text',
                             date: record.timeline_text ? record.timeline_text.split(' |')[0] : new Date(record.timestamp).toLocaleDateString('zh-TW'),
-                            description: record.timeline_text || '文字紀錄'
+                            description: record.timeline_text || (record.type === 'audio' ? '通話錄音' : '文字紀錄'),
+                            audio_url: record.audio_url
                           });
                         });
                       }
