@@ -906,6 +906,7 @@ function Customers() {
                   <th>詢問產品</th>
                   <th>報價</th>
                   <th>預算</th>
+                  <th>最後聯繫時間</th>
                   <th>訂單狀態</th>
                   <th>總消費</th>
                   <th>評級</th>
@@ -941,6 +942,28 @@ function Customers() {
                       </td>
                       <td>NT${parseFloat(customer.price || 0).toLocaleString()}</td>
                       <td>NT${parseFloat(customer.budget || 0).toLocaleString()}</td>
+                      <td>{(() => {
+                        if (customer.ai_analysis_history) {
+                          try {
+                            const history = typeof customer.ai_analysis_history === 'string' 
+                              ? JSON.parse(customer.ai_analysis_history) 
+                              : customer.ai_analysis_history;
+                            if (Array.isArray(history) && history.length > 0) {
+                              const lastRecord = history[history.length - 1];
+                              const timeStr = lastRecord.timeline_text?.split(' |')[0] || '無記錄';
+                              const isAudio = lastRecord.type === 'audio';
+                              return (
+                                <span>
+                                  {isAudio ? '🎵 ' : ''}{timeStr}
+                                </span>
+                              );
+                            }
+                          } catch (err) {
+                            console.error('解析時間軸失敗:', err);
+                          }
+                        }
+                        return '無記錄';
+                      })()}</td>
                       <td>{getOrderStatusTag(customer.order_status)}</td>
                       <td>NT${parseFloat(customer.total_consumption || 0).toLocaleString()}</td>
                       <td>{getRatingBadge(customer.customer_rating)}</td>
