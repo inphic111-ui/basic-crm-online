@@ -1353,117 +1353,46 @@ function Customers() {
               </div>
 
               <div className="detail-section">
-                <h3>溝通紀錄時間軸</h3>
+                <h3>AI 分析</h3>
                 <div className="notes-box">
+                  {editFormData.ai_analysis || '無 AI 分析'}
+                  
+                  {/* 成交機率對比顯示已移除 */}
+                  
+                  {/* 分析歷史時間軸 */}
                   {(() => {
-                    const timelineRecords = [];
-                    
-                    // 如果有音檔，添加音檔紀錄
-                    if (selectedCustomer.audioUrl) {
-                      timelineRecords.push({
-                        type: 'audio',
-                        date: selectedCustomer.audio_upload_date || new Date().toLocaleDateString('zh-TW'),
-                        description: '通話錄音'
-                      });
-                    }
-                    
-                    // 如果有 AI 分析歷史，添加文字紀錄
-                    if (editFormData.ai_analysis_history) {
-                      let history = null;
-                      try {
+                    console.log('[DEBUG-Frontend] editFormData.ai_analysis_history:', editFormData.ai_analysis_history);
+                    let history = null;
+                    try {
+                      if (editFormData.ai_analysis_history) {
                         if (typeof editFormData.ai_analysis_history === 'string') {
                           history = JSON.parse(editFormData.ai_analysis_history);
                         } else {
                           history = editFormData.ai_analysis_history;
                         }
-                      } catch (err) {
-                        console.error('解析 ai_analysis_history 失敗:', err);
                       }
-                      
-                      if (history && Array.isArray(history)) {
-                        history.forEach((record) => {
-                          timelineRecords.push({
-                            type: 'text',
-                            date: record.timeline_text ? record.timeline_text.split(' |')[0] : new Date(record.timestamp).toLocaleDateString('zh-TW'),
-                            description: record.timeline_text || '文字紀錄'
-                          });
-                        });
-                      }
+                    } catch (err) {
+                      console.error('[DEBUG-Frontend] 解析 ai_analysis_history 失敗:', err);
                     }
-                    
-                    // 如果沒有紀錄
-                    if (timelineRecords.length === 0) {
+                    console.log('[DEBUG-Frontend] 解析後的 history:', history);
+                    if (history && Array.isArray(history) && history.length > 0) {
                       return (
-                        <div style={{padding: '15px', backgroundColor: '#f5f5f5', borderRadius: '4px', color: '#999', textAlign: 'center'}}>
-                          暫無溝通紀錄
-                        </div>
-                      );
-                    }
-                    
-                    // 渲染時間軸
-                    return (
-                      <div style={{position: 'relative', paddingLeft: '30px'}}>
-                        {/* 時間軸豎線 */}
-                        <div style={{
-                          position: 'absolute',
-                          left: '10px',
-                          top: '0',
-                          bottom: '0',
-                          width: '2px',
-                          backgroundColor: '#0066FF'
-                        }}></div>
-                        
-                        {/* 時間軸項目 */}
-                        {timelineRecords.map((record, idx) => (
-                          <div key={idx} style={{marginBottom: '20px', position: 'relative'}}>
-                            {/* 時間軸圓點 */}
-                            <div style={{
-                              position: 'absolute',
-                              left: '-22px',
-                              top: '2px',
-                              width: '14px',
-                              height: '14px',
-                              backgroundColor: record.type === 'audio' ? '#FF6B6B' : '#4CAF50',
-                              borderRadius: '50%',
-                              border: '2px solid white',
-                              boxShadow: '0 0 0 2px #0066FF'
-                            }}></div>
-                            
-                            {/* 時間軸內容 */}
-                            <div style={{
-                              padding: '10px 12px',
-                              backgroundColor: '#f9f9f9',
-                              border: '1px solid #e0e0e0',
-                              borderRadius: '4px'
-                            }}>
-                              <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px'}}>
-                                <span style={{
-                                  display: 'inline-block',
-                                  padding: '2px 8px',
-                                  backgroundColor: record.type === 'audio' ? '#FFE6E6' : '#E8F5E9',
-                                  color: record.type === 'audio' ? '#D32F2F' : '#2E7D32',
-                                  borderRadius: '3px',
-                                  fontSize: '12px',
-                                  fontWeight: 'bold'
-                                }}>
-                                  {record.type === 'audio' ? '🎵 音檔' : '📝 文字'}
-                                </span>
-                                <span style={{fontSize: '13px', color: '#666'}}>{record.date}</span>
+                        <div style={{marginTop: '15px', padding: '10px', backgroundColor: '#f5f5f5', border: '1px solid #ddd', borderRadius: '4px', fontSize: '13px', lineHeight: '1.8'}}>
+                          <div style={{fontWeight: 'bold', marginBottom: '8px', color: '#333'}}>分析歷史時間軸</div>
+                          {[...history].reverse().map((record, idx) => {
+                            // 直接使用 timeline_text（已經是 GMT+8 格式）
+                            const timelineText = record.timeline_text || `${new Date(record.timestamp).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })} | 成交率：${record.probability}%`;
+                            return (
+                              <div key={idx} style={{padding: '5px 0', borderBottom: idx < history.length - 1 ? '1px solid #e0e0e0' : 'none', color: '#666'}}>
+                                {timelineText}
                               </div>
-                              <div style={{fontSize: '14px', color: '#333'}}>{record.description}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    );
+                            );
+                          })}
+                        </div>
+                      )
+                    }
+                    return null
                   })()}
-                </div>
-              </div>
-
-              <div className="detail-section">
-                <h3>AI 分析</h3>
-                <div className="notes-box">
-                  {editFormData.ai_analysis || '無 AI 分析'}
                   
                   {editFormData.ai_analysis && !editFormData.audio_url && (
                     <div style={{marginTop: '10px', padding: '10px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', borderRadius: '4px', color: '#856404', fontSize: '14px'}}>
