@@ -1197,18 +1197,11 @@ function Customers() {
                     </div>
                   )}
                   <div className="detail-item">
-                    <label>訂單狀態:</label>
+                    <label>預算:</label>
                     {isEditMode ? (
-                      <select name="order_status" value={editFormData.order_status || ''} onChange={handleEditFormChange}>
-                        <option value="">-- 選擇 --</option>
-                        <option value="未處理">未處理</option>
-                        <option value="追單">追單</option>
-                        <option value="購買">購買</option>
-                        <option value="售後">售後</option>
-                        <option value="流失">流失</option>
-                      </select>
+                      <input type="number" name="budget" value={editFormData.budget || ''} onChange={handleEditFormChange} />
                     ) : (
-                      <span>{getOrderStatusTag(selectedCustomer.order_status)}</span>
+                      <span>NT${parseFloat(editFormData.budget || 0).toLocaleString()}</span>
                     )}
                   </div>
                   <div className="detail-item">
@@ -1249,14 +1242,19 @@ function Customers() {
                       })()}</span>
                     )}
                   </div>
-
-
                   <div className="detail-item">
-                    <label>預算:</label>
+                    <label>訂單狀態:</label>
                     {isEditMode ? (
-                      <input type="number" name="budget" value={editFormData.budget || ''} onChange={handleEditFormChange} />
+                      <select name="order_status" value={editFormData.order_status || ''} onChange={handleEditFormChange}>
+                        <option value="">-- 選擇 --</option>
+                        <option value="未處理">未處理</option>
+                        <option value="追單">追單</option>
+                        <option value="購買">購買</option>
+                        <option value="售後">售後</option>
+                        <option value="流失">流失</option>
+                      </select>
                     ) : (
-                      <span>NT${parseFloat(editFormData.budget || 0).toLocaleString()}</span>
+                      <span>{getOrderStatusTag(selectedCustomer.order_status)}</span>
                     )}
                   </div>
                   <div className="detail-item">
