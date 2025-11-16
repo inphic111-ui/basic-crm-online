@@ -1188,11 +1188,41 @@ function Customers() {
                     )}
                   </div>
                   <div className="detail-item">
-                    <label>最後联繫時間:</label>
+                    <label>最後聯繫時間:</label>
                     {isEditMode ? (
-                      <input type="text" disabled value={editFormData.last_contact_date ? new Date(editFormData.last_contact_date).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' }) : '無記錄'} />
+                      <input type="text" disabled value={(() => {
+                        if (editFormData.ai_analysis_history) {
+                          try {
+                            const history = typeof editFormData.ai_analysis_history === 'string' 
+                              ? JSON.parse(editFormData.ai_analysis_history) 
+                              : editFormData.ai_analysis_history;
+                            if (Array.isArray(history) && history.length > 0) {
+                              const lastRecord = history[history.length - 1];
+                              return lastRecord.timeline_text?.split(' |')[0] || '無記錄';
+                            }
+                          } catch (err) {
+                            console.error('解析時間軸失敗:', err);
+                          }
+                        }
+                        return '無記錄';
+                      })()} />
                     ) : (
-                      <span>{selectedCustomer.last_contact_date ? new Date(selectedCustomer.last_contact_date).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' }) : '無記錄'}</span>
+                      <span>{(() => {
+                        if (editFormData.ai_analysis_history) {
+                          try {
+                            const history = typeof editFormData.ai_analysis_history === 'string' 
+                              ? JSON.parse(editFormData.ai_analysis_history) 
+                              : editFormData.ai_analysis_history;
+                            if (Array.isArray(history) && history.length > 0) {
+                              const lastRecord = history[history.length - 1];
+                              return lastRecord.timeline_text?.split(' |')[0] || '無記錄';
+                            }
+                          } catch (err) {
+                            console.error('解析時間軸失敗:', err);
+                          }
+                        }
+                        return '無記錄';
+                      })()}</span>
                     )}
                   </div>
 
