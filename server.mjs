@@ -2996,15 +2996,11 @@ ${transcriptionText}
       analysisResult.customer_id = 0;
     }
     
-    // 確保 AI 標籤符合格式要求（最多 2 字，最多 3 個標籤）
+    // 確保 AI 標籤符合格式要求（最多 3 個標籤）
     if (analysisResult.ai_tags && Array.isArray(analysisResult.ai_tags)) {
       analysisResult.ai_tags = analysisResult.ai_tags
         .slice(0, 3) // 最多 3 個標籤
-        .map(tag => {
-          const tagStr = String(tag).trim();
-          // 截斷為最多 2 個字
-          return tagStr.substring(0, 2);
-        })
+        .map(tag => String(tag).trim())
         .filter(tag => tag.length > 0); // 移除空標籤
     }
     
