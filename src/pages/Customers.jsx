@@ -466,17 +466,21 @@ function Customers() {
         {
           timestamp: new Date(Date.now() - 2*24*60*60*1000).toISOString(),
           probability: 15,
-          timeline_text: '2025-11-10 09:06:09 | 成交率：15%'
+          timeline_text: '2025-11-10 09:06:09 | 成交率：15%',
+          type: 'text'
         },
         {
           timestamp: new Date(Date.now() - 1*24*60*60*1000).toISOString(),
           probability: 45,
-          timeline_text: '2025-11-11 10:30:45 | 成交率：45% | ⬆️ +30%'
+          timeline_text: '2025-11-11 10:30:45 | 成交率：45% | ⬆️ +30%',
+          type: 'audio',
+          audio_url: 'https://example.com/audio.mp3'
         },
         {
           timestamp: new Date().toISOString(),
           probability: 65,
-          timeline_text: '2025-11-12 14:30:00 | 成交率：65% | ⬆️ +20%'
+          timeline_text: '2025-11-12 14:30:00 | 成交率：65% | ⬆️ +20%',
+          type: 'text'
         }
       ]),
       audioUrl: 'https://example.com/audio.mp3'
@@ -1245,6 +1249,7 @@ function Customers() {
                       })()}</span>
                     )}
                   </div>
+
 
                   <div className="detail-item">
                     <label>預算:</label>
