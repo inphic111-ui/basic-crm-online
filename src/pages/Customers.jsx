@@ -271,7 +271,8 @@ const getOrderStatusTag = (status) => {
   const statusMap = {
     '未處理': { color: '#999999', label: '未處理' },
     '追單': { color: '#FF9800', label: '追單' },
-    '成交': { color: '#4CAF50', label: '成交' },
+    '購買': { color: '#4CAF50', label: '購買' },
+    '成交': { color: '#4CAF50', label: '購買' },
     '售後': { color: '#2196F3', label: '售後' },
     '流失': { color: '#F44336', label: '流失' }
   }
@@ -459,7 +460,26 @@ function Customers() {
       ...customer,
       annual_consumption: cleanAnnualConsumption(customer.annual_consumption),
       n_score: customer.n_score || '',
-      f_score: customer.f_score || ''
+      f_score: customer.f_score || '',
+      // 添加模擬的時間軸數據（用於測試）
+      ai_analysis_history: JSON.stringify([
+        {
+          timestamp: new Date(Date.now() - 2*24*60*60*1000).toISOString(),
+          probability: 15,
+          timeline_text: '2025-11-10 09:06:09 | 成交率：15%'
+        },
+        {
+          timestamp: new Date(Date.now() - 1*24*60*60*1000).toISOString(),
+          probability: 45,
+          timeline_text: '2025-11-11 10:30:45 | 成交率：45% | ⬆️ +30%'
+        },
+        {
+          timestamp: new Date().toISOString(),
+          probability: 65,
+          timeline_text: '2025-11-12 14:30:00 | 成交率：65% | ⬆️ +20%'
+        }
+      ]),
+      audioUrl: 'https://example.com/audio.mp3'
     }
     setEditFormData(cleanedCustomer)
     setIsEditMode(false)
