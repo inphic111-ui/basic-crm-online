@@ -319,6 +319,7 @@ function Customers() {
   // 排序功能的 state
   const [sortByRating, setSortByRating] = useState(null)
   const [sortByType, setSortByType] = useState(null)
+  const [sortByLastContact, setSortByLastContact] = useState(null)
   
   // 音檔上傳的 state
   const [audioUploadLoading, setAudioUploadLoading] = useState(false)
@@ -372,6 +373,15 @@ function Customers() {
       })
     }
     
+    // 應用最後聯繫時間排序
+    if (sortByLastContact) {
+      filtered = [...filtered].sort((a, b) => {
+        const aTime = a.last_contact_time ? new Date(a.last_contact_time).getTime() : 0
+        const bTime = b.last_contact_time ? new Date(b.last_contact_time).getTime() : 0
+        return sortByLastContact === 'asc' ? aTime - bTime : bTime - aTime
+      })
+    }
+    
     return filtered
   }
   
@@ -395,6 +405,18 @@ function Customers() {
       setSortByType('desc')
     } else {
       setSortByType(null)
+    }
+    setCurrentPage(1)
+  }
+  
+  // 切換最後聯繫時間排序
+  const toggleLastContactSort = () => {
+    if (sortByLastContact === null) {
+      setSortByLastContact('desc')  // 預設按最新時間排序
+    } else if (sortByLastContact === 'desc') {
+      setSortByLastContact('asc')
+    } else {
+      setSortByLastContact(null)
     }
     setCurrentPage(1)
   }
@@ -763,11 +785,6 @@ function Customers() {
       <div className="card">
         <div className="card-header">
           <h3>客戶清單 {loading && '(加載中...)'}</h3>
-          <div className="button-group">
-            <button onClick={handleOpenAddModal} className="btn btn-primary">
-              + 新增客戶
-            </button>
-          </div>
         </div>
 
         {/* 搜尋和篩選區域 */}
@@ -802,7 +819,6 @@ function Customers() {
             </div>
             
             <div style={{ display: 'flex', alignItems: 'center' }}>
-              <span style={{ marginRight: '8px', fontSize: '14px', fontWeight: '500' }}>狀態:</span>
               <select
                 value={filterStatus}
                 onChange={(e) => {
@@ -812,12 +828,15 @@ function Customers() {
                 style={{
                   flex: 1,
                   padding: '8px 12px',
-                  border: '1px solid #ccc',
+                  border: '1px solid #0066FF',
                   borderRadius: '4px',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  backgroundColor: '#f0f8ff',
+                  cursor: 'pointer',
+                  fontWeight: '500'
                 }}
               >
-                <option value="">全部狀態</option>
+                <option value="">狀態</option>
                 <option value="未處理">未處理</option>
                 <option value="追單">追單</option>
                 <option value="購買">購買</option>
@@ -827,7 +846,6 @@ function Customers() {
             </div>
             
             <div style={{ display: 'flex', alignItems: 'center' }}>
-              <span style={{ marginRight: '8px', fontSize: '14px', fontWeight: '500' }}>負責人:</span>
               <select
                 value={filterResponsible}
                 onChange={(e) => {
@@ -837,12 +855,15 @@ function Customers() {
                 style={{
                   flex: 1,
                   padding: '8px 12px',
-                  border: '1px solid #ccc',
+                  border: '1px solid #0066FF',
                   borderRadius: '4px',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  backgroundColor: '#f0f8ff',
+                  cursor: 'pointer',
+                  fontWeight: '500'
                 }}
               >
-                <option value="">全部負責人</option>
+                <option value="">業務名</option>
                 {responsiblePersons.map((person, index) => (
                   <option key={index} value={person}>{person}</option>
                 ))}
@@ -882,6 +903,24 @@ function Customers() {
                 title="客戶類型排序"
               >
                 客戶類型 {sortByType === 'asc' ? '↑' : sortByType === 'desc' ? '↓' : ''}
+              </button>
+              <button 
+                onClick={toggleLastContactSort}
+                style={{
+                  padding: '8px 12px',
+                  backgroundColor: sortByLastContact ? '#0066FF' : '#ddd',
+                  color: sortByLastContact ? 'white' : '#333',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  whiteSpace: 'nowrap',
+                  marginLeft: '8px'
+                }}
+                title="最後聯繫時間排序"
+              >
+                最後聯繫 {sortByLastContact === 'desc' ? '↓' : sortByLastContact === 'asc' ? '↑' : ''}
               </button>
             </div>
           </div>
