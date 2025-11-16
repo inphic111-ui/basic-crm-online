@@ -1310,25 +1310,7 @@ function Customers() {
                               if (!res.ok) {
                                 return res.json().then(data => {
                                   throw new Error(data.error || `HTTP ${res.status}: 上傳失敗`);
-                                
-      ai_analysis_history: JSON.stringify([
-        {
-          timestamp: new Date(Date.now() - 2*24*60*60*1000).toISOString(),
-          probability: 15,
-          timeline_text: '2025-11-10 09:06:09 | 成交率：15%'
-        },
-        {
-          timestamp: new Date(Date.now() - 1*24*60*60*1000).toISOString(),
-          probability: 45,
-          timeline_text: '2025-11-11 10:30:45 | 成交率：45% | ⬆️ +30%'
-        },
-        {
-          timestamp: new Date().toISOString(),
-          probability: 65,
-          timeline_text: '2025-11-12 14:30:00 | 成交率：65% | ⬆️ +20%'
-        }
-      ]),
-      audioUrl: 'https://example.com/audio.mp3',});
+                                });
                               }
                               return res.json();
                             })
