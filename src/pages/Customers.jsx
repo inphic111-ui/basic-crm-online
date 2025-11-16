@@ -796,7 +796,7 @@ function Customers() {
                 <option value="">全部狀態</option>
                 <option value="未處理">未處理</option>
                 <option value="追單">追單</option>
-                <option value="成交">成交</option>
+                <option value="購買">購買</option>
                 <option value="售後">售後</option>
                 <option value="流失">流失</option>
               </select>
@@ -1179,7 +1179,7 @@ function Customers() {
                         <option value="">-- 選擇 --</option>
                         <option value="未處理">未處理</option>
                         <option value="追單">追單</option>
-                        <option value="成交">成交</option>
+                        <option value="購買">購買</option>
                         <option value="售後">售後</option>
                         <option value="流失">流失</option>
                       </select>
@@ -1187,6 +1187,15 @@ function Customers() {
                       <span>{getOrderStatusTag(selectedCustomer.order_status)}</span>
                     )}
                   </div>
+                  <div className="detail-item">
+                    <label>最後联繫時間:</label>
+                    {isEditMode ? (
+                      <input type="text" disabled value={editFormData.last_contact_date ? new Date(editFormData.last_contact_date).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' }) : '無記錄'} />
+                    ) : (
+                      <span>{selectedCustomer.last_contact_date ? new Date(selectedCustomer.last_contact_date).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' }) : '無記錄'}</span>
+                    )}
+                  </div>
+
                   <div className="detail-item">
                     <label>預算:</label>
                     {isEditMode ? (
@@ -1271,7 +1280,25 @@ function Customers() {
                               if (!res.ok) {
                                 return res.json().then(data => {
                                   throw new Error(data.error || `HTTP ${res.status}: 上傳失敗`);
-                                });
+                                
+      ai_analysis_history: JSON.stringify([
+        {
+          timestamp: new Date(Date.now() - 2*24*60*60*1000).toISOString(),
+          probability: 15,
+          timeline_text: '2025-11-10 09:06:09 | 成交率：15%'
+        },
+        {
+          timestamp: new Date(Date.now() - 1*24*60*60*1000).toISOString(),
+          probability: 45,
+          timeline_text: '2025-11-11 10:30:45 | 成交率：45% | ⬆️ +30%'
+        },
+        {
+          timestamp: new Date().toISOString(),
+          probability: 65,
+          timeline_text: '2025-11-12 14:30:00 | 成交率：65% | ⬆️ +20%'
+        }
+      ]),
+      audioUrl: 'https://example.com/audio.mp3',});
                               }
                               return res.json();
                             })
@@ -1400,6 +1427,9 @@ function Customers() {
                       );
                     }
                     
+                    // 反轉時間軸順序，使最新的時間在最上面
+                    const reversedRecords = [...timelineRecords].reverse();
+                    
                     // 渲染時間軸
                     return (
                       <div style={{position: 'relative', paddingLeft: '30px'}}>
@@ -1414,7 +1444,7 @@ function Customers() {
                         }}></div>
                         
                         {/* 時間軸項目 */}
-                        {timelineRecords.map((record, idx) => (
+                        {reversedRecords.map((record, idx) => (
                           <div key={idx} style={{marginBottom: '20px', position: 'relative'}}>
                             {/* 時間軸圓點 */}
                             <div style={{
@@ -1457,19 +1487,6 @@ function Customers() {
                       </div>
                     );
                   })()}
-                </div>
-              </div>
-
-              <div className="detail-section">
-                <h3>AI 分析</h3>
-                <div className="notes-box">
-                  {editFormData.ai_analysis || '無 AI 分析'}
-                  
-                  {editFormData.ai_analysis && !editFormData.audio_url && (
-                    <div style={{marginTop: '10px', padding: '10px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', borderRadius: '4px', color: '#856404', fontSize: '14px'}}>
-                      建議上傳音檔 - 上傳客戶通話錄音可獲得更完整的 AI 分析結果
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -1625,7 +1642,7 @@ function Customers() {
                     <option value="">-- 選擇 --</option>
                     <option value="未處理">未處理</option>
                     <option value="追單">追單</option>
-                    <option value="成交">成交</option>
+                    <option value="購買">購買</option>
                     <option value="售後">售後</option>
                     <option value="流失">流失</option>
                   </select>

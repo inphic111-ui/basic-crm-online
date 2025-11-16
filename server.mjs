@@ -2348,6 +2348,24 @@ ${audioTranscription}`;
       }
     }
 
+    // 第三點五步：提取最新的聯繫時間
+    let lastContactDate = null;
+    if (body.ai_analysis_history) {
+      try {
+        const history = typeof body.ai_analysis_history === 'string' 
+          ? JSON.parse(body.ai_analysis_history) 
+          : body.ai_analysis_history;
+        if (Array.isArray(history) && history.length > 0) {
+          const lastRecord = history[history.length - 1];
+          if (lastRecord.timestamp) {
+            lastContactDate = new Date(lastRecord.timestamp);
+          }
+        }
+      } catch (err) {
+        console.error('[DEBUG] 解析 ai_analysis_history 失敗:', err);
+      }
+    }
+
     // 第四步：更新 ai_analysis_history
     let historyJson = [];
     // 優先使用 body 中的 ai_analysis_history（前端發送的最新值），如果沒有則使用數據庫中的舊值
@@ -2409,6 +2427,13 @@ ${audioTranscription}`;
     if (analysisResult) {
       updates.push(`ai_analysis = $${paramIndex}`);
       values.push(analysisResult);
+      paramIndex++;
+    }
+
+    // 添加 last_contact_date 到更新
+    if (lastContactDate) {
+      updates.push(`last_contact_date = $${paramIndex}`);
+      values.push(lastContactDate);
       paramIndex++;
     }
 
