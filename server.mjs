@@ -1,5 +1,4 @@
 import express from 'express';
-import OpenCC from 'opencc-js';
 import multer from 'multer';
 import cors from 'cors';
 import { Pool } from 'pg';
@@ -2884,20 +2883,9 @@ async function transcribeAudio(audioUrl) {
       language: 'zh'
     });
 
-    const simplifiedText = transcript.text || '';
-    addLog('info', '✅ Whisper API 成功 (原始文本)', { text: simplifiedText.substring(0, 100) });
-
-    // 轉換簡體中文為台灣繁體
-    try {
-      const OpenCC = require('opencc-js');
-      const converter = OpenCC.Converter({ from: 'cn', to: 'tw' });
-      const traditionalText = converter(simplifiedText);
-      addLog('info', '✅ 簡體轉繁體成功 (台灣繁體)', { text: traditionalText.substring(0, 100) });
-      return traditionalText;
-    } catch (ccErr) {
-      addLog('warn', '⚠️ OpenCC 轉換失敗，使用原始文本', { error: ccErr.message });
-      return simplifiedText;
-    }
+    const transcribedText = transcript.text || '';
+    addLog('info', '✅ Whisper API 成功 (台灣繁體)', { text: transcribedText.substring(0, 100) });
+    return transcribedText;
   } catch (err) {
     addLog('error', '❌ Whisper 轉錄失敗', { error: err.message });
     throw err;
@@ -2907,21 +2895,28 @@ async function transcribeAudio(audioUrl) {
 // AI 分析函數
 async function analyzeTranscription(transcriptionText) {
   try {
-    const prompt = `你是一个专业的销售分析专家。今天你接到了一份销售通话的转録文本。
-请分析转録文本，提取以下信息，并以 JSON 格式返回：
+    const prompt = `你是一位專業的銷售分析專家。今天你接到了一份銷售通話的轉錄文本。
+請分析轉錄文本，提取以下信息，並以 JSON 格式返回。
+
+【重要】所有回應必須使用台灣繁體中文，不要使用簡體中文。
 
 {
-  "customer_id": "客户编号（应为 1-9999 之间的整数，如果找不到则返回 0）",
-  "business_name": "业务人员姓名",
-  "product_name": "产品名称",
-  "analysis_summary": "销售活动的简要总结，描述2-3句",
-  "ai_tags": ["标签1", "标签2", "标签3"]
+  "customer_id": "客戶編號（應為 1-9999 之間的整數，如果找不到則返回 0）",
+  "business_name": "業務人員姓名",
+  "product_name": "產品名稱",
+  "analysis_summary": "銷售活動的簡要總結，描述 2-3 句",
+  "ai_tags": ["標籤1", "標籤2", "標籤3"]
 }
 
-转録文本：
+【AI 標籤要求】
+- 每個標籤最多 2 個字
+- 最多 3 個標籤
+- 從轉錄文本的語意判斷核心指標
+
+轉錄文本：
 ${transcriptionText}
 
-请仅返回 JSON，不要有任何其他文本。`;
+請仅返回 JSON，不要有任何其他文本。`;
     
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -2969,35 +2964,23 @@ ${transcriptionText}
       analysisResult.customer_id = 0;
     }
     
-    // 轉換 AI 分析結果中的簡體為繁體（雙重保障）
-    try {
-      const converter = OpenCC.Converter({ from: 'cn', to: 'tw' });
-      
-      if (analysisResult.business_name) {
-        analysisResult.business_name = converter(analysisResult.business_name);
-      }
-      if (analysisResult.product_name) {
-        analysisResult.product_name = converter(analysisResult.product_name);
-      }
-      if (analysisResult.analysis_summary) {
-        analysisResult.analysis_summary = converter(analysisResult.analysis_summary);
-      }
-      
-      // 優化 AI 標籤：改為最多 2 字格式（最多 3 個標籤）
-      if (analysisResult.ai_tags && Array.isArray(analysisResult.ai_tags)) {
-        analysisResult.ai_tags = analysisResult.ai_tags
-          .slice(0, 3) // 最多 3 個標籤
-          .map(tag => {
-            const converted = converter(String(tag));
-            // 截斷為最多 2 個字
-            return converted.substring(0, 2);
-          });
-      }
-      
-      addLog('info', '✅ 簡體轉繁體成功 (AI 分析結果)', { tags: analysisResult.ai_tags });
-    } catch (ccErr) {
-      addLog('warn', '⚠️ OpenCC 轉換失敗 (AI 分析結果)', { error: ccErr.message });
+    // 確保 AI 標籤符合格式要求（最多 2 字，最多 3 個標籤）
+    if (analysisResult.ai_tags && Array.isArray(analysisResult.ai_tags)) {
+      analysisResult.ai_tags = analysisResult.ai_tags
+        .slice(0, 3) // 最多 3 個標籤
+        .map(tag => {
+          const tagStr = String(tag).trim();
+          // 截斷為最多 2 個字
+          return tagStr.substring(0, 2);
+        })
+        .filter(tag => tag.length > 0); // 移除空標籤
     }
+    
+    addLog('info', '✅ AI 分析完成 (繁體中文)', { 
+      customer_id: analysisResult.customer_id,
+      tags: analysisResult.ai_tags,
+      summary_length: analysisResult.analysis_summary?.length || 0
+    });
     
     return analysisResult;
   } catch (err) {
