@@ -374,8 +374,38 @@ function Customers() {
     // 應用最後聯繫時間排序
     if (sortByLastContact) {
       filtered = [...filtered].sort((a, b) => {
-        const aTime = a.last_contact_time ? new Date(a.last_contact_time).getTime() : 0
-        const bTime = b.last_contact_time ? new Date(b.last_contact_time).getTime() : 0
+        let aTime = 0
+        let bTime = 0
+        
+        // 從 ai_analysis_history 中提取最後的時間
+        if (a.ai_analysis_history) {
+          try {
+            const history = typeof a.ai_analysis_history === 'string' 
+              ? JSON.parse(a.ai_analysis_history) 
+              : a.ai_analysis_history
+            if (Array.isArray(history) && history.length > 0) {
+              const lastRecord = history[history.length - 1]
+              aTime = lastRecord.timestamp ? new Date(lastRecord.timestamp).getTime() : 0
+            }
+          } catch (err) {
+            aTime = 0
+          }
+        }
+        
+        if (b.ai_analysis_history) {
+          try {
+            const history = typeof b.ai_analysis_history === 'string' 
+              ? JSON.parse(b.ai_analysis_history) 
+              : b.ai_analysis_history
+            if (Array.isArray(history) && history.length > 0) {
+              const lastRecord = history[history.length - 1]
+              bTime = lastRecord.timestamp ? new Date(lastRecord.timestamp).getTime() : 0
+            }
+          } catch (err) {
+            bTime = 0
+          }
+        }
+        
         return sortByLastContact === 'asc' ? aTime - bTime : bTime - aTime
       })
     }
@@ -891,7 +921,7 @@ function Customers() {
                   <th>報價</th>
                   <th>預算</th>
                   <th onClick={() => toggleLastContactSort()} style={{ cursor: "pointer" }}>最後聯繫時間</th>
-                  <th>訂單狀态</th>
+                  <th>訂單狀態</th>
                   <th>總消費</th>
                   <th onClick={() => toggleRatingSort()} style={{ cursor: "pointer" }}>評級</th>
                   <th onClick={() => toggleTypeSort()} style={{ cursor: "pointer" }}>客戶類別</th>
