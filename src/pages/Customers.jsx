@@ -347,8 +347,8 @@ function Customers() {
       // 狀態過濾
       const matchesStatus = !filterStatus || customer.order_status === filterStatus
       
-      // 負責人過濾（暫時不實現，因為數據中沒有負責人字段）
-      const matchesResponsible = !filterResponsible || true
+      // 業務名過濾
+      const matchesResponsible = !filterResponsible || customer.responsible_person === filterResponsible
       
       return matchesSearch && matchesStatus && matchesResponsible
     })
