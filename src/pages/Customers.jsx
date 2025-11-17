@@ -326,12 +326,10 @@ function Customers() {
   const [audioUploadError, setAudioUploadError] = useState(null)
   const [audioUploadSuccess, setAudioUploadSuccess] = useState(false)
 
-  // 生成隨機人名列表
+  // 生成業務名列表（只有 4 個固定名字）
   const generateResponsiblePersons = () => {
     const names = [
-      '王建宏', '李美玲', '陳芬芬', '黃家豪', '吳欣怡',
-      '林志偉', '劉思妤', '張家榕', '楊家誠', '何俊傑',
-      '賴建志', '曾郁涵', '許家豪', '鄭家慧', '郭家銘'
+      '何雨達', '郭庭碩', '鍾汶憲', '何佳珊'
     ]
     setResponsiblePersons(names)
   }
