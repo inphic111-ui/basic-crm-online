@@ -826,10 +826,10 @@ function Customers() {
                 style={{
                   flex: 1,
                   padding: '8px 12px',
-                  border: '1px solid #0066FF',
+                  border: '1px solid #ccc',
                   borderRadius: '4px',
                   fontSize: '14px',
-                  backgroundColor: '#f0f8ff',
+                  backgroundColor: '#ffffff',
                   cursor: 'pointer',
                   fontWeight: '500'
                 }}
@@ -837,7 +837,7 @@ function Customers() {
                 <option value="">狀態</option>
                 <option value="未處理">未處理</option>
                 <option value="追單">追單</option>
-                <option value="購買">購買</option>
+                <option value="成交">購買</option>
                 <option value="售後">售後</option>
                 <option value="流失">流失</option>
               </select>
@@ -853,10 +853,10 @@ function Customers() {
                 style={{
                   flex: 1,
                   padding: '8px 12px',
-                  border: '1px solid #0066FF',
+                  border: '1px solid #ccc',
                   borderRadius: '4px',
                   fontSize: '14px',
-                  backgroundColor: '#f0f8ff',
+                  backgroundColor: '#ffffff',
                   cursor: 'pointer',
                   fontWeight: '500'
                 }}
@@ -890,11 +890,11 @@ function Customers() {
                   <th>詢問產品</th>
                   <th>報價</th>
                   <th>預算</th>
-                  <th onClick={() => handleSort("lastContact")} style={{ cursor: "pointer" }}>最後聘繫時間</th>
+                  <th onClick={() => toggleLastContactSort()} style={{ cursor: "pointer" }}>最後聯繫時間</th>
                   <th>訂單狀态</th>
                   <th>總消費</th>
-                  <th onClick={() => handleSort("rating")} style={{ cursor: "pointer" }}>評級</th>
-                  <th onClick={() => handleSort("type")} style={{ cursor: "pointer" }}>客戶類別</th>
+                  <th onClick={() => toggleRatingSort()} style={{ cursor: "pointer" }}>評級</th>
+                  <th onClick={() => toggleTypeSort()} style={{ cursor: "pointer" }}>客戶類別</th>
                   <th>來源</th>
                   <th>操作</th>
                 </tr>
