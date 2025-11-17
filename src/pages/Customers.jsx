@@ -866,60 +866,7 @@ function Customers() {
                   <option key={index} value={person}>{person}</option>
                 ))}
               </select>
-              <button 
-                onClick={toggleRatingSort}
-                style={{
-                  padding: '8px 12px',
-                  backgroundColor: sortByRating ? '#0066FF' : '#ddd',
-                  color: sortByRating ? 'white' : '#333',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: 'bold',
-                  whiteSpace: 'nowrap',
-                  marginLeft: '8px'
-                }}
-                title="評級排序"
-              >
-                評級 {sortByRating === 'asc' ? '↑' : sortByRating === 'desc' ? '↓' : ''}
-              </button>
-              <button 
-                onClick={toggleTypeSort}
-                style={{
-                  padding: '8px 12px',
-                  backgroundColor: sortByType ? '#0066FF' : '#ddd',
-                  color: sortByType ? 'white' : '#333',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: 'bold',
-                  whiteSpace: 'nowrap',
-                  marginLeft: '8px'
-                }}
-                title="客戶類型排序"
-              >
-                客戶類型 {sortByType === 'asc' ? '↑' : sortByType === 'desc' ? '↓' : ''}
-              </button>
-              <button 
-                onClick={toggleLastContactSort}
-                style={{
-                  padding: '8px 12px',
-                  backgroundColor: sortByLastContact ? '#0066FF' : '#ddd',
-                  color: sortByLastContact ? 'white' : '#333',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: 'bold',
-                  whiteSpace: 'nowrap',
-                  marginLeft: '8px'
-                }}
-                title="最後聯繫時間排序"
-              >
-                最後聯繫 {sortByLastContact === 'desc' ? '↓' : sortByLastContact === 'asc' ? '↑' : ''}
-              </button>
+
             </div>
           </div>
         )}
@@ -942,11 +889,12 @@ function Customers() {
                   <th>公司名稱</th>
                   <th>詢問產品</th>
                   <th>報價</th>
-                  <th onClick={() => handleSort("lastContact")} style={{ cursor: "pointer" }}>最後聯繫時間</th>
-                  <th>訂單狀態</th>
+                  <th>預算</th>
+                  <th onClick={() => handleSort("lastContact")} style={{ cursor: "pointer" }}>最後聘繫時間</th>
+                  <th>訂單狀态</th>
                   <th>總消費</th>
-                  <th>評級</th>
-                  <th>客戶類型</th>
+                  <th onClick={() => handleSort("rating")} style={{ cursor: "pointer" }}>評級</th>
+                  <th onClick={() => handleSort("type")} style={{ cursor: "pointer" }}>客戶類別</th>
                   <th>來源</th>
                   <th>操作</th>
                 </tr>
