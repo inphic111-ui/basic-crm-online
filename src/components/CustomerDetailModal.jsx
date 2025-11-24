@@ -214,10 +214,10 @@ const CustomerDetailModal = ({
         {/* Tabs Navigation */}
         <div style={{ display: 'flex', borderBottom: '1px solid #dee2e6', background: '#f8f9fa', padding: '0 20px', flexShrink: 0 }}>
           <button onClick={() => setActiveTab('info')} style={{ padding: '15px 20px', background: activeTab === 'info' ? 'white' : 'transparent', border: '1px solid transparent', borderBottom: activeTab === 'info' ? '3px solid #3498db' : '3px solid transparent', fontWeight: activeTab === 'info' ? 'bold' : 'normal', color: activeTab === 'info' ? '#3498db' : '#666', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <User size={18}/> 客戶資訊 (編輯)
+            <User size={18}/> 客戶資訊
           </button>
           <button onClick={() => setActiveTab('profile')} style={{ padding: '15px 20px', background: activeTab === 'profile' ? 'white' : 'transparent', border: '1px solid transparent', borderBottom: activeTab === 'profile' ? '3px solid #2ecc71' : '3px solid transparent', fontWeight: activeTab === 'profile' ? 'bold' : 'normal', color: activeTab === 'profile' ? '#2ecc71' : '#666', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <PieChart size={18}/> 消費者輪廓 (分析)
+            <PieChart size={18}/> 消費者輪廓
           </button>
         </div>
 
@@ -246,23 +246,6 @@ const CustomerDetailModal = ({
                 </div>
               </div>
               <div className="detail-section" style={{marginBottom: '20px'}}>
-                <div style={{ marginTop: '0px', marginBottom:'15px' }}>
-                  {isEditMode ? (
-                    <>
-                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>音檔上傳:</label>
-                      <input type="file" />
-                    </>
-                  ) : (
-                    <>
-                      {selectedCustomer.audioUrl && (
-                        <>
-                          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>🎵 通話紀錄:</label>
-                          <audio controls src={selectedCustomer.audioUrl} style={{width:'100%'}} />
-                        </>
-                      )}
-                    </>
-                  )}
-                </div>
                 <h3>備註</h3>
                 {isEditMode ? <textarea name="notes" value={editFormData.notes || ''} onChange={handleEditFormChange} style={{width: '100%', minHeight: '100px', padding:'8px'}} /> : <div className="notes-box" style={{background:'#f9f9f9', padding:'10px', borderRadius:'4px'}}>{editFormData.notes || '無備註'}</div>}
               </div>
@@ -396,25 +379,13 @@ const CustomerDetailModal = ({
                 </table>
               </div>
 
-              {/* 6. 雷達圖 & 弱點分析 */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '30px' }}>
-                <div style={{ background: 'white', border: '1px solid #eee', padding: '20px', borderRadius: '8px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
-                    <h3 style={{ margin: 0, fontSize: '1.1rem' }}>銷售技巧評估</h3>
-                    <button onClick={() => setIsReportModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: '#2ecc71', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}><FileBarChart size={14}/> 詳細報告</button>
-                  </div>
-                  <div style={{ height: '300px', display: 'flex', justifyContent: 'center' }}><Radar data={radarData} options={radarOptions} /></div>
+              {/* 6. 銷售技巧評估雷達圖 */}
+              <div style={{ background: 'white', border: '1px solid #eee', padding: '20px', borderRadius: '8px', marginBottom: '30px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem' }}>銷售技巧評估</h3>
+                  <button onClick={() => setIsReportModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: '#2ecc71', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}><FileBarChart size={14}/> 詳細報告</button>
                 </div>
-                <div style={{ background: 'white', border: '1px solid #eee', padding: '20px', borderRadius: '8px' }}>
-                  <h3 style={{ margin: '0 0 15px 0', fontSize: '1.1rem', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>弱點分析與建議</h3>
-                  <div style={{ background: '#fff9e6', borderLeft: '4px solid #f39c12', padding: '15px', marginBottom: '15px', borderRadius: '4px' }}>
-                    <h4 style={{ margin: '0 0 5px 0', color: '#d35400' }}>需求挖掘 ({editFormData.n_score}/10)</h4><p style={{ margin: 0, fontSize: '0.9rem', color:'#555' }}>建議加強開放式提問技巧。</p>
-                  </div>
-                  <div style={{ background: '#e8f5e9', borderLeft: '4px solid #2ecc71', padding: '15px', borderRadius: '4px' }}>
-                    <h4 style={{ margin: '0 0 5px 0', color: '#2e7d32' }}>綜合評估</h4>
-                    <p style={{ margin: 0, fontSize: '0.9rem', color:'#555' }}>成交率預測：<strong>{conversionRate}</strong></p>
-                  </div>
-                </div>
+                <div style={{ height: '400px', display: 'flex', justifyContent: 'center' }}><Radar data={radarData} options={radarOptions} /></div>
               </div>
 
               {/* 7. 溝通紀錄時間軸 */}
@@ -425,7 +396,7 @@ const CustomerDetailModal = ({
                      <div key={i} style={{ position: 'relative', marginBottom: '30px', paddingBottom: '20px', borderBottom: i < timelineHistory.length - 1 ? '1px solid #eee' : 'none' }}>
                        <div style={{ position: 'absolute', left: '-30px', top: '5px', width: '20px', height: '20px', borderRadius: '50%', background: i === 0 ? '#2ecc71' : '#f39c12', border: '3px solid white', boxShadow: '0 0 0 2px #dee2e6' }}></div>
                        <div style={{ position: 'absolute', left: '-21px', top: '30px', width: '2px', height: 'calc(100% - 20px)', background: '#dee2e6' }}></div>
-                       <div style={{ display: 'inline-block', padding: '4px 12px', borderRadius: '12px', background: i === 0 ? '#2ecc71' : '#f39c12', color: 'white', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '10px' }}>{i === 0 ? '電話連絡' : '客戶回訪'}</div>
+                       <div style={{ display: 'inline-block', padding: '4px 12px', borderRadius: '12px', background: i === 0 ? '#2ecc71' : '#f39c12', color: 'white', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '10px' }}>{i === 0 ? '📞 電話連絡' : '💬 客戶回訪'}</div>
                        <h4 style={{ margin: '10px 0 5px 0', fontSize: '1rem', color: '#2c3e50' }}>{rec.timeline_text || '產品介紹與需求確認電話'}</h4>
                        <p style={{ margin: '5px 0 10px 0', fontSize: '0.9rem', color: '#666' }}>{rec.description || '初次產品介紹，了解客戶需求與痛點'}</p>
                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#999', fontSize: '0.85rem', marginBottom: '10px' }}>
