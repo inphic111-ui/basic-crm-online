@@ -380,11 +380,31 @@ function Customers() {
 
         // 特殊處理：最後聯繫時間 (last_contact_time)
         if (sortConfig.key === 'last_contact_time') {
-          // 這裡需要從 ai_analysis_history 中提取最新的時間
-          // 由於這個邏輯比較複雜，我們暫時保留舊的 sortByLastContact 邏輯，但使用新的 sortConfig
-          // 為了簡化，我們假設 last_contact_time 已經在數據中
-          aValue = new Date(aValue || 0).getTime();
-          bValue = new Date(bValue || 0).getTime();
+          let aTime = 0;
+          let bTime = 0;
+
+          // 輔助函數：從 ai_analysis_history 中提取最後的時間戳
+          const extractLastContactTime = (customer) => {
+            if (!customer.ai_analysis_history) return 0;
+            try {
+              const history = typeof customer.ai_analysis_history === 'string' 
+                ? JSON.parse(customer.ai_analysis_history) 
+                : customer.ai_analysis_history;
+              if (Array.isArray(history) && history.length > 0) {
+                const lastRecord = history[history.length - 1];
+                return lastRecord.timestamp ? new Date(lastRecord.timestamp).getTime() : 0;
+              }
+            } catch (err) {
+              return 0;
+            }
+            return 0;
+          };
+
+          aTime = extractLastContactTime(a);
+          bTime = extractLastContactTime(b);
+
+          aValue = aTime;
+          bValue = bTime;
         }
         
         // 特殊處理：評級 (customer_rating) - 假設 S > A > B > C > D > E
