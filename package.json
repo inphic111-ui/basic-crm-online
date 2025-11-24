@@ -1,6 +1,6 @@
 {
   "name": "basic-crm-online",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "CRM 3.0 Online - 客戶關係管理系統",
   "type": "module",
   "main": "server.mjs",
