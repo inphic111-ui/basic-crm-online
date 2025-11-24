@@ -1,0 +1,138 @@
+{
+  "query": "DESCRIBE audio_recordings;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 29rDkMc4estG6xm.4c132c16006a --database WrczB9FbLtLbFuhmSGfDzu --execute DESCRIBE audio_recordings;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int(11)",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment"
+    },
+    {
+      "Field": "customer_id",
+      "Type": "varchar(50)",
+      "Null": "NO",
+      "Key": "MUL",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "business_name",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "product_name",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "call_date",
+      "Type": "date",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "call_time",
+      "Type": "time",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "audio_url",
+      "Type": "varchar(500)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "transcription_text",
+      "Type": "longtext",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "transcription_status",
+      "Type": "varchar(50)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "待轉錄",
+      "Extra": ""
+    },
+    {
+      "Field": "analysis_summary",
+      "Type": "longtext",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "analysis_status",
+      "Type": "varchar(50)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "待分析",
+      "Extra": ""
+    },
+    {
+      "Field": "overall_status",
+      "Type": "varchar(50)",
+      "Null": "YES",
+      "Key": "MUL",
+      "Default": "待轉錄",
+      "Extra": ""
+    },
+    {
+      "Field": "created_at",
+      "Type": "timestamp",
+      "Null": "YES",
+      "Key": "MUL",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "updated_at",
+      "Type": "timestamp",
+      "Null": "YES",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "Field": "analysis_suggestions",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "ai_tags",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tint(11)\tNO\tPRI\tNULL\tauto_increment\ncustomer_id\tvarchar(50)\tNO\tMUL\tNULL\t\nbusiness_name\tvarchar(255)\tYES\t\tNULL\t\nproduct_name\tvarchar(255)\tYES\t\tNULL\t\ncall_date\tdate\tYES\t\tNULL\t\ncall_time\ttime\tYES\t\tNULL\t\naudio_url\tvarchar(500)\tNO\t\tNULL\t\ntranscription_text\tlongtext\tYES\t\tNULL\t\ntranscription_status\tvarchar(50)\tYES\t\t待轉錄\t\nanalysis_summary\tlongtext\tYES\t\tNULL\t\nanalysis_status\tvarchar(50)\tYES\t\t待分析\t\noverall_status\tvarchar(50)\tYES\tMUL\t待轉錄\t\ncreated_at\ttimestamp\tYES\tMUL\tCURRENT_TIMESTAMP\t\nupdated_at\ttimestamp\tYES\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\nanalysis_suggestions\ttext\tYES\t\tNULL\t\nai_tags\ttext\tYES\t\tNULL\t\n",
+  "stderr": "",
+  "execution_time_ms": 1495
+}

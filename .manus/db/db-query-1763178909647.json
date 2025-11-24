@@ -1,0 +1,110 @@
+{
+  "query": "SELECT id, customer_id, business_name, product_name, ai_tags, analysis_summary, audio_filename, duration FROM audio_recordings ORDER BY id DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 29rDkMc4estG6xm.4c132c16006a --database WrczB9FbLtLbFuhmSGfDzu --execute SELECT id, customer_id, business_name, product_name, ai_tags, analysis_summary, audio_filename, duration FROM audio_recordings ORDER BY id DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "10",
+      "customer_id": "10",
+      "business_name": "郭庭碩",
+      "product_name": "產品10",
+      "ai_tags": "[\"感興\", \"需要\", \"預算\"]",
+      "analysis_summary": "📋 View",
+      "audio_filename": "202409230001_0923_0924.mp3",
+      "duration": "19:11"
+    },
+    {
+      "id": "9",
+      "customer_id": "9",
+      "business_name": "鍾汶憲",
+      "product_name": "產品9",
+      "ai_tags": "[\"投資\", \"風險\", \"數據\"]",
+      "analysis_summary": "📋 View",
+      "audio_filename": "202409230002_0527_0402.mp3",
+      "duration": "28:44"
+    },
+    {
+      "id": "8",
+      "customer_id": "8",
+      "business_name": "何佳珊",
+      "product_name": "產品8",
+      "ai_tags": "[\"庫存\", \"系統\", \"成本\"]",
+      "analysis_summary": "📋 View",
+      "audio_filename": "202409230003_0217_1215.mp3",
+      "duration": "14:30"
+    },
+    {
+      "id": "7",
+      "customer_id": "7",
+      "business_name": "何雨達",
+      "product_name": "產品7",
+      "ai_tags": "[\"ER\", \"生產\", \"定制\"]",
+      "analysis_summary": "📋 View",
+      "audio_filename": "202409230004_0814_2226.mp3",
+      "duration": "24:16"
+    },
+    {
+      "id": "6",
+      "customer_id": "6",
+      "business_name": "郭庭碩",
+      "product_name": "產品6",
+      "ai_tags": "[\"案例\", \"文檔\", \"時間\"]",
+      "analysis_summary": "📋 View",
+      "audio_filename": "202409230005_0111_2051.mp3",
+      "duration": "8:18"
+    },
+    {
+      "id": "5",
+      "customer_id": "5",
+      "business_name": "郭庭碩",
+      "product_name": "產品5",
+      "ai_tags": "[\"訂房\", \"支付\", \"收入\"]",
+      "analysis_summary": "📋 View",
+      "audio_filename": "202409230006_1022_0925.mp3",
+      "duration": "16:22"
+    },
+    {
+      "id": "4",
+      "customer_id": "4",
+      "business_name": "何佳珊",
+      "product_name": "產品4",
+      "ai_tags": "[\"物流\", \"路線\", \"成本\"]",
+      "analysis_summary": "📋 View",
+      "audio_filename": "202409230007_1119_2014.mp3",
+      "duration": "21:52"
+    },
+    {
+      "id": "3",
+      "customer_id": "3",
+      "business_name": "鍾汶憲",
+      "product_name": "產品3",
+      "ai_tags": "[\"房產\", \"租戶\", \"自動\"]",
+      "analysis_summary": "📋 View",
+      "audio_filename": "202409230008_0102_0830.mp3",
+      "duration": "23:56"
+    },
+    {
+      "id": "2",
+      "customer_id": "2",
+      "business_name": "何雨達",
+      "product_name": "產品2",
+      "ai_tags": "[\"客戶\", \"知識\", \"自動\"]",
+      "analysis_summary": "📋 View",
+      "audio_filename": "202409230009_0315_1445.mp3",
+      "duration": "20:05"
+    },
+    {
+      "id": "1",
+      "customer_id": "1",
+      "business_name": "何佳珊",
+      "product_name": "產品1",
+      "ai_tags": "[\"安全\", \"數據\", \"災難\"]",
+      "analysis_summary": "📋 View",
+      "audio_filename": "202409230010_0708_1632.mp3",
+      "duration": "14:16"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcustomer_id\tbusiness_name\tproduct_name\tai_tags\tanalysis_summary\taudio_filename\tduration\n10\t10\t郭庭碩\t產品10\t[\"感興\", \"需要\", \"預算\"]\t📋 View\t202409230001_0923_0924.mp3\t19:11\n9\t9\t鍾汶憲\t產品9\t[\"投資\", \"風險\", \"數據\"]\t📋 View\t202409230002_0527_0402.mp3\t28:44\n8\t8\t何佳珊\t產品8\t[\"庫存\", \"系統\", \"成本\"]\t📋 View\t202409230003_0217_1215.mp3\t14:30\n7\t7\t何雨達\t產品7\t[\"ER\", \"生產\", \"定制\"]\t📋 View\t202409230004_0814_2226.mp3\t24:16\n6\t6\t郭庭碩\t產品6\t[\"案例\", \"文檔\", \"時間\"]\t📋 View\t202409230005_0111_2051.mp3\t8:18\n5\t5\t郭庭碩\t產品5\t[\"訂房\", \"支付\", \"收入\"]\t📋 View\t202409230006_1022_0925.mp3\t16:22\n4\t4\t何佳珊\t產品4\t[\"物流\", \"路線\", \"成本\"]\t📋 View\t202409230007_1119_2014.mp3\t21:52\n3\t3\t鍾汶憲\t產品3\t[\"房產\", \"租戶\", \"自動\"]\t📋 View\t202409230008_0102_0830.mp3\t23:56\n2\t2\t何雨達\t產品2\t[\"客戶\", \"知識\", \"自動\"]\t📋 View\t202409230009_0315_1445.mp3\t20:05\n1\t1\t何佳珊\t產品1\t[\"安全\", \"數據\", \"災難\"]\t📋 View\t202409230010_0708_1632.mp3\t14:16\n",
+  "stderr": "",
+  "execution_time_ms": 4464
+}

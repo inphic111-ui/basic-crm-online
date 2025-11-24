@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1762148476945,
+      "tag": "0000_sour_toxin",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1762148511750,
+      "tag": "0001_daffy_mephistopheles",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1763016934856,
+      "tag": "0002_curly_luminals",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1763017602813,
+      "tag": "0003_plain_stingray",
+      "breakpoints": true
+    }
+  ]
+}

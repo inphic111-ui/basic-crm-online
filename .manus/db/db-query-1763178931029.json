@@ -1,0 +1,80 @@
+{
+  "query": "SELECT id, customer_id, business_name, ai_tags, analysis_summary FROM audio_recordings LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 29rDkMc4estG6xm.4c132c16006a --database WrczB9FbLtLbFuhmSGfDzu --execute SELECT id, customer_id, business_name, ai_tags, analysis_summary FROM audio_recordings LIMIT 10;",
+  "rows": [
+    {
+      "id": "1",
+      "customer_id": "1",
+      "business_name": "何佳珊",
+      "ai_tags": "[\"安全\", \"數據\", \"災難\"]",
+      "analysis_summary": "📋 View"
+    },
+    {
+      "id": "2",
+      "customer_id": "2",
+      "business_name": "何雨達",
+      "ai_tags": "[\"客戶\", \"知識\", \"自動\"]",
+      "analysis_summary": "📋 View"
+    },
+    {
+      "id": "3",
+      "customer_id": "3",
+      "business_name": "鍾汶憲",
+      "ai_tags": "[\"房產\", \"租戶\", \"自動\"]",
+      "analysis_summary": "📋 View"
+    },
+    {
+      "id": "4",
+      "customer_id": "4",
+      "business_name": "何佳珊",
+      "ai_tags": "[\"物流\", \"路線\", \"成本\"]",
+      "analysis_summary": "📋 View"
+    },
+    {
+      "id": "5",
+      "customer_id": "5",
+      "business_name": "郭庭碩",
+      "ai_tags": "[\"訂房\", \"支付\", \"收入\"]",
+      "analysis_summary": "📋 View"
+    },
+    {
+      "id": "6",
+      "customer_id": "6",
+      "business_name": "郭庭碩",
+      "ai_tags": "[\"案例\", \"文檔\", \"時間\"]",
+      "analysis_summary": "📋 View"
+    },
+    {
+      "id": "7",
+      "customer_id": "7",
+      "business_name": "何雨達",
+      "ai_tags": "[\"ER\", \"生產\", \"定制\"]",
+      "analysis_summary": "📋 View"
+    },
+    {
+      "id": "8",
+      "customer_id": "8",
+      "business_name": "何佳珊",
+      "ai_tags": "[\"庫存\", \"系統\", \"成本\"]",
+      "analysis_summary": "📋 View"
+    },
+    {
+      "id": "9",
+      "customer_id": "9",
+      "business_name": "鍾汶憲",
+      "ai_tags": "[\"投資\", \"風險\", \"數據\"]",
+      "analysis_summary": "📋 View"
+    },
+    {
+      "id": "10",
+      "customer_id": "10",
+      "business_name": "郭庭碩",
+      "ai_tags": "[\"感興\", \"需要\", \"預算\"]",
+      "analysis_summary": "📋 View"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcustomer_id\tbusiness_name\tai_tags\tanalysis_summary\n1\t1\t何佳珊\t[\"安全\", \"數據\", \"災難\"]\t📋 View\n2\t2\t何雨達\t[\"客戶\", \"知識\", \"自動\"]\t📋 View\n3\t3\t鍾汶憲\t[\"房產\", \"租戶\", \"自動\"]\t📋 View\n4\t4\t何佳珊\t[\"物流\", \"路線\", \"成本\"]\t📋 View\n5\t5\t郭庭碩\t[\"訂房\", \"支付\", \"收入\"]\t📋 View\n6\t6\t郭庭碩\t[\"案例\", \"文檔\", \"時間\"]\t📋 View\n7\t7\t何雨達\t[\"ER\", \"生產\", \"定制\"]\t📋 View\n8\t8\t何佳珊\t[\"庫存\", \"系統\", \"成本\"]\t📋 View\n9\t9\t鍾汶憲\t[\"投資\", \"風險\", \"數據\"]\t📋 View\n10\t10\t郭庭碩\t[\"感興\", \"需要\", \"預算\"]\t📋 View\n",
+  "stderr": "",
+  "execution_time_ms": 1559
+}
