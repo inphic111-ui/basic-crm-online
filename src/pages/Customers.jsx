@@ -921,11 +921,17 @@ function Customers() {
                   <th>詢問產品</th>
                   <th>報價</th>
                   <th>預算</th>
-                  <th onClick={() => toggleLastContactSort()} style={{ cursor: "pointer" }}>最後聯繫時間</th>
+                  <th onClick={() => requestSort('last_contact_time')} style={{ cursor: 'pointer' }}>
+                    最後聯繫時間 <FontAwesomeIcon icon={getSortIcon('last_contact_time')} style={{ marginLeft: '5px' }} />
+                  </th>
                   <th>訂單狀態</th>
                   <th>總消費</th>
-                  <th onClick={() => toggleRatingSort()} style={{ cursor: "pointer" }}>評級</th>
-                  <th onClick={() => toggleTypeSort()} style={{ cursor: "pointer" }}>客戶類別</th>
+                  <th onClick={() => requestSort('customer_rating')} style={{ cursor: 'pointer' }}>
+                    評級 <FontAwesomeIcon icon={getSortIcon('customer_rating')} style={{ marginLeft: '5px' }} />
+                  </th>
+                  <th onClick={() => requestSort('customer_type')} style={{ cursor: 'pointer' }}>
+                    客戶類別 <FontAwesomeIcon icon={getSortIcon('customer_type')} style={{ marginLeft: '5px' }} />
+                  </th>
                   <th>來源</th>
                   <th>操作</th>
                 </tr>
