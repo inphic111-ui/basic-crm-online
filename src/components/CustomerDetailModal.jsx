@@ -185,7 +185,7 @@ const CustomerDetailModal = ({
           return [...history].sort((a, b) => {
             const dateA = new Date(a.date || a.created_at || 0);
             const dateB = new Date(b.date || b.created_at || 0);
-            return dateB.getTime() - dateA.getTime(); // 新的在前
+            return dateA.getTime() - dateB.getTime(); // 嘗試反轉排序，以解決用戶反饋的「最舊在最上」問題
           });
         }
       } catch (err) { console.error('Timeline sort error:', err); return []; }
