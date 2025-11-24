@@ -180,15 +180,9 @@ const CustomerDetailModal = ({
     if (editFormData.ai_analysis_history) {
       try {
         const history = typeof editFormData.ai_analysis_history === 'string' ? JSON.parse(editFormData.ai_analysis_history) : editFormData.ai_analysis_history;
-        // 確保由新到舊排序 (最新的日期在前面)
-        if (Array.isArray(history)) {
-          return [...history].sort((a, b) => {
-            const dateA = new Date(a.date || a.created_at || 0);
-            const dateB = new Date(b.date || b.created_at || 0);
-            return dateA.getTime() - dateB.getTime(); // 嘗試反轉排序，以解決用戶反饋的「最舊在最上」問題
-          });
-        }
-      } catch (err) { console.error('Timeline sort error:', err); return []; }
+        // 移除排序邏輯，改為在渲染時使用 reverse()
+        if (Array.isArray(history)) return history;
+      } catch (err) { console.error('Timeline parse error:', err); return []; }
     }
     return [];
   }, [editFormData.ai_analysis_history]);
@@ -399,7 +393,7 @@ const CustomerDetailModal = ({
               <div style={{ background: 'white', border: '1px solid #eee', padding: '20px', borderRadius: '8px' }}>
                 <h3 style={{ margin: '0 0 20px 0', fontSize: '1.1rem' }}>溝通紀錄時間軸</h3>
                 <div style={{ position: 'relative', paddingLeft: '30px' }}>
-                   {timelineHistory.length > 0 ? timelineHistory.map((rec, i) => (
+                   {timelineHistory.length > 0 ? timelineHistory.slice().reverse().map((rec, i) => (
                      <div key={i} style={{ position: 'relative', marginBottom: '30px', paddingBottom: '20px', borderBottom: i < timelineHistory.length - 1 ? '1px solid #eee' : 'none' }}>
                        <div style={{ position: 'absolute', left: '-30px', top: '5px', width: '20px', height: '20px', borderRadius: '50%', background: i === 0 ? '#2ecc71' : '#f39c12', border: '3px solid white', boxShadow: '0 0 0 2px #dee2e6' }}></div>
                        <div style={{ position: 'absolute', left: '-21px', top: '30px', width: '2px', height: 'calc(100% - 20px)', background: '#dee2e6' }}></div>
