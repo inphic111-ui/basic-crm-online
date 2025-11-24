@@ -327,6 +327,26 @@ function Customers() {
   const [audioUploadError, setAudioUploadError] = useState(null)
   const [audioUploadSuccess, setAudioUploadSuccess] = useState(false)
 
+  // 輔助函數：根據當前排序配置返回 Font Awesome 圖標
+  const getSortIcon = (key) => {
+    if (sortConfig.key !== key) {
+      return faSort; // 預設圖標
+    }
+    if (sortConfig.direction === 'ascending') {
+      return faSortUp;
+    }
+    return faSortDown;
+  };
+
+  // 處理表格頭部點擊事件
+  const requestSort = (key) => {
+    let direction = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+
   // 生成業務名列表（只有 4 個固定名字）
   const generateResponsiblePersons = () => {
     const names = [
