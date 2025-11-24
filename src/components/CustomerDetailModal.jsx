@@ -180,8 +180,15 @@ const CustomerDetailModal = ({
     if (editFormData.ai_analysis_history) {
       try {
         const history = typeof editFormData.ai_analysis_history === 'string' ? JSON.parse(editFormData.ai_analysis_history) : editFormData.ai_analysis_history;
-        if (Array.isArray(history)) return [...history].sort((a, b) => new Date(b.date) - new Date(a.date));
-      } catch (err) { return []; }
+        // 確保由新到舊排序 (最新的日期在前面)
+        if (Array.isArray(history)) {
+          return [...history].sort((a, b) => {
+            const dateA = new Date(a.date || a.created_at || 0);
+            const dateB = new Date(b.date || b.created_at || 0);
+            return dateB.getTime() - dateA.getTime(); // 新的在前
+          });
+        }
+      } catch (err) { console.error('Timeline sort error:', err); return []; }
     }
     return [];
   }, [editFormData.ai_analysis_history]);
@@ -396,7 +403,7 @@ const CustomerDetailModal = ({
                      <div key={i} style={{ position: 'relative', marginBottom: '30px', paddingBottom: '20px', borderBottom: i < timelineHistory.length - 1 ? '1px solid #eee' : 'none' }}>
                        <div style={{ position: 'absolute', left: '-30px', top: '5px', width: '20px', height: '20px', borderRadius: '50%', background: i === 0 ? '#2ecc71' : '#f39c12', border: '3px solid white', boxShadow: '0 0 0 2px #dee2e6' }}></div>
                        <div style={{ position: 'absolute', left: '-21px', top: '30px', width: '2px', height: 'calc(100% - 20px)', background: '#dee2e6' }}></div>
-                       <div style={{ display: 'inline-block', padding: '4px 12px', borderRadius: '12px', background: i === 0 ? '#2ecc71' : '#f39c12', color: 'white', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '10px' }}>{i === 0 ? '📞 電話連絡' : '💬 客戶回訪'}</div>
+                       <div style={{ display: 'inline-block', padding: '4px 12px', borderRadius: '12px', background: i === 0 ? '#2ecc71' : '#f39c12', color: 'white', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '10px' }}>{i === 0 ? '📞' : '💬'}</div>
                        <h4 style={{ margin: '10px 0 5px 0', fontSize: '1rem', color: '#2c3e50' }}>{rec.timeline_text || '產品介紹與需求確認電話'}</h4>
                        <p style={{ margin: '5px 0 10px 0', fontSize: '0.9rem', color: '#666' }}>{rec.description || '初次產品介紹，了解客戶需求與痛點'}</p>
                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#999', fontSize: '0.85rem', marginBottom: '10px' }}>
