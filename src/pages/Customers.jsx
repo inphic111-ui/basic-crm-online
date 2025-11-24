@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import ConsumerProfileAnalysis from '../components/ConsumerProfileAnalysis';
+import ConsumerProfile from '../components/ConsumerProfile';
 import '../styles/customers.css';
 
 
@@ -406,7 +406,9 @@ function Customers() {
 
   const handleViewDetailReadOnly = (customer) => {
     setSelectedCustomer(customer)
+    setEditFormData(customer)
     setShowDetailModal(true)
+    setIsEditMode(false)
   }
 
   const handleCloseDetailModal = () => {
@@ -593,106 +595,20 @@ function Customers() {
       </div>
 
       {showDetailModal && (
-        <div className="modal-overlay">
-          <div className="modal-content large">
-            <div className="modal-header">
-              <h2>客戶詳細資訊</h2>
-              <button className="close-btn" onClick={handleCloseDetailModal}>×</button>
-            </div>
-            <div className="modal-body">
-              {/* 基本資訊 */}
-              <div className="detail-section">
-                <h3>基本資訊</h3>
-                <div className="detail-grid">
-                  <div className="detail-item">
-                    <label>客戶名稱</label>
-                    <span>{selectedCustomer.customer_name}</span>
-                  </div>
-                  <div className="detail-item">
-                    <label>客戶編號</label>
-                    <span>{selectedCustomer.customer_id}</span>
-                  </div>
-                  <div className="detail-item">
-                    <label>公司名稱</label>
-                    <span>{selectedCustomer.company_name || '-'}</span>
-                  </div>
-                  <div className="detail-item">
-                    <label>資本額</label>
-                    <span>NT${selectedCustomer.capital_amount || '-'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 評分資訊 */}
-              <div className="detail-section">
-                <h3>評分資訊</h3>
-                <div className="detail-grid">
-                  <div className="detail-item">
-                    <label>N 評分:</label>
-                    <span>{selectedCustomer.n_score || '-'}</span>
-                  </div>
-                  <div className="detail-item">
-                    <label>F 評分:</label>
-                    <span>{selectedCustomer.f_score || '-'}</span>
-                  </div>
-                  <div className="detail-item">
-                    <label>V 評分 (採購量):</label>
-                    <span>{calculateVScore(selectedCustomer.price, selectedCustomer.annual_consumption)}</span>
-                  </div>
-                  <div className="detail-item">
-                    <label>P 評分 (報價額):</label>
-                    <span>{calculatePScore(selectedCustomer.price)}</span>
-                  </div>
-                  <div className="detail-item">
-                    <label>CVI 評分:</label>
-                    <span>{calculateCVI(selectedCustomer.n_score, selectedCustomer.f_score, calculateVScore(selectedCustomer.price, selectedCustomer.annual_consumption), calculatePScore(selectedCustomer.price))}</span>
-                  </div>
-                  <div className="detail-item">
-                    <label>客戶類型:</label>
-                    <span>{getTypeLabel(getCustomerTypeByVP(calculateVScore(selectedCustomer.price, selectedCustomer.annual_consumption), calculatePScore(selectedCustomer.price)))}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 交易資訊 */}
-              <div className="detail-section">
-                <h3>交易資訊</h3>
-                <div className="detail-grid">
-                  <div className="detail-item">
-                    <label>總消費</label>
-                    <span>NT${selectedCustomer.total_consumption || '-'}</span>
-                  </div>
-                  <div className="detail-item">
-                    <label>訂單數</label>
-                    <span>{selectedCustomer.order_count || '-'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 備註 */}
-              <div className="detail-section">
-                <h3>備註</h3>
-                <div className="notes-box">
-                  {selectedCustomer.notes || '無備註'}
-                </div>
-              </div>
-
-              {/* 新增按鈕：詳細分析報告 */}
-              <div className="detail-section">
-                <button className="btn btn-primary" onClick={() => setShowAnalysisModal(true)}>詳細分析報告</button>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={handleCloseDetailModal}>關閉</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showAnalysisModal && (
-        <ConsumerProfileAnalysis 
+        <ConsumerProfile
           selectedCustomer={selectedCustomer}
-          handleCloseAnalysisModal={handleCloseAnalysisModal}
+          handleCloseDetailModal={handleCloseDetailModal}
+          isEditMode={isEditMode}
+          editFormData={editFormData}
+          handleEditFormChange={handleEditFormChange}
+          handleSaveEditCustomer={handleSaveEditCustomer}
+          saving={saving}
+          calculateVScore={calculateVScore}
+          calculatePScore={calculatePScore}
+          calculateCVI={calculateCVI}
+          getTypeLabel={getTypeLabel}
+          getRatingBadge={getRatingBadge}
+          getOrderStatusTag={getOrderStatusTag}
         />
       )}
 

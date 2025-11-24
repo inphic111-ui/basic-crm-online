@@ -1,18 +1,11 @@
 import React, { useState, useMemo } from 'react';
+// 引入圖標
 import { 
-  User, MapPin, Phone, Mail, Tag, 
-  TrendingUp, ShoppingBag, Clock, Activity,
-  LayoutDashboard, FileText, History, X,
-  PieChart, Bot, ListChecks, FileText as FileTextIcon, CalendarCheck, 
-  Mic, Clock as ClockIcon, FileBarChart, Eye, Lightbulb, Target, 
+  User, PieChart, Bot, ListChecks, FileText, CalendarCheck, 
+  Mic, Clock, FileBarChart, Eye, Lightbulb, Target, 
   ShoppingCart, CreditCard, CheckCircle2
 } from 'lucide-react';
-import { 
-  Radar, RadarChart, PolarGrid, 
-  PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer 
-} from 'recharts';
-
-// 引入 Chart.js 相關組件
+// 引入 Chart.js
 import {
   Chart as ChartJS,
   RadialLinearScale,
@@ -22,16 +15,15 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { Radar as ChartJSRadar } from 'react-chartjs-2';
+import { Radar } from 'react-chartjs-2';
 
-// 註冊 Chart.js 組件 (必須在組件外部執行一次)
-// 雖然我們主要使用 recharts，但為了兼容用戶提供的 AIAnalysisEngine，我們保留 ChartJS 的導入和註冊
+// 註冊 Chart.js 組件
 ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
 // ==========================================
 //  1. 子組件：統計卡片 (用於 Tab2 頂部)
 // ==========================================
-const StatCard = ({ label, value, icon: Icon, description, color, bg = 'white' }) => (
+const StatCard = ({ label, value, icon, description, color, bg = 'white' }) => (
   <div style={{ 
       background: bg, padding: '20px', borderRadius: '8px', 
       border: `1px solid ${bg === 'white' ? '#eee' : color}`,
@@ -40,7 +32,7 @@ const StatCard = ({ label, value, icon: Icon, description, color, bg = 'white' }
   }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
           <div style={{ fontSize: '0.9rem', color: '#666', fontWeight: 'bold' }}>{label}</div>
-          <Icon size={24} color={color} />
+          {icon}
       </div>
       <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: color }}>{value}</div>
       <div style={{ fontSize: '0.8rem', color: '#888' }}>{description}</div>
@@ -48,19 +40,18 @@ const StatCard = ({ label, value, icon: Icon, description, color, bg = 'white' }
 );
 
 // ==========================================
-//  2. 子組件：AI 分析引擎 (用於 Tab 2 內容)
+//  2. 子組件：AI 分析引擎 (用於詳細報告 Modal)
 // ==========================================
 const AIAnalysisEngine = () => {
-  // 2.1 定義規則庫
   const RULES_CONFIG = {
     core1: {
       title: "核心問題一：客戶為什麼要買這個產品？",
       sub: "購買動機詢問完整度",
       rules: [
-        { id: 'A1', label: '深度問題探討', keywords: ['採購流程', '出貨流程', '付款條件', '彈性選擇', '專案完成', '確保供貨', '提升生產力', '預算範圍'] },
-        { id: 'A2', label: '痛點發掘與確認', keywords: ['每天花多少時間', '累死了', '壓力很大', '我的預算', '我的痛點', '解決什麼問題', '影響你的決定'] },
-        { id: 'A3', label: '價值感連結', keywords: ['多花時間在', '策略規劃', '家人陪伴', '解放時間', '降低壓力', '長期利益', '無形價值'] },
-        { id: 'A4', label: '具體行動承諾', keywords: ['試用一周', '付費方式', '要簽約', '需要哪些文件', '完成時間', '如何開始'] },
+        { id: 'A1', label: '深度問題探討', keywords: ['採購流程', '出貨流程', '付款條件', '彈性選擇', '預算範圍'] },
+        { id: 'A2', label: '痛點發掘與確認', keywords: ['壓力很大', '我的痛點', '解決什麼問題', '影響你的決定'] },
+        { id: 'A3', label: '價值感連結', keywords: ['策略規劃', '解放時間', '降低壓力', '長期利益', '無形價值'] },
+        { id: 'A4', label: '具體行動承諾', keywords: ['試用一周', '付費方式', '要簽約', '需要哪些文件', '完成時間'] },
       ]
     },
     core2: {
@@ -68,24 +59,15 @@ const AIAnalysisEngine = () => {
       sub: "價格抗拒處理完整度",
       rules: [
         { id: 'B1', label: '真假問題判斷', keywords: ['跟您確認一下', '如果沒有錢', '就會買單對嗎', '價格是唯一考量'] },
-        { id: 'B2', label: '價值感補充', keywords: ['研發過程', '團隊心血', '堅持', '專利保護', '免費維修', '附贈服務', '超值'] },
+        { id: 'B2', label: '價值感補充', keywords: ['研發過程', '團隊心血', '專利保護', '免費維修', '超值'] },
         { id: 'B3', label: '轉移焦點', keywords: ['長期利益', '投資回報', '效益', '改變', '價值', '意義'] },
         { id: 'B4', label: '挖掘真實顧慮', keywords: ['真正顧慮', '真正在乎', '不用在錢', '鬼打牆', '其他考量'] },
       ]
     }
   };
 
-  // 2.2 模擬對話內容 (使用靜態模擬數據)
-  const mockTranscript = `
-    客戶：我們現在每天處理報表真的覺得壓力很大，而且常常出錯。
-    業務：我了解，那您想用這個產品解決什麼問題呢？
-    客戶：主要是希望能解放時間，讓我們能多花時間在策略規劃上。
-    業務：這款產品的超值之處就在於我們團隊心血研發的自動化引擎。
-    客戶：但是價格有點貴。
-    業務：跟您確認一下，如果沒有錢這個考量，您會覺得這產品符合需求嗎？
-  `;
+  const mockTranscript = `客戶：我們現在每天處理報表真的覺得壓力很大... 業務：那您想用這個產品解決什麼問題呢？...`;
 
-  // 2.3 分析運算邏輯
   const analyze = (rules) => {
     let totalKeywords = 0;
     let foundKeywordsCount = 0;
@@ -94,7 +76,6 @@ const AIAnalysisEngine = () => {
       const missing = rule.keywords.filter(k => !mockTranscript.includes(k));
       totalKeywords += rule.keywords.length;
       foundKeywordsCount += found.length;
-      // 模擬分數計算，確保在 0-100 之間
       const score = Math.min(100, Math.round((found.length / rule.keywords.length) * 100 * 3)); 
       return { ...rule, found, missing, score };
     });
@@ -103,48 +84,35 @@ const AIAnalysisEngine = () => {
 
   const analysisCore1 = analyze(RULES_CONFIG.core1.rules);
   const analysisCore2 = analyze(RULES_CONFIG.core2.rules);
-
+  
   const totalKeys = analysisCore1.totalKeywords + analysisCore2.totalKeywords;
   const detectedKeys = analysisCore1.foundKeywordsCount + analysisCore2.foundKeywordsCount;
   const detectionRate = Math.round((detectedKeys / totalKeys) * 100);
-  const overallScore = Math.round((detectionRate / 100) * 10) + 1;
+  const overallScore = Math.round((detectionRate / 100) * 10) + 2;
 
-  const renderCoreSection = (config, analysisResult, Icon) => (
+  const renderCoreSection = (config, analysisResult, icon) => (
     <div style={{ marginBottom: '30px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', marginBottom: '15px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
-        <h4 style={{ margin: 0, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '10px', color: '#2c3e50' }}>
-           <Icon size={24} /> {config.title}
-        </h4>
+        <h4 style={{ margin: 0, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '10px', color: '#2c3e50' }}>{icon} {config.title}</h4>
         <span style={{ fontSize: '0.9rem', color: '#666' }}>{config.sub} <strong style={{color:'#3498db'}}> {Math.round(analysisResult.ruleResults.reduce((a,b)=>a+b.score,0)/40)}/10</strong></span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {analysisResult.ruleResults.map((item) => (
           <div key={item.id} style={{ background: '#f9f9f9', padding: '15px', borderRadius: '8px' }}>
-            <div className="flex items-center justify-between mb-2">
-                <div className="font-bold text-gray-700 flex items-center gap-2">
-                    {item.score > 0 ? <CheckCircle2 size={16} color="#2ecc71"/> : <Target size={16} color="#999"/>}
-                    {item.label} ({item.id})
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <div style={{ fontWeight: 'bold', color: '#444', display:'flex', alignItems:'center', gap:'5px' }}>
+                    {item.score > 0 ? <CheckCircle2 size={16} color="#2ecc71"/> : <Target size={16} color="#999"/>} {item.label} ({item.id})
                 </div>
-                <div className="flex items-center gap-2 w-48">
-                    <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div style={{ display:'flex', alignItems:'center', gap:'10px', width:'200px' }}>
+                    <div style={{ flex: 1, height: '8px', background: '#eee', borderRadius: '4px', overflow: 'hidden' }}>
                        <div style={{ width: `${item.score}%`, height: '100%', background: item.score > 0 ? '#3498db' : '#ccc', transition: 'width 0.5s ease' }}></div>
                     </div>
-                    <span className="text-sm font-bold" style={{ color: item.score > 0 ? '#3498db' : '#999' }}>{item.score}%</span>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: item.score > 0 ? '#3498db' : '#999' }}>{item.score}%</span>
                 </div>
             </div>
-            {item.found.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-2">
-                    <span className="text-xs text-green-600 font-bold">✓ 已討論：</span>
-                    {item.found.map(k => (
-                        <span key={k} className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">{k}</span>
-                    ))}
-                </div>
-            )}
-            <div className="flex flex-wrap gap-2">
-                <span className="text-xs text-red-600 font-bold">✕ 未討論：</span>
-                {item.missing.map(k => (
-                    <span key={k} className="text-xs px-2 py-1 rounded-full bg-red-50 text-red-600 border border-red-200">{k}</span>
-                ))}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {item.found.map(k => (<span key={k} style={{ fontSize: '0.8rem', padding: '3px 10px', borderRadius: '12px', background: '#2ecc71', color: 'white' }}>✓ {k}</span>))}
+                {item.missing.map(k => (<span key={k} style={{ fontSize: '0.8rem', padding: '3px 10px', borderRadius: '12px', background: '#fff0f0', color: '#e74c3c', border: '1px solid #fadbd8' }}>{k}</span>))}
             </div>
           </div>
         ))}
@@ -153,18 +121,18 @@ const AIAnalysisEngine = () => {
   );
 
   return (
-    <div className="p-4" style={{ fontFamily: '"Segoe UI", sans-serif' }}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <StatCard label="總關鍵詞數" value={totalKeys} color="#3498db" bg="#f0f8ff" icon={ListChecks} description="規則庫總關鍵詞數量" />
-            <StatCard label="偵測到關鍵詞" value={detectedKeys} color="#2ecc71" icon={Eye} description="在對話中偵測到的關鍵詞數量" />
-            <StatCard label="整體偵測率" value={`${detectionRate}%`} color="#f39c12" icon={PieChart} description="關鍵詞偵測的覆蓋率" />
-            <StatCard label="綜合評分" value={`${overallScore}/10`} color="#3498db" bg="#f0f8ff" icon={Bot} description="AI 綜合評估分數" />
+    <div style={{ fontFamily: '"Segoe UI", sans-serif' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px', marginBottom: '30px' }}>
+            <StatCard label="總關鍵詞數" value={totalKeys} color="#3498db" bg="#f0f8ff" />
+            <StatCard label="偵測到關鍵詞" value={detectedKeys} color="#2ecc71" />
+            <StatCard label="整體偵測率" value={`${detectionRate}%`} color="#f39c12" />
+            <StatCard label="綜合評分" value={`${overallScore}/10`} color="#3498db" bg="#f0f8ff" />
         </div>
-        {renderCoreSection(RULES_CONFIG.core1, analysisCore1, ShoppingCart)}
-        {renderCoreSection(RULES_CONFIG.core2, analysisCore2, CreditCard)}
-        <div className="bg-yellow-50 p-4 rounded-xl border-l-4 border-yellow-400 mt-6">
-            <h4 className="font-bold text-yellow-800 mb-2 flex items-center gap-2"><Lightbulb size={20}/> 改進建議</h4>
-            <p className="text-sm text-yellow-900">
+        {renderCoreSection(RULES_CONFIG.core1, analysisCore1, <ShoppingCart size={24} />)}
+        {renderCoreSection(RULES_CONFIG.core2, analysisCore2, <CreditCard size={24} />)}
+        <div style={{ background: '#fff9e6', padding: '20px', borderRadius: '8px', borderLeft: '5px solid #f39c12' }}>
+            <h4 style={{ margin: '0 0 10px 0', color: '#d35400', display:'flex', alignItems:'center', gap:'10px' }}><Lightbulb size={20}/> 改進建議</h4>
+            <p style={{ margin: 0, color: '#555', fontSize:'0.9rem' }}>
                 <strong>立即行動：</strong> {overallScore < 5 ? '加強需求挖掘，多詢問使用情境。' : '持續強化價值連結。'}
             </p>
         </div>
@@ -172,264 +140,218 @@ const AIAnalysisEngine = () => {
   );
 };
 
+// ==========================================
+//  3. 主組件：CustomerDetailModal
+// ==========================================
+const CustomerDetailModal = ({ 
+  selectedCustomer, handleCloseDetailModal, isEditMode, editFormData, 
+  handleEditFormChange, handleSaveEditCustomer, saving,
+  // 為了避免父層沒傳這些函數導致報錯，給予預設空函數
+  calculateVScore = () => 0, calculatePScore = () => 0, calculateCVI = () => 0,
+  getTypeLabel = () => '', getRatingBadge = () => null, getOrderStatusTag = () => null,
+}) => {
+  
+  const [activeTab, setActiveTab] = useState('info');
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
-// --- 3. 子組件：分頁按鈕 ---
-const TabButton = ({ id, label, icon: Icon, isActive, onClick }) => (
-  <button
-    onClick={() => onClick(id)}
-    className={`
-      flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors duration-200
-      ${isActive 
-        ? 'border-blue-500 text-blue-600 bg-blue-50/50' 
-        : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}
-    `}
-  >
-    <Icon size={18} />
-    {label}
-  </button>
-);
+  // --- 1. 雷達圖數據 ---
+  const radarData = useMemo(() => {
+    const n = parseInt(editFormData.n_score) || 0;
+    const f = parseInt(editFormData.f_score) || 0;
+    const v = calculateVScore(editFormData.price, editFormData.annual_consumption) || 0;
+    return {
+      labels: ['需求挖掘', '價值建立', '異議處理', '行動引導', '關係建立', '成交推進'],
+      datasets: [{
+          label: '銷售評估',
+          data: [n, 6, f, 5, v > 10 ? 10 : v, 7],
+          backgroundColor: 'rgba(52, 152, 219, 0.2)',
+          borderColor: 'rgba(52, 152, 219, 1)',
+          borderWidth: 2,
+          pointBackgroundColor: 'rgba(52, 152, 219, 1)',
+          pointBorderColor: '#fff',
+      }],
+    };
+  }, [editFormData, calculateVScore]);
 
-// --- 4. 主組件：ConsumerProfile ---
-export default function ConsumerProfile({ 
-  selectedCustomer, 
-  handleCloseDetailModal,
-  // ...其他從 Customers.jsx 傳入的 props
-}) {
-  // 將 'overview' | 'details' | 'journey' 調整為 'info' | 'analysis' | 'journey'
-  const [activeTab, setActiveTab] = useState('info'); 
+  const radarOptions = { scales: { r: { suggestedMin: 0, suggestedMax: 10, ticks: { display: false } } }, plugins: { legend: { display: false } } };
+
+  // --- 2. 時間軸數據 (自動排序：新到舊) ---
+  const timelineHistory = useMemo(() => {
+    if (editFormData.ai_analysis_history) {
+      try {
+        const history = typeof editFormData.ai_analysis_history === 'string' ? JSON.parse(editFormData.ai_analysis_history) : editFormData.ai_analysis_history;
+        if (Array.isArray(history)) return [...history].sort((a, b) => new Date(b.date) - new Date(a.date));
+      } catch (err) { return []; }
+    }
+    return [];
+  }, [editFormData.ai_analysis_history]);
+
+  // --- 3. 成交率連動 (讀取最新分析) ---
+  const conversionRate = useMemo(() => {
+    if (timelineHistory.length > 0) {
+      const latestRecord = timelineHistory[0];
+      if (latestRecord.conversion_rate !== undefined) return `${latestRecord.conversion_rate}%`;
+      if (latestRecord.probability !== undefined) return `${latestRecord.probability}%`;
+    }
+    return `${(parseInt(editFormData.n_score || 0) * 10)}%`;
+  }, [timelineHistory, editFormData.n_score]);
 
   if (!selectedCustomer) return null;
 
-  // 將 selectedCustomer 的數據映射到 MOCK_DATA 結構
-  const MOCK_DATA = {
-    info: {
-      id: selectedCustomer.customer_id,
-      name: selectedCustomer.customer_name,
-      avatar: selectedCustomer.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
-      level: selectedCustomer.customer_type || '普通會員',
-      email: selectedCustomer.email || 'N/A',
-      phone: selectedCustomer.phone || 'N/A',
-      location: selectedCustomer.address || 'N/A',
-      tags: selectedCustomer.tags || [],
-    },
-    stats: {
-      totalSpent: `$${selectedCustomer.annual_consumption || 0}`,
-      orders: selectedCustomer.order_count || 0,
-      lastActive: selectedCustomer.last_contact_date || 'N/A',
-      avgOrderValue: `$${(selectedCustomer.annual_consumption / selectedCustomer.order_count) || 0}`
-    },
-    radar: [
-      { subject: '品牌忠誠', A: selectedCustomer.n_score || 0, fullMark: 150 },
-      { subject: '消費能力', A: selectedCustomer.f_score || 0, fullMark: 150 },
-      { subject: '新品嘗鮮', A: 86, fullMark: 150 },
-      { subject: '活動參與', A: 99, fullMark: 150 },
-      { subject: '社群互動', A: 85, fullMark: 150 },
-      { subject: '回購頻率', A: 65, fullMark: 150 },
-    ],
-    timeline: selectedCustomer.ai_analysis_history || []
-  };
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-      <div className="bg-gray-50 rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col">
+    <div className="modal-overlay" onClick={handleCloseDetailModal} style={{position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000}}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '1100px', width: '95%', height: '90vh', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', background: 'white', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
         
-        {/* === 關閉按鈕 === */}
-        <button onClick={handleCloseDetailModal} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors z-10">
-          <X size={24} />
-        </button>
-
-        {/* === A. 頂部頭像與摘要 === */}
-        <div className="bg-white rounded-t-xl border-b border-gray-200 p-6 flex flex-col md:flex-row items-center md:items-start gap-6 relative">
-          <img src={MOCK_DATA.info.avatar} alt="Avatar" className="w-24 h-24 rounded-full bg-gray-100 border-4 border-white shadow-sm" />
-          
-          <div className="flex-1 text-center md:text-left">
-            <div className="flex flex-col md:flex-row items-center gap-3 mb-2">
-              <h1 className="text-2xl font-bold">{MOCK_DATA.info.name}</h1>
-              <span className="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-bold rounded-full">
-                {MOCK_DATA.info.level}
-              </span>
-            </div>
-            
-            <div className="flex flex-wrap justify-center md:justify-start gap-4 text-sm text-gray-500 mb-4">
-              <span className="flex items-center gap-1"><Mail size={14}/> {MOCK_DATA.info.email}</span>
-              <span className="flex items-center gap-1"><Phone size={14}/> {MOCK_DATA.info.phone}</span>
-              <span className="flex items-center gap-1"><MapPin size={14}/> {MOCK_DATA.info.location}</span>
-            </div>
-
-            <div className="flex flex-wrap gap-2 justify-center md:justify-start">
-              {MOCK_DATA.info.tags.map(tag => (
-                <span key={tag} className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded flex items-center gap-1">
-                  <Tag size={10} /> {tag}
-                </span>
-              ))}
-            </div>
+        {/* Header */}
+        <div className="modal-header" style={{ padding: '15px 20px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <h2 style={{ margin: 0 }}>{selectedCustomer.name}</h2>
+            {getRatingBadge && getRatingBadge(editFormData.customer_rating)}
           </div>
-
-          {/* 快速指標 */}
-          <div className="grid grid-cols-2 gap-4 w-full md:w-auto border-t md:border-t-0 md:border-l border-gray-100 pt-4 md:pt-0 md:pl-6">
-            <div className="text-center md:text-right">
-              <div className="text-xs text-gray-400">總消費額</div>
-              <div className="text-xl font-bold text-blue-600">{MOCK_DATA.stats.totalSpent}</div>
-            </div>
-            <div className="text-center md:text-right">
-              <div className="text-xs text-gray-400">訂單數</div>
-              <div className="text-xl font-bold text-gray-700">{MOCK_DATA.stats.orders}</div>
-            </div>
-          </div>
+          <button className="close-btn" onClick={handleCloseDetailModal} style={{ fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer' }}>×</button>
         </div>
 
-        {/* === B. 分頁導航欄 === */}
-        <div className="bg-white border-b border-gray-200 flex overflow-x-auto shrink-0">
-          <TabButton 
-            id="info" 
-            label="客戶資訊 (Tab 1)" 
-            icon={FileTextIcon} 
-            isActive={activeTab === 'info'} 
-            onClick={setActiveTab} 
-          />
-          <TabButton 
-            id="analysis" 
-            label="AI 分析 (Tab 2)" 
-            icon={Bot} 
-            isActive={activeTab === 'analysis'} 
-            onClick={setActiveTab} 
-          />
-          <TabButton 
-            id="journey" 
-            label="行為軌跡" 
-            icon={History} 
-            isActive={activeTab === 'journey'} 
-            onClick={setActiveTab} 
-          />
+        {/* Tabs Navigation */}
+        <div style={{ display: 'flex', borderBottom: '1px solid #dee2e6', background: '#f8f9fa', padding: '0 20px', flexShrink: 0 }}>
+          <button onClick={() => setActiveTab('info')} style={{ padding: '15px 20px', background: activeTab === 'info' ? 'white' : 'transparent', border: '1px solid transparent', borderBottom: activeTab === 'info' ? '3px solid #3498db' : '3px solid transparent', fontWeight: activeTab === 'info' ? 'bold' : 'normal', color: activeTab === 'info' ? '#3498db' : '#666', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <User size={18}/> 客戶資訊 (編輯)
+          </button>
+          <button onClick={() => setActiveTab('profile')} style={{ padding: '15px 20px', background: activeTab === 'profile' ? 'white' : 'transparent', border: '1px solid transparent', borderBottom: activeTab === 'profile' ? '3px solid #2ecc71' : '3px solid transparent', fontWeight: activeTab === 'profile' ? 'bold' : 'normal', color: activeTab === 'profile' ? '#2ecc71' : '#666', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <PieChart size={18}/> 消費者輪廓 (分析)
+          </button>
         </div>
 
-        {/* === C. 分頁內容區域 === */}
-        <div className="bg-white rounded-b-xl p-6 overflow-y-auto">
+        {/* Body Content */}
+        <div className="modal-body" style={{ flex: 1, overflowY: 'auto', padding: '20px', background: '#fff' }}>
           
-          {/* Tab 1: 客戶資訊 (原來的 overview + details) */}
+          {/* --- TAB 1: 編輯表單 --- */}
           {activeTab === 'info' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-300">
-              {/* 左側：雷達圖 */}
-              <div className="lg:col-span-1 border border-gray-100 rounded-xl p-4 flex flex-col items-center">
-                <h3 className="text-lg font-bold mb-4 text-gray-700">AI 畫像分析</h3>
-                <div className="w-full h-[250px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart cx="50%" cy="50%" outerRadius="80%" data={MOCK_DATA.radar}>
-                      <PolarGrid stroke="#e5e7eb" />
-                      <PolarAngleAxis dataKey="subject" tick={{ fill: '#9ca3af', fontSize: 12 }} />
-                      <PolarRadiusAxis angle={30} domain={[0, 150]} tick={false} axisLine={false} />
-                      <Radar name="Consumer" dataKey="A" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.5} />
-                    </RadarChart>
-                  </ResponsiveContainer>
-                </div>
-                <p className="text-sm text-gray-500 text-center mt-2">該客戶屬於「高品質生活追求者」，對新品接受度高。</p>
-              </div>
-
-              {/* 右側：詳細指標卡片 */}
-              <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[
-                  { label: '平均客單價', val: MOCK_DATA.stats.avgOrderValue, icon: ShoppingBag, color: 'bg-blue-100 text-blue-600' },
-                  { label: '最近活躍', val: MOCK_DATA.stats.lastActive, icon: ClockIcon, color: 'bg-green-100 text-green-600' },
-                  { label: '互動頻率', val: '高', icon: Activity, color: 'bg-purple-100 text-purple-600' },
-                  { label: '預測流失率', val: '2.5%', icon: TrendingUp, color: 'bg-red-100 text-red-600' },
-                ].map((stat, idx) => (
-                  <div key={idx} className="p-4 border border-gray-100 rounded-xl hover:shadow-md transition-shadow flex items-center gap-4">
-                    <div className={`p-3 rounded-lg ${stat.color}`}>
-                      <stat.icon size={24} />
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-500">{stat.label}</div>
-                      <div className="text-xl font-bold text-gray-800">{stat.val}</div>
-                    </div>
-                  </div>
-                ))}
-                
-                {/* 策略建議區塊 */}
-                <div className="col-span-1 sm:col-span-2 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100 mt-2">
-                  <h4 className="font-bold text-blue-800 mb-2 flex items-center gap-2">💡 AI 營銷建議</h4>
-                  <p className="text-sm text-blue-900/80">
-                    建議在下週新品發布時，向此客戶發送 VIP 專屬早鳥優惠券（轉換率預估 +15%）。
-                  </p>
-                </div>
-
-                {/* 詳細資料區塊 (從原來的 details tab 移過來) */}
-                <div className="col-span-1 sm:col-span-2 mt-6">
-                  <h3 className="text-lg font-bold mb-6 border-b pb-2">基本檔案資料</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">客戶 ID</label>
-                        <div className="p-2 bg-gray-50 rounded border border-gray-200 text-gray-700">{MOCK_DATA.info.id}</div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">全名</label>
-                        <div className="p-2 bg-gray-50 rounded border border-gray-200 text-gray-700">{MOCK_DATA.info.name}</div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">生日</label>
-                        <div className="p-2 bg-gray-50 rounded border border-gray-200 text-gray-700">1990-05-20</div>
-                      </div>
-                    </div>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">職業</label>
-                        <div className="p-2 bg-gray-50 rounded border border-gray-200 text-gray-700">UI 設計師</div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">偏好聯絡時間</label>
-                        <div className="p-2 bg-gray-50 rounded border border-gray-200 text-gray-700">平日晚上 19:00 後</div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">地址</label>
-                        <div className="p-2 bg-gray-50 rounded border border-gray-200 text-gray-700">{MOCK_DATA.info.location}</div>
-                      </div>
-                    </div>
-                  </div>
+            <div className="fade-in" style={{animation: 'fadeIn 0.3s ease-in-out'}}>
+              <div className="detail-section" style={{marginBottom: '20px'}}>
+                <h3 style={{borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '15px'}}>基本資訊</h3>
+                <div className="detail-grid" style={{display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px'}}>
+                  <div className="detail-item"><label>客戶名稱:</label>{isEditMode ? <input type="text" name="name" value={editFormData.name || ''} onChange={handleEditFormChange} style={{width:'100%', padding:'8px'}}/> : <span>{selectedCustomer.name}</span>}</div>
+                  <div className="detail-item"><label>公司名稱:</label>{isEditMode ? <input type="text" name="company_name" value={editFormData.company_name || ''} onChange={handleEditFormChange} style={{width:'100%', padding:'8px'}}/> : <span>{selectedCustomer.company_name || '-'}</span>}</div>
+                  <div className="detail-item"><label>資本額:</label>{isEditMode ? <input type="number" name="capital_amount" value={editFormData.capital_amount || ''} onChange={handleEditFormChange} style={{width:'100%', padding:'8px'}}/> : <span>NT${parseFloat(selectedCustomer.capital_amount || 0).toLocaleString()}</span>}</div>
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* Tab 2: AI 分析 (新的 AIAnalysisEngine) */}
-          {activeTab === 'analysis' && (
-            <div className="animate-in fade-in duration-300">
-              <AIAnalysisEngine />
-            </div>
-          )}
-
-          {/* Tab 3: 行為軌跡 (時間軸) */}
-          {activeTab === 'journey' && (
-            <div className="animate-in fade-in duration-300 max-w-3xl mx-auto">
-              <h3 className="text-lg font-bold mb-6">最近互動紀錄</h3>
-              <div className="relative border-l-2 border-gray-200 ml-3 space-y-8">
-                {MOCK_DATA.timeline.length > 0 ? MOCK_DATA.timeline.map((event, idx) => (
-                  <div key={idx} className="relative pl-8">
-                    {/* 時間軸圓點 */}
-                    <div className={`
-                      absolute -left-[9px] top-0 w-5 h-5 rounded-full border-4 border-white shadow-sm
-                      ${event.type === 'buy' ? 'bg-green-500' : event.type === 'support' ? 'bg-red-500' : 'bg-blue-400'}
-                    `}></div>
-                    
-                    {/* 內容卡片 */}
-                    <div className="bg-white border border-gray-100 p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-                      <div className="flex justify-between items-start mb-1">
-                        <span className="font-bold text-gray-800">{event.timeline_text}</span>
-                        <span className="text-xs text-gray-400">{new Date(event.timestamp).toLocaleString()}</span>
-                      </div>
-                      {event.audio_url && (
-                        <audio controls src={event.audio_url} className="w-full mt-2"></audio>
+              <div className="detail-section" style={{marginBottom: '20px'}}>
+                <h3 style={{borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '15px'}}>評分資訊</h3>
+                <div className="detail-grid" style={{display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px'}}>
+                  <div className="detail-item"><label>N 評分:</label>{isEditMode ? <select name="n_score" value={editFormData.n_score || ''} onChange={handleEditFormChange} style={{width:'100%', padding:'8px'}}><option value="0">0</option><option value="6">6</option><option value="10">10</option></select> : <span>{editFormData.n_score || '-'}</span>}</div>
+                  <div className="detail-item"><label>F 評分:</label>{isEditMode ? <select name="f_score" value={editFormData.f_score || ''} onChange={handleEditFormChange} style={{width:'100%', padding:'8px'}}><option value="0">0</option><option value="6">6</option><option value="10">10</option></select> : <span>{editFormData.f_score || '-'}</span>}</div>
+                  <div className="detail-item"><label>V 評分:</label><span>{calculateVScore(editFormData.price, editFormData.annual_consumption)}</span></div>
+                  <div className="detail-item"><label>P 評分:</label><span>{calculatePScore(editFormData.price)}</span></div>
+                  <div className="detail-item"><label>CVI 評分:</label><span>{calculateCVI(editFormData.n_score, editFormData.f_score, calculateVScore(editFormData.price, editFormData.annual_consumption), calculatePScore(editFormData.price))}</span></div>
+                </div>
+              </div>
+              <div className="detail-section" style={{marginBottom: '20px'}}>
+                <div style={{ marginTop: '0px', marginBottom:'15px' }}>
+                  {isEditMode ? (
+                    <>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>音檔上傳:</label>
+                      <input type="file" />
+                    </>
+                  ) : (
+                    <>
+                      {selectedCustomer.audioUrl && (
+                        <>
+                          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>🎵 通話紀錄:</label>
+                          <audio controls src={selectedCustomer.audioUrl} style={{width:'100%'}} />
+                        </>
                       )}
-                    </div>
-                  </div>
-                )) : (
-                  <p className="text-center text-gray-500">目前沒有互動紀錄。</p>
-                )}
+                    </>
+                  )}
+                </div>
+                <h3>備註</h3>
+                {isEditMode ? <textarea name="notes" value={editFormData.notes || ''} onChange={handleEditFormChange} style={{width: '100%', minHeight: '100px', padding:'8px'}} /> : <div className="notes-box" style={{background:'#f9f9f9', padding:'10px', borderRadius:'4px'}}>{editFormData.notes || '無備註'}</div>}
               </div>
             </div>
           )}
 
+          {/* --- TAB 2: 消費者輪廓 --- */}
+          {activeTab === 'profile' && (
+            <div className="fade-in" style={{ paddingTop: '10px', animation: 'fadeIn 0.3s ease-in-out' }}>
+              
+              {/* 1. 儀表板 4 張卡片 */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px', marginBottom: '30px' }}>
+                <StatCard label="AI 綜合評估" value={`V${calculateVScore(editFormData.price, editFormData.annual_consumption)}`} description="潛力評分" color="#3498db" icon={<Bot size={24} color="#3498db"/>} bg="#f0f8ff"/>
+                <StatCard label="成交機率" value={conversionRate} description="AI 預測" color="#2ecc71" icon={<ListChecks size={24} color="#2ecc71"/>} />
+                <StatCard label="最新分析時間" value={timelineHistory.length>0 && timelineHistory[0].date ? timelineHistory[0].date.split(' ')[0] : '無'} description="最近紀錄" color="#f39c12" icon={<FileText size={24} color="#f39c12"/>} />
+                <StatCard label="下次跟進" value="2025/11/25" description="建議日期" color="#e74c3c" icon={<CalendarCheck size={24} color="#e74c3c"/>} bg="#fff5f5"/>
+              </div>
+
+              {/* 2. 雷達圖 & 弱點分析 */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '30px' }}>
+                <div style={{ background: 'white', border: '1px solid #eee', padding: '20px', borderRadius: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem' }}>銷售技巧評估</h3>
+                    <button onClick={() => setIsReportModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: '#2ecc71', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}><FileBarChart size={14}/> 詳細報告</button>
+                  </div>
+                  <div style={{ height: '300px', display: 'flex', justifyContent: 'center' }}><Radar data={radarData} options={radarOptions} /></div>
+                </div>
+                <div style={{ background: 'white', border: '1px solid #eee', padding: '20px', borderRadius: '8px' }}>
+                  <h3 style={{ margin: '0 0 15px 0', fontSize: '1.1rem', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>弱點分析與建議</h3>
+                  <div style={{ background: '#fff9e6', borderLeft: '4px solid #f39c12', padding: '15px', marginBottom: '15px', borderRadius: '4px' }}>
+                    <h4 style={{ margin: '0 0 5px 0', color: '#d35400' }}>需求挖掘 ({editFormData.n_score}/10)</h4><p style={{ margin: 0, fontSize: '0.9rem', color:'#555' }}>建議加強開放式提問技巧。</p>
+                  </div>
+                  <div style={{ background: '#e8f5e9', borderLeft: '4px solid #2ecc71', padding: '15px', borderRadius: '4px' }}>
+                    <h4 style={{ margin: '0 0 5px 0', color: '#2e7d32' }}>綜合評估</h4>
+                    <p style={{ margin: 0, fontSize: '0.9rem', color:'#555' }}>成交率預測：<strong>{conversionRate}</strong></p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. 溝通紀錄時間軸 */}
+              <div style={{ background: 'white', border: '1px solid #eee', padding: '20px', borderRadius: '8px' }}>
+                <h3 style={{ margin: '0 0 20px 0', fontSize: '1.1rem' }}>溝通紀錄時間軸</h3>
+                <div style={{ paddingLeft: '10px' }}>
+                   {timelineHistory.length > 0 ? timelineHistory.map((rec, i) => (
+                     <div key={i} style={{ marginBottom: '15px', borderLeft: '2px solid #3498db', paddingLeft: '15px' }}>
+                       <div style={{ display:'flex', gap:'5px', fontWeight:'bold', color:'#3498db', fontSize:'0.9rem' }}><Clock size={14}/> {rec.date}</div>
+                       <p style={{ margin: '5px 0 0 0', color:'#333' }}>{rec.timeline_text}</p>
+                     </div>
+                   )) : <p style={{ color: '#999' }}>尚無紀錄</p>}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* Footer */}
+        <div className="modal-footer" style={{ padding: '15px 20px', borderTop: '1px solid #eee', background: '#f8f9fa', flexShrink: 0 }}>
+          {isEditMode ? (
+            <>
+              <button className="btn btn-primary" onClick={handleSaveEditCustomer} disabled={saving} style={{ marginRight: '10px', padding:'8px 16px', background:'#007bff', color:'white', border:'none', borderRadius:'4px', cursor:'pointer' }}>{saving ? '保存中...' : '儲存變更'}</button>
+              <button className="btn btn-secondary" onClick={handleCloseDetailModal} style={{ padding:'8px 16px', background:'#6c757d', color:'white', border:'none', borderRadius:'4px', cursor:'pointer' }}>取消</button>
+            </>
+          ) : (
+            <button className="btn btn-secondary" onClick={handleCloseDetailModal} style={{ padding:'8px 16px', background:'#6c757d', color:'white', border:'none', borderRadius:'4px', cursor:'pointer' }}>關閉</button>
+          )}
+        </div>
+
+        {/* 詳細報告 Modal */}
+        {isReportModalOpen && (
+          <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', zIndex: 1100, display: 'flex', justifyContent: 'center', alignItems: 'center' }} onClick={() => setIsReportModalOpen(false)}>
+            <div style={{ background: 'white', borderRadius: '8px', width: '950px', maxWidth: '95%', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+              <div style={{ padding: '20px 30px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div><h3 style={{ margin: '0 0 5px 0', fontSize: '1.5rem' }}>銷售技巧詳細分析報告</h3><p style={{ margin: 0, color: '#666' }}>基於 AI 對話分析的核心問題偵測結果</p></div>
+                <button onClick={() => setIsReportModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '28px', cursor: 'pointer' }}>×</button>
+              </div>
+              <div style={{ padding: '30px', overflowY: 'auto', background: '#f8f9fa' }}>
+                <AIAnalysisEngine />
+              </div>
+              <div style={{ padding: '15px 30px', borderTop: '1px solid #eee', background: 'white', textAlign: 'right' }}>
+                <button onClick={() => setIsReportModalOpen(false)} style={{ padding: '8px 25px', background: '#3498db', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>關閉報告</button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
-}
+};
+
+export default CustomerDetailModal;
+export default CustomerDetailModal;
