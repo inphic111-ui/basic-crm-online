@@ -281,7 +281,122 @@ const CustomerDetailModal = ({
                 <StatCard label="下次跟進" value="2025/11/25" description="建議日期" color="#e74c3c" icon={<CalendarCheck size={24} color="#e74c3c"/>} bg="#fff5f5"/>
               </div>
 
-              {/* 2. 雷達圖 & 弱點分析 */}
+              {/* 2. 客戶輪廓分析儀表板 */}
+              <div style={{ background: 'white', border: '1px solid #eee', padding: '20px', borderRadius: '8px', marginBottom: '30px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem' }}>客戶輪廓分析儀表板</h3>
+                  <span style={{ fontSize: '0.9rem', color: '#666' }}>AI驅動的洞察</span>
+                </div>
+                <div style={{ display: 'flex', gap: '20px' }}>
+                  <div style={{ flex: 1, background: '#f0f8ff', borderLeft: '4px solid #3498db', padding: '15px', borderRadius: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                      <Bot size={20} color="#3498db"/>
+                      <h4 style={{ margin: 0, color: '#3498db' }}>AI 洞察分析</h4>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.9rem', color: '#555' }}>客戶較關注氣積極，對售後服務表現出明顯興趣。在討論價格時略顯遲疑，但對產品功能持肯定態度。</p>
+                  </div>
+                  <div style={{ flex: 1, background: '#fff9e6', borderLeft: '4px solid #f39c12', padding: '15px', borderRadius: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                      <Target size={20} color="#f39c12"/>
+                      <h4 style={{ margin: 0, color: '#f39c12' }}>關鍵需求識別</h4>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.9rem', color: '#555' }}>客戶關注的三個需求：降低維護成本、減少停機時間、簡化操作流程。對價格敏感度中等。</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. 推薦行動計劃 */}
+              <div style={{ background: 'white', border: '1px solid #eee', padding: '20px', borderRadius: '8px', marginBottom: '30px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                  <ListChecks size={20} color="#2c3e50"/>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem' }}>推薦行動計劃</h3>
+                </div>
+                <div style={{ display: 'flex', gap: '20px' }}>
+                  <div style={{ flex: 1, background: '#e8f5e9', borderLeft: '4px solid #2ecc71', padding: '15px', borderRadius: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                      <FileText size={18} color="#2ecc71"/>
+                      <h4 style={{ margin: 0, color: '#2e7d32' }}>準備補充資料</h4>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.9rem', color: '#555' }}>為陳總準備詳細的ROI計算和行業成功案例，重點展示維護成本節省和生產效率提升。</p>
+                  </div>
+                  <div style={{ flex: 1, background: '#e8f5e9', borderLeft: '4px solid #2ecc71', padding: '15px', borderRadius: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                      <CalendarCheck size={18} color="#2ecc71"/>
+                      <h4 style={{ margin: 0, color: '#2e7d32' }}>安排產品演示</h4>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.9rem', color: '#555' }}>邀請王經理和技術團隊參加產品現場演示，特別展示維護流程和操作簡便性。</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. 客戶基本資料 / 公司資訊 / 聯絡紀錄 */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '30px' }}>
+                <div style={{ background: 'white', border: '1px solid #eee', padding: '20px', borderRadius: '8px' }}>
+                  <h4 style={{ margin: '0 0 15px 0', color: '#3498db', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>客戶基本資料</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.9rem' }}>
+                    <div><strong>客戶名稱：</strong>{editFormData.name || selectedCustomer.customer_name || '-'}</div>
+                    <div><strong>聯絡人：</strong>{editFormData.contact_person || '王經理（採購）'}</div>
+                    <div><strong>所屬產業：</strong>{editFormData.industry || '食品製造業'}</div>
+                  </div>
+                </div>
+                <div style={{ background: 'white', border: '1px solid #eee', padding: '20px', borderRadius: '8px' }}>
+                  <h4 style={{ margin: '0 0 15px 0', color: '#3498db', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>公司資訊</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.9rem' }}>
+                    <div><strong>公司類型：</strong>{editFormData.company_type || '上市櫃公司'}</div>
+                    <div><strong>資本額：</strong>{editFormData.capital_amount ? `${parseFloat(editFormData.capital_amount).toLocaleString()}萬` : '5,000萬'}</div>
+                    <div><strong>地區：</strong>{editFormData.location || '台中'}</div>
+                  </div>
+                </div>
+                <div style={{ background: 'white', border: '1px solid #eee', padding: '20px', borderRadius: '8px' }}>
+                  <h4 style={{ margin: '0 0 15px 0', color: '#3498db', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>聯絡紀錄</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.9rem' }}>
+                    <div><strong>最近聯繫：</strong>{editFormData.last_contact_date || '2025/11/08（庭碩）'}</div>
+                    <div><strong>銷售階段：</strong>{editFormData.order_status || '報價後追蹤期'}</div>
+                    <div><strong>成交機率：</strong>{conversionRate}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 5. 決策結構分析 */}
+              <div style={{ background: 'white', border: '1px solid #eee', padding: '20px', borderRadius: '8px', marginBottom: '30px' }}>
+                <h3 style={{ margin: '0 0 20px 0', fontSize: '1.1rem' }}>決策結構分析</h3>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                  <thead>
+                    <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
+                      <th style={{ padding: '12px', textAlign: 'left' }}>人員</th>
+                      <th style={{ padding: '12px', textAlign: 'left' }}>職位</th>
+                      <th style={{ padding: '12px', textAlign: 'left' }}>角色</th>
+                      <th style={{ padding: '12px', textAlign: 'left' }}>對 INPHIC 支持度</th>
+                      <th style={{ padding: '12px', textAlign: 'left' }}>備註</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style={{ borderBottom: '1px solid #dee2e6' }}>
+                      <td style={{ padding: '12px' }}>陳總</td>
+                      <td style={{ padding: '12px' }}>董事長</td>
+                      <td style={{ padding: '12px' }}>👑 決策大頭</td>
+                      <td style={{ padding: '12px' }}>👍 支持</td>
+                      <td style={{ padding: '12px' }}>需協助王經理準備給陳總的提案文件</td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid #dee2e6' }}>
+                      <td style={{ padding: '12px' }}>王經理</td>
+                      <td style={{ padding: '12px' }}>採購</td>
+                      <td style={{ padding: '12px' }}>✏️ 中層執行</td>
+                      <td style={{ padding: '12px' }}>中立/執行</td>
+                      <td style={{ padding: '12px' }}>負責比較數據，需提供性價比優案</td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid #dee2e6' }}>
+                      <td style={{ padding: '12px' }}>蔡小姐</td>
+                      <td style={{ padding: '12px' }}>技術</td>
+                      <td style={{ padding: '12px' }}>⭐ 關鍵評估者</td>
+                      <td style={{ padding: '12px' }}>👍 支持</td>
+                      <td style={{ padding: '12px' }}>傾向選 INPHIC，重視操作介面，建議安排現場試機</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* 6. 雷達圖 & 弱點分析 */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '30px' }}>
                 <div style={{ background: 'white', border: '1px solid #eee', padding: '20px', borderRadius: '8px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
@@ -302,16 +417,36 @@ const CustomerDetailModal = ({
                 </div>
               </div>
 
-              {/* 3. 溝通紀錄時間軸 */}
+              {/* 7. 溝通紀錄時間軸 */}
               <div style={{ background: 'white', border: '1px solid #eee', padding: '20px', borderRadius: '8px' }}>
                 <h3 style={{ margin: '0 0 20px 0', fontSize: '1.1rem' }}>溝通紀錄時間軸</h3>
-                <div style={{ paddingLeft: '10px' }}>
+                <div style={{ position: 'relative', paddingLeft: '30px' }}>
                    {timelineHistory.length > 0 ? timelineHistory.map((rec, i) => (
-                     <div key={i} style={{ marginBottom: '15px', borderLeft: '2px solid #3498db', paddingLeft: '15px' }}>
-                       <div style={{ display:'flex', gap:'5px', fontWeight:'bold', color:'#3498db', fontSize:'0.9rem' }}><Clock size={14}/> {rec.date}</div>
-                       <p style={{ margin: '5px 0 0 0', color:'#333' }}>{rec.timeline_text}</p>
+                     <div key={i} style={{ position: 'relative', marginBottom: '30px', paddingBottom: '20px', borderBottom: i < timelineHistory.length - 1 ? '1px solid #eee' : 'none' }}>
+                       <div style={{ position: 'absolute', left: '-30px', top: '5px', width: '20px', height: '20px', borderRadius: '50%', background: i === 0 ? '#2ecc71' : '#f39c12', border: '3px solid white', boxShadow: '0 0 0 2px #dee2e6' }}></div>
+                       <div style={{ position: 'absolute', left: '-21px', top: '30px', width: '2px', height: 'calc(100% - 20px)', background: '#dee2e6' }}></div>
+                       <div style={{ display: 'inline-block', padding: '4px 12px', borderRadius: '12px', background: i === 0 ? '#2ecc71' : '#f39c12', color: 'white', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '10px' }}>{i === 0 ? '電話連絡' : '客戶回訪'}</div>
+                       <h4 style={{ margin: '10px 0 5px 0', fontSize: '1rem', color: '#2c3e50' }}>{rec.timeline_text || '產品介紹與需求確認電話'}</h4>
+                       <p style={{ margin: '5px 0 10px 0', fontSize: '0.9rem', color: '#666' }}>{rec.description || '初次產品介紹，了解客戶需求與痛點'}</p>
+                       <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#999', fontSize: '0.85rem', marginBottom: '10px' }}>
+                         <Clock size={14}/>
+                         <span>回報時間：{rec.date || '2025-11-08 10:30'}</span>
+                       </div>
+                       <div style={{ display: 'flex', gap: '10px' }}>
+                         <button style={{ padding: '6px 15px', background: '#2ecc71', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                           <FileBarChart size={14}/> 分析對話
+                         </button>
+                         <button style={{ padding: '6px 15px', background: '#3498db', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                           <Eye size={14}/> 查看詳情
+                         </button>
+                       </div>
                      </div>
-                   )) : <p style={{ color: '#999' }}>尚無紀錄</p>}
+                   )) : (
+                     <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                       <Clock size={48} style={{ opacity: 0.3, marginBottom: '10px' }}/>
+                       <p>尚無溝通紀錄</p>
+                     </div>
+                   )}
                 </div>
               </div>
             </div>
