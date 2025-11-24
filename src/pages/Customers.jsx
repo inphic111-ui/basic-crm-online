@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import ConsumerProfile from '../components/ConsumerProfile';
+import CustomerDetailModal from '../components/CustomerDetailModal';
 import '../styles/customers.css';
 
 
@@ -595,7 +595,7 @@ function Customers() {
       </div>
 
       {showDetailModal && (
-        <ConsumerProfile
+        <CustomerDetailModal
           selectedCustomer={selectedCustomer}
           handleCloseDetailModal={handleCloseDetailModal}
           isEditMode={isEditMode}

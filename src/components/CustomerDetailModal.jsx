@@ -354,4 +354,3 @@ const CustomerDetailModal = ({
 };
 
 export default CustomerDetailModal;
-export default CustomerDetailModal;
