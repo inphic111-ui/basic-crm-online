@@ -1,9 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import CustomerDetailModal from '../components/CustomerDetailModal';
-import '../styles/customers.css';
-
-
-// ... (保留所有的輔助函數，例如 cleanAnnualConsumption, calculateVScore, etc.)
+import '../styles/customers.css'
 
 // 清理和轉換 annual_consumption 欄位
 const cleanAnnualConsumption = (value) => {
@@ -303,7 +300,6 @@ function Customers() {
   const [error, setError] = useState(null)
   const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
-  const [showAnalysisModal, setShowAnalysisModal] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [formData, setFormData] = useState({})
   const [saving, setSaving] = useState(false)
@@ -340,261 +336,747 @@ function Customers() {
   }
 
   // 根據搜尋條件過濾客戶列表
-  const filteredCustomers = customers.filter(customer => {
-    const query = searchQuery.toLowerCase()
-    const nameMatch = customer.customer_name && customer.customer_name.toLowerCase().includes(query)
-    const phoneMatch = customer.phone && customer.phone.toLowerCase().includes(query)
-    const statusMatch = filterStatus ? customer.order_status === filterStatus : true
-    const responsibleMatch = filterResponsible ? customer.responsible_person === filterResponsible : true
-    return (nameMatch || phoneMatch) && statusMatch && responsibleMatch
-  })
-
-  // 排序邏輯
-  const sortedCustomers = [...filteredCustomers].sort((a, b) => {
+  const getFilteredCustomers = () => {
+    let filtered = customers.filter(customer => {
+      // 搜尋欄過濾（客戶編號或名稱）
+      const matchesSearch = !searchQuery || 
+        customer.customer_id?.toString().includes(searchQuery) ||
+        customer.name?.toLowerCase().includes(searchQuery.toLowerCase())
+      
+      // 狀態過濾
+      const matchesStatus = !filterStatus || customer.order_status === filterStatus
+      
+      // 業務名過濾
+      const matchesResponsible = !filterResponsible || customer.responsible_person === filterResponsible
+      
+      return matchesSearch && matchesStatus && matchesResponsible
+    })
+    
+    // 應用評級排序
     if (sortByRating) {
-      const ratingA = a.customer_rating || ''
-      const ratingB = b.customer_rating || ''
-      return sortByRating === 'asc' ? ratingA.localeCompare(ratingB) : ratingB.localeCompare(ratingA)
+      filtered = [...filtered].sort((a, b) => {
+        const ratingOrder = { 'S': 5, 'A': 4, 'B': 3, 'C': 2, 'D': 1, 'E': 0 }
+        const aRating = ratingOrder[a.customer_rating] || -1
+        const bRating = ratingOrder[b.customer_rating] || -1
+        return sortByRating === 'asc' ? aRating - bRating : bRating - aRating
+      })
     }
+    
+    // 應用客戶類型排序
     if (sortByType) {
-      const typeA = getCustomerType(a.nfvp_score)
-      const typeB = getCustomerType(b.nfvp_score)
-      return sortByType === 'asc' ? typeA.localeCompare(typeB) : typeB.localeCompare(typeA)
+      filtered = [...filtered].sort((a, b) => {
+        const typeOrder = { 'shark': 3, 'whale': 2, 'grass': 1, 'shrimp': 0, 'unclassified': -1 }
+        const aType = typeOrder[a.customer_type] || -1
+        const bType = typeOrder[b.customer_type] || -1
+        return sortByType === 'asc' ? aType - bType : bType - aType
+      })
     }
+    
+    // 應用最後聯繫時間排序
     if (sortByLastContact) {
-      const dateA = a.last_contact_date ? new Date(a.last_contact_date) : 0
-      const dateB = b.last_contact_date ? new Date(b.last_contact_date) : 0
-      return sortByLastContact === 'asc' ? dateA - dateB : dateB - dateA
+      filtered = [...filtered].sort((a, b) => {
+        let aTime = 0
+        let bTime = 0
+        
+        // 從 ai_analysis_history 中提取最後的時間
+        if (a.ai_analysis_history) {
+          try {
+            const history = typeof a.ai_analysis_history === 'string' 
+              ? JSON.parse(a.ai_analysis_history) 
+              : a.ai_analysis_history
+            if (Array.isArray(history) && history.length > 0) {
+              const lastRecord = history[history.length - 1]
+              aTime = lastRecord.timestamp ? new Date(lastRecord.timestamp).getTime() : 0
+            }
+          } catch (err) {
+            aTime = 0
+          }
+        }
+        
+        if (b.ai_analysis_history) {
+          try {
+            const history = typeof b.ai_analysis_history === 'string' 
+              ? JSON.parse(b.ai_analysis_history) 
+              : b.ai_analysis_history
+            if (Array.isArray(history) && history.length > 0) {
+              const lastRecord = history[history.length - 1]
+              bTime = lastRecord.timestamp ? new Date(lastRecord.timestamp).getTime() : 0
+            }
+          } catch (err) {
+            bTime = 0
+          }
+        }
+        
+        return sortByLastContact === 'asc' ? aTime - bTime : bTime - aTime
+      })
     }
-    return 0
-  })
+    
+    return filtered
+  }
+  
+  // 切換評級排序
+  const toggleRatingSort = () => {
+    if (sortByRating === null) {
+      setSortByRating('asc')
+    } else if (sortByRating === 'asc') {
+      setSortByRating('desc')
+    } else {
+      setSortByRating(null)
+    }
+    setCurrentPage(1)
+  }
+  
+  // 切換客戶類型排序
+  const toggleTypeSort = () => {
+    if (sortByType === null) {
+      setSortByType('asc')
+    } else if (sortByType === 'asc') {
+      setSortByType('desc')
+    } else {
+      setSortByType(null)
+    }
+    setCurrentPage(1)
+  }
+  
+  // 切換最後聯繫時間排序
+  const toggleLastContactSort = () => {
+    if (sortByLastContact === null) {
+      setSortByLastContact('desc')  // 預設按最新時間排序
+    } else if (sortByLastContact === 'desc') {
+      setSortByLastContact('asc')
+    } else {
+      setSortByLastContact(null)
+    }
+    setCurrentPage(1)
+  }
 
-  // 分頁邏輯
-  const indexOfLastCustomer = currentPage * itemsPerPage
-  const indexOfFirstCustomer = indexOfLastCustomer - itemsPerPage
-  const currentCustomers = sortedCustomers.slice(indexOfFirstCustomer, indexOfLastCustomer)
-
-  const paginate = (pageNumber) => setCurrentPage(pageNumber)
-
-  const fetchCustomers = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch('/api/customers')
-      if (!response.ok) {
-        throw new Error('無法獲取客戶數據')
-      }
-      const data = await response.json()
-      setCustomers(data)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
+  // 計算分頁數據
+  const getPaginatedCustomers = () => {
+    const filtered = getFilteredCustomers()
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return {
+      data: filtered.slice(startIndex, endIndex),
+      total: filtered.length,
+      totalPages: Math.ceil(filtered.length / itemsPerPage),
+      currentPage
     }
   }
 
+  // 從 API 獲取客戶列表
   useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch('/api/customers')
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        const data = await response.json()
+        setCustomers(data)
+        setError(null)
+      } catch (err) {
+        console.error('獲取客戶數據失敗:', err)
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+
     fetchCustomers()
     generateResponsiblePersons()
-  }, [renderTrigger])
+  }, [])
 
+  // 打開詳細視窗（可編輯模式）
   const handleViewDetail = (customer) => {
     setSelectedCustomer(customer)
-    setEditFormData(customer)
+      // 確保 n_score 和 f_score 有預設值，並清理 annual_consumption
+    const formData = {
+      ...customer,
+      annual_consumption: cleanAnnualConsumption(customer.annual_consumption),
+      n_score: customer.n_score || '',
+      f_score: customer.f_score || '',
+      nfvp_score: customer.nfvp_score || ''
+    }
+    setEditFormData(formData)
+    setIsEditMode(true)
     setShowDetailModal(true)
-    setIsEditMode(false)
   }
 
+  // 打開詳細視窗（只讀模式）
   const handleViewDetailReadOnly = (customer) => {
     setSelectedCustomer(customer)
-    setEditFormData(customer)
-    setShowDetailModal(true)
+    // 清理 annual_consumption 並確保 n_score 和 f_score 有值
+    const cleanedCustomer = {
+      ...customer,
+      annual_consumption: cleanAnnualConsumption(customer.annual_consumption),
+      n_score: customer.n_score || '',
+      f_score: customer.f_score || '',
+      // 添加模擬的時間軸數據（用於測試）
+      ai_analysis_history: JSON.stringify([
+        {
+          timestamp: new Date(Date.now() - 2*24*60*60*1000).toISOString(),
+          probability: 15,
+          timeline_text: '2025-11-10 09:06:09 | 成交率：15%',
+          type: 'text'
+        },
+        {
+          timestamp: new Date(Date.now() - 1*24*60*60*1000).toISOString(),
+          probability: 45,
+          timeline_text: '2025-11-11 10:30:45 | 成交率：45% | ⬆️ +30%',
+          type: 'audio',
+          audio_url: 'https://example.com/audio.mp3'
+        },
+        {
+          timestamp: new Date().toISOString(),
+          probability: 65,
+          timeline_text: '2025-11-12 14:30:00 | 成交率：65% | ⬆️ +20%',
+          type: 'text'
+        }
+      ]),
+      audioUrl: 'https://example.com/audio.mp3'
+    }
+    setEditFormData(cleanedCustomer)
     setIsEditMode(false)
+    setShowDetailModal(true)
   }
 
-  const handleCloseDetailModal = () => {
-    setShowDetailModal(false)
-    setSelectedCustomer(null)
-  }
+      // 關閉詳細視窗
+      const handleCloseDetailModal = () => {
+        setShowDetailModal(false)
+        // 不清空 editFormData，保留最新的數據
+        // setEditFormData({}) // 已註釋 - 保留最新的客戶數據
+        setIsEditMode(false)
+      }
 
-  const handleCloseAnalysisModal = () => {
-    setShowAnalysisModal(false)
-  }
-
-  const handleAddCustomer = () => {
-    setFormData({})
+  // 打開新增客戶表單
+  const handleOpenAddModal = () => {
+    setFormData({
+      customer_id: '',
+      name: '',
+      company_name: '',
+      initial_product: '',
+      price: '',
+      budget: '',
+      phone: '',
+      telephone: '',
+      order_status: '',
+      total_consumption: '',
+      customer_rating: '',
+      customer_type: '',
+      source: '',
+      capital_amount: '',
+      nfvp_score: '',
+      n_score: '',
+      f_score: '',
+      notes: ''
+    })
     setShowAddModal(true)
   }
 
+  // 關閉新增客戶表單
   const handleCloseAddModal = () => {
     setShowAddModal(false)
+    setFormData({})
   }
 
+  // 更新表單字段
   const handleFormChange = (e) => {
     const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
   }
 
+  // 更新編輯表單字段
   const handleEditFormChange = (e) => {
     const { name, value } = e.target
-    setEditFormData(prev => ({ ...prev, [name]: value }))
+    setEditFormData(prev => {
+      const updated = {
+        ...prev,
+        [name]: value
+      }
+      
+      // 当 N 评分、F 评分、价格、年度消费变化时，实时计算 CVI 评分和客户类型
+      if (['n_score', 'f_score', 'price', 'annual_consumption'].includes(name)) {
+        const vScore = calculateVScore(updated.price || prev.price, updated.annual_consumption || prev.annual_consumption)
+        const pScore = calculatePScore(updated.price || prev.price)
+        const cviValue = calculateCVI(updated.n_score || prev.n_score, updated.f_score || prev.f_score, vScore, pScore)
+        const customerType = getCustomerTypeByVP(vScore, pScore)
+        
+        updated.v_score = vScore
+        updated.p_score = pScore
+        updated.nfvp_score = cviValue
+        updated.cvi_score = cviValue
+        updated.customer_type = customerType
+      }
+      
+      return updated
+    })
   }
 
+  // 保存編輯的客戶
+  const handleSaveEditCustomer = async () => {
+    try {
+      setSaving(true)
+      
+      // 在保存前計算新的評分和類型
+      const vScore = calculateVScore(editFormData.price, editFormData.annual_consumption)
+      const pScore = calculatePScore(editFormData.price)
+      const customerType = getCustomerTypeByVP(vScore, pScore)
+      const nfvpValue = calculateCVI(editFormData.n_score, editFormData.f_score, vScore, pScore)
+      const customerTypeLabel = getTypeLabel(customerType)  // 轉換為中文描述
+      
+      // 只發送數據庫中存在的字段
+      const allowedFields = [
+        'name', 'email', 'phone', 'company_name', 'initial_product', 'price', 'budget',
+        'telephone', 'order_status', 'total_consumption', 'annual_consumption',
+        'customer_rating', 'customer_type', 'source', 'capital_amount',
+        'nfvp_score', 'cvi_score', 'notes', 'status', 'product_url', 'ai_analysis',
+        'n_score', 'f_score', 'ai_analysis_history'
+      ]
+      
+      const dataToSave = {}
+      for (const field of allowedFields) {
+        if (editFormData.hasOwnProperty(field)) {
+          dataToSave[field] = editFormData[field]
+        }
+      }
+      
+      // 添加計算的值
+      dataToSave.nfvp_score = nfvpValue  // 保存計算後的 CVI 分數（數值）
+      dataToSave.cvi_score = nfvpValue  // 保存 CVI 分數（數值），不是文字描述
+      dataToSave.customer_type = customerType  // 保存計算後的客戶類型
+      
+      
+      const response = await fetch(`/api/customers/${selectedCustomer.id}/update-with-analysis`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(dataToSave)
+      })
+
+      if (!response.ok) {
+        throw new Error(`保存失敗: ${response.status}`)
+      }
+
+      const responseData = await response.json()
+      const updatedCustomer = responseData.customer || responseData
+      
+      // 添加計算的字段到返回的客戶對象
+      updatedCustomer.nfvp_score = nfvpValue  // CVI 分數
+      updatedCustomer.cvi_score = customerTypeLabel  // 客戶分類中文
+      updatedCustomer.v_score = vScore
+      updatedCustomer.p_score = pScore
+      
+      // 如果後端返回了 ai_analysis 和 ai_analysis_history_json，也設置到 updatedCustomer
+      if (responseData.analysis) {
+        updatedCustomer.ai_analysis = responseData.analysis
+      }
+      if (responseData.history) {
+        updatedCustomer.ai_analysis_history = JSON.stringify(responseData.history)
+      }
+      
+      setCustomers(customers.map(c => c.id === updatedCustomer.id ? updatedCustomer : c))
+      // 更新 editFormData 以反映最新的數據（包括更新後的 ai_analysis_history_json）
+      setEditFormData(updatedCustomer)
+      setSelectedCustomer(updatedCustomer)
+      handleCloseDetailModal()
+      alert('客戶已更新')
+    } catch (err) {
+      console.error('保存失敗:', err)
+      alert(`保存失敗: ${err.message}`)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // 生成 AI 分析
+  const handleGenerateAIAnalysis = async (customer) => {
+    try {
+      setSaving(true)
+      
+      // 準備分析所需的客戶信息
+      const analysisPrompt = `你是一位專業的销售顾問師。請根據以下客戶信息進行綜合分析。
+客戶信息:
+- 客戶名稱: ${customer.name}
+- 公司名稱: ${customer.company_name}
+- 詢問產品: ${customer.initial_product}
+- N 計分: ${customer.n_score}
+- F 計分: ${customer.f_score}
+- V 計分: ${customer.v_score}
+- P 計分: ${customer.p_score}
+- 預算: NT$${customer.price}
+- 預算: NT$${customer.budget}
+- 詢問產品: ${customer.initial_product}
+
+請提供:
+1. 客戶需求分析
+2. 下一步建議的行動(例如:提供報價單、確認收款等)
+3. 成交概率估計(%)
+4. 其他建議`
+      
+      const response = await fetch('/api/analyze-customer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          customerId: customer.id,
+          prompt: analysisPrompt
+        })
+      })
+      
+      if (!response.ok) {
+        throw new Error(`分析失敗: ${response.status}`)
+      }
+      
+      const result = await response.json()
+      setEditFormData(prev => ({
+        ...prev,
+        ai_analysis: result.analysis
+      }))
+      
+      alert('AI 分析完成')
+    } catch (err) {
+      console.error('AI 分析失敗:', err)
+      alert(`AI 分析失敗: ${err.message}`)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // 保存新客戶
   const handleSaveCustomer = async () => {
     try {
       setSaving(true)
       const response = await fetch('/api/customers', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify(formData)
       })
+
       if (!response.ok) {
-        throw new Error('保存失敗')
+        throw new Error(`保存失敗: ${response.status}`)
       }
-      setShowAddModal(false)
-      setRenderTrigger(prev => prev + 1)
+
+      const newCustomer = await response.json()
+      setCustomers([newCustomer, ...customers])
+      handleCloseAddModal()
+      alert('客戶已新增')
     } catch (err) {
-      console.error(err)
+      console.error('保存失敗:', err)
+      alert(`保存失敗: ${err.message}`)
     } finally {
       setSaving(false)
     }
   }
 
-  const handleSaveEditCustomer = async () => {
-    try {
-      setSaving(true)
-      const response = await fetch(`/api/customers/${selectedCustomer.customer_id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editFormData)
-      })
-      if (!response.ok) {
-        throw new Error('更新失敗')
-      }
-      setShowDetailModal(false)
-      setRenderTrigger(prev => prev + 1)
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleAudioUpload = async (event) => {
-    const file = event.target.files[0]
-    if (!file) return
-
-    setAudioUploadLoading(true)
-    setAudioUploadError(null)
-    setAudioUploadSuccess(false)
-
-    const formData = new FormData()
-    formData.append('audio', file)
-    formData.append('customer_id', selectedCustomer.customer_id)
+  // 刪除客戶
+  const handleDeleteCustomer = async (id) => {
+    if (!window.confirm('確定要刪除此客戶嗎？')) return
 
     try {
-      const response = await fetch('/api/upload-audio', {
-        method: 'POST',
-        body: formData
+      const response = await fetch(`/api/customers/${id}`, {
+        method: 'DELETE'
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || '上傳失敗')
+        throw new Error(`刪除失敗: ${response.status}`)
       }
 
-      const result = await response.json()
-      setAudioUploadSuccess(true)
-      // 更新客戶的 AI 分析歷史
-      setEditFormData(prev => ({ ...prev, ai_analysis_history: result.ai_analysis_history }))
-      // 重新渲染
-      setRenderTrigger(prev => prev + 1)
+      setCustomers(customers.filter(c => c.id !== id))
+      handleCloseDetailModal()
+      alert('客戶已刪除')
     } catch (err) {
-      setAudioUploadError(err.message)
-    } finally {
-      setAudioUploadLoading(false)
+      console.error('刪除失敗:', err)
+      alert(`刪除失敗: ${err.message}`)
     }
   }
-
-  if (loading) return <div className="loading-container"><div className="loading-spinner"></div></div>
-  if (error) return <div className="error-container">錯誤：{error}</div>
 
   return (
     <div className="customers-page">
       <div className="page-header">
-        <h1>客戶列表</h1>
-        <button className="btn btn-primary" onClick={handleAddCustomer}>新增客戶</button>
+        <h1>客戶資料管理</h1>
+        <p>管理和查看所有客戶信息</p>
       </div>
 
-      <div className="filters-container">
-        <input
-          type="text"
-          placeholder="搜尋客戶名稱或電話..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="search-input"
-        />
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="filter-select">
-          <option value="">所有狀態</option>
-          <option value="未處理">未處理</option>
-          <option value="追單">追單</option>
-          <option value="購買">購買</option>
-          <option value="售後">售後</option>
-          <option value="流失">流失</option>
-        </select>
-        <select value={filterResponsible} onChange={(e) => setFilterResponsible(e.target.value)} className="filter-select">
-          <option value="">所有業務</option>
-          {responsiblePersons.map(person => <option key={person} value={person}>{person}</option>)}
-        </select>
-      </div>
+      {error && (
+        <div className="error-banner">
+          ⚠️ 數據加載失敗: {error}
+        </div>
+      )}
 
-      <div className="table-container">
-        <table className="customers-table">
-          <thead>
-            <tr>
-              <th>客戶ID</th>
-              <th>客戶名稱</th>
-              <th>電話</th>
-              <th>業務</th>
-              <th onClick={() => setSortByRating(sortByRating === 'asc' ? 'desc' : 'asc')}>客戶評級</th>
-              <th onClick={() => setSortByType(sortByType === 'asc' ? 'desc' : 'asc')}>客戶分類</th>
-              <th>訂單狀態</th>
-              <th onClick={() => setSortByLastContact(sortByLastContact === 'asc' ? 'desc' : 'asc')}>最後聯繫日</th>
-              <th>成交機率</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentCustomers.map(customer => {
-              const vScore = calculateVScore(customer.price, customer.annual_consumption)
-              const pScore = calculatePScore(customer.price)
-              const cviScore = calculateCVI(customer.n_score, customer.f_score, vScore, pScore)
-              const customerType = getCustomerTypeByVP(vScore, pScore)
-              const analysisHistory = parseAnalysisHistory(customer.ai_analysis_history)
-              const latestAnalysis = analysisHistory ? analysisHistory[analysisHistory.length - 1] : null
-              const probability = latestAnalysis ? extractProbability(latestAnalysis.analysis_text) : null
+      <div className="card">
+        <div className="card-header">
+          <h3>客戶清單 {loading && '(加載中...)'}</h3>
+        </div>
 
-              return (
-                <tr key={customer.customer_id}>
-                  <td>{customer.customer_id}</td>
-                  <td>{customer.customer_name}</td>
-                  <td className="phone-number" onClick={() => handleViewDetailReadOnly(customer)}>{customer.phone}</td>
-                  <td>{customer.responsible_person}</td>
-                  <td>{getRatingBadge(customer.customer_rating)}</td>
-                  <td>{getTypeEmoji(customerType)} {getTypeLabel(customerType)}</td>
-                  <td>{getOrderStatusTag(customer.order_status)}</td>
-                  <td>{customer.last_contact_date ? new Date(customer.last_contact_date).toLocaleDateString() : '-'}</td>
-                  <td>{probability !== null ? `${probability}%` : '-'}</td>
-                  <td>
-                    <button className="btn-view" onClick={() => handleViewDetail(customer)}>查看</button>
-                  </td>
+        {/* 搜尋和篩選區域 */}
+        {!loading && customers.length > 0 && (
+          <div className="search-filter-area" style={{
+            padding: '16px',
+            backgroundColor: '#f5f5f5',
+            borderBottom: '1px solid #ddd',
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr 1fr',
+            gap: '12px',
+            alignItems: 'center'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <span style={{ marginRight: '8px', fontSize: '14px', fontWeight: '500' }}>搜尋:</span>
+              <input
+                type="text"
+                placeholder="輸入客戶編號或名稱..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                  setCurrentPage(1)
+                }}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <select
+                value={filterStatus}
+                onChange={(e) => {
+                  setFilterStatus(e.target.value)
+                  setCurrentPage(1)
+                }}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  fontSize: '14px',
+                  backgroundColor: '#ffffff',
+                  cursor: 'pointer',
+                  fontWeight: '500'
+                }}
+              >
+                <option value="">狀態</option>
+                <option value="未處理">未處理</option>
+                <option value="追單">追單</option>
+                <option value="成交">購買</option>
+                <option value="售後">售後</option>
+                <option value="流失">流失</option>
+              </select>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <select
+                value={filterResponsible}
+                onChange={(e) => {
+                  setFilterResponsible(e.target.value)
+                  setCurrentPage(1)
+                }}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  fontSize: '14px',
+                  backgroundColor: '#ffffff',
+                  cursor: 'pointer',
+                  fontWeight: '500'
+                }}
+              >
+                <option value="">業務名</option>
+                {responsiblePersons.map((person, index) => (
+                  <option key={index} value={person}>{person}</option>
+                ))}
+              </select>
+
+            </div>
+          </div>
+        )}
+
+        {loading ? (
+          <div className="loading-state">
+            ⏳ 正在加載客戶數據...
+          </div>
+        ) : customers.length === 0 ? (
+          <div className="empty-state">
+            📭 暫無客戶數據
+          </div>
+        ) : (
+          <div className="table-wrapper">
+            <table className="customers-table">
+              <thead>
+                <tr>
+                  <th>客戶編號</th>
+                  <th>客戶名稱</th>
+                  <th>公司名稱</th>
+                  <th>詢問產品</th>
+                  <th>報價</th>
+                  <th>預算</th>
+                  <th onClick={() => toggleLastContactSort()} style={{ cursor: "pointer" }}>最後聯繫時間</th>
+                  <th>訂單狀態</th>
+                  <th>總消費</th>
+                  <th onClick={() => toggleRatingSort()} style={{ cursor: "pointer" }}>評級</th>
+                  <th onClick={() => toggleTypeSort()} style={{ cursor: "pointer" }}>客戶類別</th>
+                  <th>來源</th>
+                  <th>操作</th>
                 </tr>
-              )
-            })}
-          </tbody>
-        </table>
+              </thead>
+              <tbody>
+                {getPaginatedCustomers().data.map(customer => {
+                  // 使用保存的客戶類型（已經根據 V/P 評分計算）
+                  const customerType = customer.customer_type || 'unclassified'
+                  
+                  return (
+                    <tr key={customer.id}>
+                      <td className="clickable" onClick={() => handleViewDetailReadOnly(customer)}>
+                        <span className="customer-id-link">{customer.customer_id}</span>
+                      </td>
+                      <td>{customer.name}</td>
+                      <td>{customer.company_name || '-'}</td>
+                      <td>
+                        {customer.initial_product ? (
+                          customer.product_url ? (
+                            <a href={customer.product_url} target="_blank" rel="noopener noreferrer" style={{color: '#0066FF', textDecoration: 'underline'}}>
+                              {customer.initial_product}
+                            </a>
+                          ) : (
+                            customer.initial_product
+                          )
+                        ) : (
+                          '-'
+                        )}
+                      </td>
+                      <td>NT${parseFloat(customer.price || 0).toLocaleString()}</td>
+                      <td>NT${parseFloat(customer.budget || 0).toLocaleString()}</td>
+                      <td>{(() => {
+                        if (customer.ai_analysis_history) {
+                          try {
+                            const history = typeof customer.ai_analysis_history === 'string' 
+                              ? JSON.parse(customer.ai_analysis_history) 
+                              : customer.ai_analysis_history;
+                            if (Array.isArray(history) && history.length > 0) {
+                              const lastRecord = history[history.length - 1];
+                              const timeStr = lastRecord.timeline_text?.split(' |')[0] || '無記錄';
+                              const isAudio = lastRecord.type === 'audio';
+                              return (
+                                <span>
+                                  {isAudio ? '🎵 ' : ''}{timeStr}
+                                </span>
+                              );
+                            }
+                          } catch (err) {
+                            console.error('解析時間軸失敗:', err);
+                          }
+                        }
+                        return '無記錄';
+                      })()}</td>
+                      <td>{getOrderStatusTag(customer.order_status)}</td>
+                      <td>NT${parseFloat(customer.total_consumption || 0).toLocaleString()}</td>
+                      <td>{getRatingBadge(customer.customer_rating)}</td>
+                      <td>
+                        <span title={getTypeLabel(customerType)}>
+                          {getTypeEmoji(customerType)} {getTypeLabel(customerType)}
+                        </span>
+                      </td>
+                      <td>{customer.source || '-'}</td>
+                      <td>
+                        <button
+                          className="btn btn-small"
+                          onClick={() => handleViewDetail(customer)}
+                        >
+                          編輯
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+            
+            {/* 分頁控件 */}
+            {getPaginatedCustomers().totalPages >= 1 && (
+              <div style={{
+                padding: '16px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                borderTop: '1px solid #ddd',
+                backgroundColor: '#f9f9f9'
+              }}>
+                <div style={{ fontSize: '14px', color: '#666' }}>
+                  顯示 {(currentPage - 1) * itemsPerPage + 1} 到 {Math.min(currentPage * itemsPerPage, getPaginatedCustomers().total)} 筆，共 {getPaginatedCustomers().total} 筆
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    style={{
+                      padding: '8px 12px',
+                      backgroundColor: currentPage === 1 ? '#ccc' : '#2196F3',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    上一頁
+                  </button>
+                  
+                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                    {Array.from({ length: getPaginatedCustomers().totalPages }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        style={{
+                          padding: '6px 10px',
+                          backgroundColor: page === currentPage ? '#2196F3' : '#e0e0e0',
+                          color: page === currentPage ? 'white' : '#333',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: page === currentPage ? 'bold' : 'normal'
+                        }}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(getPaginatedCustomers().totalPages, prev + 1))}
+                    disabled={currentPage === getPaginatedCustomers().totalPages}
+                    style={{
+                      padding: '8px 12px',
+                      backgroundColor: currentPage === getPaginatedCustomers().totalPages ? '#ccc' : '#2196F3',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: currentPage === getPaginatedCustomers().totalPages ? 'not-allowed' : 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    下一頁
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {showDetailModal && (
+      {/* 詳細視窗 */}
+      {showDetailModal && selectedCustomer && (
         <CustomerDetailModal
           selectedCustomer={selectedCustomer}
           handleCloseDetailModal={handleCloseDetailModal}
@@ -612,31 +1094,109 @@ function Customers() {
         />
       )}
 
-      {/* 新增客戶 Modal 保持不變 */}
+      {/* 新增客戶表單 */}
       {showAddModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
+        <div className="modal-overlay" onClick={handleCloseAddModal}>
+          <div className="modal-content large" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>新增客戶</h2>
-              <button className="close-button" onClick={handleCloseAddModal}>×</button>
+              <button className="close-btn" onClick={handleCloseAddModal}>×</button>
             </div>
+
             <div className="modal-body">
               <div className="form-grid">
                 <div className="form-group">
-                  <label>客戶名稱</label>
+                  <label>客戶編號 *</label>
                   <input
                     type="text"
-                    name="customer_name"
-                    value={formData.customer_name || ''}
+                    name="customer_id"
+                    value={formData.customer_id || ''}
+                    onChange={handleFormChange}
+                    placeholder="例: 20251106001"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>客戶名稱 *</label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name || ''}
                     onChange={handleFormChange}
                     placeholder="輸入客戶名稱"
                   />
                 </div>
 
                 <div className="form-group">
-                  <label>電話</label>
+                  <label>公司名稱</label>
                   <input
                     type="text"
+                    name="company_name"
+                    value={formData.company_name || ''}
+                    onChange={handleFormChange}
+                    placeholder="輸入公司名稱"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>詢問產品</label>
+                  <input
+                    type="text"
+                    name="initial_product"
+                    value={formData.initial_product || ''}
+                    onChange={handleFormChange}
+                    placeholder="輸入詢問產品"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>商品超連結</label>
+                  <input
+                    type="text"
+                    name="product_url"
+                    value={formData.product_url || ''}
+                    onChange={handleFormChange}
+                    placeholder="輸入商品連結 URL"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>報價</label>
+                  <input
+                    type="number"
+                    name="price"
+                    value={formData.price || ''}
+                    onChange={handleFormChange}
+                    placeholder="輸入報價"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>預算</label>
+                  <input
+                    type="number"
+                    name="budget"
+                    value={formData.budget || ''}
+                    onChange={handleFormChange}
+                    placeholder="輸入預算"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>電話</label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone || ''}
+                    onChange={handleFormChange}
+                    placeholder="輸入電話"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>電話號碼</label>
+                  <input
+                    type="tel"
                     name="telephone"
                     value={formData.telephone || ''}
                     onChange={handleFormChange}
@@ -767,4 +1327,4 @@ function Customers() {
   )
 }
 
-export default Customers;
+export default Customers
