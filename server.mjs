@@ -13,6 +13,7 @@ import FormData from 'form-data';
 import { parseBuffer } from 'music-metadata';
 import axios from 'axios';
 import OpenAI from 'openai';
+import { callGeminiAPI, extractQuotePrice, analyzeCustomerProfile as geminiAnalyzeCustomerProfile, generateConversationSummary, analyzeTranscription as geminiAnalyzeTranscription } from './gemini-api.mjs';
 import { File } from 'node:buffer';
 import { parseCSVFile, calculateMessageHash, isCannedMessage } from './csv-parser.mjs';
 
@@ -2664,41 +2665,25 @@ app.post('/api/analyze-customer', async (req, res) => {
   try {
     const { customerId, prompt } = req.body;
     
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(400).json({ success: false, error: 'OpenAI API Key 未設置' });
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(400).json({ success: false, error: 'Gemini API Key 未設置' });
     }
     
-    // 調用 OpenAI API
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content: '你是一位專業的銷售顧問師。你的回答必須一字一字遵從下列格式，不要有任何其他內容:\n\n成交機率：(XX%)\n建議行動：\n- 建議一\n- 建議二\n- 建議三\n- 建議四\n\n不要添加任何其他文字、數字或符號。'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 500
-      })
-    });
+    // 調用 Gemini API
+    const fullPrompt = `你是一位專業的銷售顧問師。你的回答必須一字一字遵從下列格式，不要有任何其他內容：
+
+成交機率：(XX%)
+建議行動：
+- 建議一
+- 建議二
+- 建議三
+- 建議四
+
+不要添加任何其他文字、數字或符號。
+
+${prompt}`;
     
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`OpenAI API 错誤: ${error.error?.message || response.statusText}`);
-    }
-    
-    const data = await response.json();
-    const analysis = data.choices[0].message.content;
+    const analysis = await callGeminiAPI(fullPrompt, 0.7, 500);
     
     res.json({ 
       success: true, 
@@ -3119,119 +3104,13 @@ async function transcribeAudio(audioUrl) {
   }
 }
 
-// AI 分析函數
+// AI 分析函數（使用 Gemini）
 async function analyzeTranscription(transcriptionText) {
   try {
-    // 標籤詞庫
-    const tagLibrary = [
-      { name: "簽約", weight: 20 },
-      { name: "急單", weight: 18 },
-      { name: "試用", weight: 18 },
-      { name: "決策", weight: 17 },
-      { name: "高需求", weight: 14 },
-      { name: "有預算", weight: 12 },
-      { name: "明確", weight: 12 },
-      { name: "老客戶", weight: 10 },
-      { name: "感興趣", weight: 7 },
-      { name: "諮詢", weight: 5 },
-      { name: "了解中", weight: 3 },
-      { name: "演示", weight: 10 },
-      { name: "報價", weight: 10 },
-      { name: "技術", weight: 8 },
-      { name: "收集中", weight: 4 },
-      { name: "評估中", weight: 3 },
-      { name: "待反饋", weight: 2 },
-      { name: "時間急", weight: -5 },
-      { name: "模糊", weight: -5 },
-      { name: "預算緊", weight: -4 },
-      { name: "猶豫", weight: -12 },
-      { name: "比較中", weight: -11 },
-      { name: "低價", weight: -10 },
-      { name: "競品", weight: -16 },
-      { name: "低預算", weight: -18 },
-      { name: "延期", weight: -20 }
-    ];
+    addLog('info', '🤖 開始 Gemini AI 分析...');
+    const analysisResult = await geminiAnalyzeTranscription(transcriptionText);
     
-    const tagNames = tagLibrary.map(t => t.name).join('、');
-    
-    const prompt = `你是一位專業的銷售分析專家。今天你接到了一份銷售通話的轉錄文本。
-請分析轉錄文本，提取以下信息，並以 JSON 格式返回。
-【重要】所有回應必須使用台灣繁體中文，不要使用簡體中文。
-
-{
-  "customer_id": "客戶編號（應為 1-9999 之間的整數，如果找不到則返回 0）",
-  "business_name": "業務人員姓名",
-  "product_name": "產品名稱",
-  "analysis_summary": "銷售活動的簡要總結，描述 2-3 句",
-  "ai_tags": ["標籤1", "標籤2", "標籤3"]
-}
-
-【AI 標籤要求】
-- 必須從以下標籤中選擇：${tagNames}
-- 最多 3 個標籤
-- 根據轉錄文本的語意判斷最相關的標籤
-- 選擇最能反映客戶需求強度的標籤
-
-轉錄文本：
-${transcriptionText}
-
-請仅返回 JSON，不要有任何其他文本。`;
-    
-    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content: '你是一个专业的销售分析专家。'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 500
-      })
-    });
-    
-    if (!openaiResponse.ok) {
-      const error = await openaiResponse.json();
-      throw new Error(`OpenAI API 錯誤: ${error.error?.message || openaiResponse.statusText}`);
-    }
-    
-    const result = await openaiResponse.json();
-    const content = result.choices[0].message.content;
-    
-    // 解析 JSON
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('不能解析 AI 响应为 JSON');
-    }
-    
-    const analysisResult = JSON.parse(jsonMatch[0]);
-    
-    // 确保 customer_id 是整数
-    if (analysisResult.customer_id) {
-      analysisResult.customer_id = parseInt(analysisResult.customer_id) || 0;
-    } else {
-      analysisResult.customer_id = 0;
-    }
-    
-    // 確保 AI 標籤符合格式要求（最多 3 個標籤）
-    if (analysisResult.ai_tags && Array.isArray(analysisResult.ai_tags)) {
-      analysisResult.ai_tags = analysisResult.ai_tags
-        .slice(0, 3) // 最多 3 個標籤
-        .map(tag => String(tag).trim())
-        .filter(tag => tag.length > 0); // 移除空標籤
-    }
-    
-    addLog('info', '✅ AI 分析完成 (繁體中文)', { 
+    addLog('info', '✅ Gemini AI 分析完成 (繁體中文)', { 
       customer_id: analysisResult.customer_id,
       tags: analysisResult.ai_tags,
       summary_length: analysisResult.analysis_summary?.length || 0
@@ -3239,7 +3118,7 @@ ${transcriptionText}
     
     return analysisResult;
   } catch (err) {
-    addLog('error', '❌ AI 分析失敗', { error: err.message });
+    addLog('error', '❌ Gemini AI 分析失敗', { error: err.message });
     throw err;
   }
 }
