@@ -10,6 +10,7 @@
  */
 
 import { callGeminiAPI } from './gemini-api.mjs';
+import { cleanJsonString } from './fix-json-parsing.mjs';
 
 /**
  * 從文本互動記錄生成消費者輪廓
@@ -157,39 +158,9 @@ function buildAnalysisPrompt({ customerName, productName, textInteractions, audi
  */
 function parseAnalysisResult(rawText) {
   try {
-    // 移除可能的 markdown 代碼塊標記
-    let jsonText = rawText.trim();
-    if (jsonText.startsWith('```json')) {
-      jsonText = jsonText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-    } else if (jsonText.startsWith('```')) {
-      jsonText = jsonText.replace(/^```\s*/, '').replace(/\s*```$/, '');
-    }
-    
-    // 嘗試解析 JSON
-    let parsed;
-    try {
-      parsed = JSON.parse(jsonText);
-    } catch (firstError) {
-      // 如果解析失敗，嘗試使用正則表達式提取 JSON 內容
-      console.warn('❗ 第一次 JSON 解析失敗，嘗試使用備用方法...', firstError.message);
-      
-      // 嘗試找到第一個 { 和最後一個 }
-      const firstBrace = jsonText.indexOf('{');
-      const lastBrace = jsonText.lastIndexOf('}');
-      
-      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-        const extractedJson = jsonText.substring(firstBrace, lastBrace + 1);
-        // 再次嘗試解析
-        try {
-          parsed = JSON.parse(extractedJson);
-          console.log('✅ 使用備用方法成功解析 JSON');
-        } catch (secondError) {
-          throw firstError; // 仍然失敗，拋出原始錯誤
-        }
-      } else {
-        throw firstError;
-      }
-    }
+    // 使用新的 JSON 清理函數
+    const cleanedJson = cleanJsonString(rawText);
+    const parsed = JSON.parse(cleanedJson);
     
     // 驗證和標準化數據
     return {
