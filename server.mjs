@@ -14,6 +14,7 @@ import { parseBuffer } from 'music-metadata';
 import axios from 'axios';
 import OpenAI from 'openai';
 import { callGeminiAPI, extractQuotePrice, analyzeCustomerProfile as geminiAnalyzeCustomerProfile, generateConversationSummary, analyzeTranscription as geminiAnalyzeTranscription } from './gemini-api.mjs';
+import { generateCustomerProfile, updateCustomerProfileWithAudio } from './ai-customer-analysis.mjs';
 import { File } from 'node:buffer';
 import { parseCSVFile, calculateMessageHash, isCannedMessage } from './csv-parser.mjs';
 
@@ -423,7 +424,61 @@ async function initializeDatabase() {
       await pool.query('CREATE INDEX idx_ci_customer_id ON ci_customers(customer_id)');
       addLog('info', 'ci_customers 索引已創建');
     } else {
-      addLog('info', 'ci_customers 表已存在，跳過初始化');
+      addLog('info', 'ci_customers 表已存在，檢查是否需要添加 AI 分析欄位...');
+      
+      // 檢查是否已有 AI 分析欄位
+      const checkAIFields = await pool.query(`
+        SELECT column_name FROM information_schema.columns 
+        WHERE table_name = 'ci_customers' AND column_name = 'radar_purchase_intention'
+      `);
+      
+      if (checkAIFields.rows.length === 0) {
+        addLog('info', '檢測到缺少 AI 分析欄位，開始添加...');
+        
+        // 添加雷達圖分數欄位
+        await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS radar_purchase_intention INTEGER DEFAULT 0');
+        await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS radar_budget_capacity INTEGER DEFAULT 0');
+        await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS radar_decision_urgency INTEGER DEFAULT 0');
+        await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS radar_trust_level INTEGER DEFAULT 0');
+        await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS radar_communication_quality INTEGER DEFAULT 0');
+        await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS radar_repeat_potential INTEGER DEFAULT 0');
+        
+        // 添加 JSON 欄位
+        await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS sales_analysis JSONB');
+        await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS communication_timeline JSONB DEFAULT \'[]\' ::jsonb');
+        await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS decision_structure JSONB');
+        
+        // 添加文本欄位
+        await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS detailed_report TEXT');
+        
+        // 添加客戶資訊欄位
+        await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS customer_company VARCHAR(255)');
+        await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS customer_title VARCHAR(100)');
+        await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS customer_phone VARCHAR(50)');
+        await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS customer_email VARCHAR(255)');
+        await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS customer_address TEXT');
+        
+        // 添加產品資訊欄位
+        await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS product_category VARCHAR(100)');
+        await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS product_specs TEXT');
+        
+        // 添加報價資訊欄位
+        await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS quote_amount DECIMAL(15,2)');
+        await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS quote_date DATE');
+        await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS quote_status VARCHAR(50)');
+        
+        // 添加統計欄位
+        await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS total_interactions INTEGER DEFAULT 0');
+        await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS last_interaction_date TIMESTAMP');
+        
+        // 添加 AI 分析狀態欄位
+        await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS ai_analysis_status VARCHAR(50) DEFAULT \'pending\'');
+        await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS ai_analysis_date TIMESTAMP');
+        
+        addLog('info', '✅ AI 分析欄位已添加完成！');
+      } else {
+        addLog('info', 'AI 分析欄位已存在，跳過添加');
+      }
     }
 
     // 檢查 ci_interactions 表是否存在
@@ -1290,6 +1345,11 @@ app.post('/api/csv/upload', upload.single('file'), async (req, res) => {
     } catch (timelineErr) {
       addLog("error", "更新溝通紀錄時間軸失敗", { message: timelineErr.message });
     }
+
+    // 生成 AI 客戶分析（異步執行，不阻塞回應）
+    generateAIAnalysisAsync(pool, customerId, customerName, productName).catch(err => {
+      addLog("error", "AI 分析失敗", { customerId, message: err.message });
+    });
 
     addLog("info", "CSV 匯入完成", { 
       fileName, 
@@ -3222,6 +3282,118 @@ async function analyzeTranscription(transcriptionText) {
 
 // 簡繁轉換函數已移除 - Whisper 直接輸出繁體中文
 
+// AI 客戶分析異步函數
+async function generateAIAnalysisAsync(pool, customerId, customerName, productName) {
+  try {
+    addLog('info', '🤖 開始生成 AI 客戶分析...', { customerId, customerName });
+    
+    // 更新狀態為 processing
+    await pool.query(
+      'UPDATE ci_customers SET ai_analysis_status = $1, updated_at = NOW() WHERE customer_id = $2',
+      ['processing', customerId]
+    );
+    
+    // 獲取所有互動記錄
+    const interactionsResult = await pool.query(
+      'SELECT sender_type, sender_name, timestamp, raw_content as content FROM ci_interactions WHERE customer_id = $1 ORDER BY timestamp ASC',
+      [customerId]
+    );
+    
+    const interactions = interactionsResult.rows;
+    
+    if (interactions.length === 0) {
+      addLog('warn', '沒有互動記錄，跳過 AI 分析', { customerId });
+      await pool.query(
+        'UPDATE ci_customers SET ai_analysis_status = $1, updated_at = NOW() WHERE customer_id = $2',
+        ['pending', customerId]
+      );
+      return;
+    }
+    
+    // 調用 AI 分析服務
+    const analysisResult = await generateCustomerProfile({
+      customerName,
+      productName,
+      interactions,
+      audioTranscriptions: []  // 目前只有文本數據
+    });
+    
+    if (!analysisResult.success) {
+      throw new Error(analysisResult.error);
+    }
+    
+    const profile = analysisResult.profile;
+    
+    // 更新資料庫
+    await pool.query(`
+      UPDATE ci_customers SET
+        radar_purchase_intention = $1,
+        radar_budget_capacity = $2,
+        radar_decision_urgency = $3,
+        radar_trust_level = $4,
+        radar_communication_quality = $5,
+        radar_repeat_potential = $6,
+        sales_analysis = $7,
+        decision_structure = $8,
+        detailed_report = $9,
+        customer_company = $10,
+        customer_title = $11,
+        customer_phone = $12,
+        customer_email = $13,
+        customer_address = $14,
+        product_category = $15,
+        product_specs = $16,
+        quote_amount = $17,
+        quote_date = $18,
+        quote_status = $19,
+        total_interactions = $20,
+        ai_analysis_status = 'completed',
+        ai_analysis_date = NOW(),
+        updated_at = NOW()
+      WHERE customer_id = $21
+    `, [
+      profile.radar_scores.purchase_intention,
+      profile.radar_scores.budget_capacity,
+      profile.radar_scores.decision_urgency,
+      profile.radar_scores.trust_level,
+      profile.radar_scores.communication_quality,
+      profile.radar_scores.repeat_potential,
+      JSON.stringify(profile.sales_analysis),
+      JSON.stringify(profile.decision_structure),
+      profile.detailed_report,
+      profile.customer_info.company || null,
+      profile.customer_info.title || null,
+      profile.customer_info.phone || null,
+      profile.customer_info.email || null,
+      profile.customer_info.address || null,
+      profile.product_info.category || null,
+      profile.product_info.specs || null,
+      profile.quote_info.amount || null,
+      profile.quote_info.date || null,
+      profile.quote_info.status || 'pending',
+      interactions.length,
+      customerId
+    ]);
+    
+    addLog('info', '✅ AI 客戶分析完成', { 
+      customerId, 
+      radarScores: profile.radar_scores,
+      closingProbability: profile.sales_analysis.closing_probability
+    });
+    
+  } catch (error) {
+    addLog('error', '❌ AI 客戶分析失敗', { customerId, error: error.message });
+    
+    // 更新狀態為 failed
+    await pool.query(
+      'UPDATE ci_customers SET ai_analysis_status = $1, updated_at = NOW() WHERE customer_id = $2',
+      ['failed', customerId]
+    );
+    
+    throw error;
+  }
+}
+
 // 說話者分離函數 - 使用 GPT 分析轉錄文本
 async function separateSpeakers(transcriptionText) {
   try {
@@ -3280,6 +3452,109 @@ async function separateSpeakers(transcriptionText) {
     throw err;
   }
 }
+
+// API: 資料庫遷移 - 添加 AI 分析欄位
+app.post('/api/migrate/add-ai-fields', async (req, res) => {
+  try {
+    const pool = pools.online;
+    if (!pool) {
+      return res.status(500).json({ error: 'ONLINE 數據庫未連接' });
+    }
+
+    addLog('info', '開始資料庫遷移：添加 AI 分析欄位...');
+    
+    // 檢查欄位是否已存在
+    const checkColumns = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'ci_customers'
+    `);
+    
+    const existingColumns = checkColumns.rows.map(row => row.column_name);
+    addLog('info', '現有欄位', existingColumns);
+    
+    // 需要添加的欄位
+    const fieldsToAdd = [
+      // 雷達圖分數（6個維度，0-100）
+      { name: 'radar_purchase_intention', type: 'INTEGER DEFAULT 0', comment: '購買意願分數' },
+      { name: 'radar_budget_capacity', type: 'INTEGER DEFAULT 0', comment: '預算能力分數' },
+      { name: 'radar_decision_urgency', type: 'INTEGER DEFAULT 0', comment: '決策急迫性分數' },
+      { name: 'radar_trust_level', type: 'INTEGER DEFAULT 0', comment: '信任程度分數' },
+      { name: 'radar_communication_quality', type: 'INTEGER DEFAULT 0', comment: '溝通品質分數' },
+      { name: 'radar_repeat_potential', type: 'INTEGER DEFAULT 0', comment: '回購潛力分數' },
+      
+      // 銷售分析 JSON
+      { name: 'sales_analysis', type: 'JSONB', comment: '銷售分析（報價、成交機率、建議策略）' },
+      
+      // 溝通紀錄時間軸 JSON
+      { name: 'communication_timeline', type: 'JSONB DEFAULT \'[]\' ::jsonb', comment: '溝通紀錄時間軸' },
+      
+      // 詳細報告
+      { name: 'detailed_report', type: 'TEXT', comment: 'AI 生成的詳細分析報告' },
+      
+      // 客戶基本資訊
+      { name: 'customer_company', type: 'VARCHAR(255)', comment: '客戶公司名稱' },
+      { name: 'customer_title', type: 'VARCHAR(100)', comment: '客戶職稱' },
+      { name: 'customer_phone', type: 'VARCHAR(50)', comment: '客戶電話' },
+      { name: 'customer_email', type: 'VARCHAR(255)', comment: '客戶電子郵件' },
+      { name: 'customer_address', type: 'TEXT', comment: '客戶地址' },
+      
+      // 產品資訊
+      { name: 'product_category', type: 'VARCHAR(100)', comment: '產品類別' },
+      { name: 'product_specs', type: 'TEXT', comment: '產品規格' },
+      
+      // 報價資訊
+      { name: 'quote_amount', type: 'DECIMAL(15,2)', comment: '報價金額' },
+      { name: 'quote_date', type: 'DATE', comment: '報價日期' },
+      { name: 'quote_status', type: 'VARCHAR(50)', comment: '報價狀態' },
+      
+      // 決策結構 JSON
+      { name: 'decision_structure', type: 'JSONB', comment: '決策結構（決策者、影響者、使用者）' },
+      
+      // 聯絡紀錄統計
+      { name: 'total_interactions', type: 'INTEGER DEFAULT 0', comment: '總互動次數' },
+      { name: 'last_interaction_date', type: 'TIMESTAMP', comment: '最後互動日期' },
+      
+      // AI 分析狀態
+      { name: 'ai_analysis_status', type: 'VARCHAR(50) DEFAULT \'pending\'', comment: 'AI 分析狀態（pending, processing, completed, failed）' },
+      { name: 'ai_analysis_date', type: 'TIMESTAMP', comment: 'AI 分析完成時間' }
+    ];
+    
+    const addedFields = [];
+    const skippedFields = [];
+    
+    // 逐一添加欄位
+    for (const field of fieldsToAdd) {
+      if (!existingColumns.includes(field.name)) {
+        addLog('info', `添加欄位: ${field.name} (${field.comment})`);
+        await pool.query(`
+          ALTER TABLE ci_customers 
+          ADD COLUMN ${field.name} ${field.type}
+        `);
+        addedFields.push(field.name);
+      } else {
+        skippedFields.push(field.name);
+      }
+    }
+    
+    addLog('info', '資料庫遷移完成', { added: addedFields.length, skipped: skippedFields.length });
+    
+    res.json({
+      success: true,
+      message: '資料庫遷移完成',
+      addedFields,
+      skippedFields,
+      summary: {
+        total: fieldsToAdd.length,
+        added: addedFields.length,
+        skipped: skippedFields.length
+      }
+    });
+  } catch (err) {
+    addLog('error', '資料庫遷移失敗', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // SPA 路由 - 所有未匹配的路由都返回 index.html
 // 注意：這個路由必須放在所有 API 路由之後，否則會攻擊 API 請求
