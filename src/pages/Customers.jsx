@@ -332,6 +332,7 @@ function Customers() {
   const [csvFile, setCSVFile] = useState(null)
   const [csvUploading, setCSVUploading] = useState(false)
   const [csvUploadResult, setCSVUploadResult] = useState(null)
+  const [csvSource, setCSVSource] = useState('Inphic') // 商城來源，預設 Inphic
 
   // 輔助函數：根據當前排序配置返回 Font Awesome 圖標
   const getSortIcon = (key) => {
@@ -1446,6 +1447,37 @@ function Customers() {
                   )}
                   
                   <div style={{
+                    marginBottom: '20px'
+                  }}>
+                    <label style={{
+                      display: 'block',
+                      fontSize: '14px',
+                      fontWeight: 'bold',
+                      color: '#333',
+                      marginBottom: '8px'
+                    }}>
+                      🏪 商城來源
+                    </label>
+                    <select
+                      value={csvSource}
+                      onChange={(e) => setCSVSource(e.target.value)}
+                      disabled={csvUploading}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        fontSize: '14px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        backgroundColor: csvUploading ? '#f5f5f5' : 'white',
+                        cursor: csvUploading ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      <option value="Inphic">Inphic</option>
+                      <option value="Kipo">Kipo</option>
+                    </select>
+                  </div>
+                  
+                  <div style={{
                     padding: '16px',
                     backgroundColor: '#fff3cd',
                     borderRadius: '6px',
@@ -1557,6 +1589,7 @@ function Customers() {
                       setCSVUploading(true)
                       const formData = new FormData()
                       formData.append('file', csvFile)
+                      formData.append('source', csvSource) // 添加商城來源參數
                       
                       try {
                         const response = await fetch('/api/csv/upload', {

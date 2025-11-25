@@ -544,6 +544,7 @@ const customersResult = await pool.query(`
         customer_id,
         customer_name as name,
         product_name as initial_product,
+        source,
         created_at,
         updated_at
       FROM ci_customers
@@ -571,7 +572,7 @@ const customersResult = await pool.query(`
       annual_consumption: 0,
       customer_rating: null,
       customer_type: null,
-      source: 'CSV上傳',
+      source: row.source || 'Inphic',
       capital_amount: null,
       nfvp_score: null,
       n_score: null,
@@ -1111,8 +1112,9 @@ app.post('/api/csv/upload', upload.single('file'), async (req, res) => {
 
     const fileName = req.file.originalname;
     const fileContent = req.file.buffer.toString('utf-8');
+    const source = req.body.source || 'Inphic'; // 獲取商城來源，預設 Inphic
 
-    addLog("info", "開始處理 CSV 檔案", { fileName });
+    addLog("info", "開始處理 CSV 檔案", { fileName, source });
 
     // 解析 CSV 檔案
     const { metadata, conversations } = parseCSVFile(fileName, fileContent);
@@ -1143,10 +1145,10 @@ app.post('/api/csv/upload', upload.single('file'), async (req, res) => {
       addLog("info", "客戶已存在", { customerId, customerDbId });
     } else {
       const customerInsert = await pool.query(
-        `INSERT INTO ci_customers (customer_id, customer_name, product_name, created_at, updated_at)
-         VALUES ($1, $2, $3, NOW(), NOW())
+        `INSERT INTO ci_customers (customer_id, customer_name, product_name, source, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, NOW(), NOW())
          RETURNING id`,
-        [customerId, customerName, productName]
+        [customerId, customerName, productName, source]
       );
       customerDbId = customerInsert.rows[0].id;
       addLog("info", "新客戶已建立", { customerId, customerDbId, customerName, productName });
