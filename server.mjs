@@ -531,21 +531,64 @@ app.get('/api/customers', async (req, res) => {
 
     // 查詢 ONLINE 數據庫中的所有客戶
     // 使用 PostgreSQL COALESCE 和 CAST 將 annual_consumption 轉換為 NUMERIC
-    const result = await pool.query(`
+const customersResult = await pool.query(`
       SELECT *,
         COALESCE(annual_consumption::NUMERIC, 0) as annual_consumption_numeric
       FROM customers 
       ORDER BY id ASC
     `);
     
-    // 將轉換後的 annual_consumption_numeric 值覆蓋原始的 annual_consumption
-    const cleanedRows = result.rows.map(row => ({
+    const ciCustomersResult = await pool.query(`
+      SELECT 
+        id,
+        customer_id,
+        customer_name as name,
+        product_name as initial_product,
+        created_at,
+        updated_at
+      FROM ci_customers
+      ORDER BY id ASC
+    `);
+    
+    const customersRows = customersResult.rows.map(row => ({
       ...row,
-      annual_consumption: row.annual_consumption_numeric || 0
+      annual_consumption: row.annual_consumption_numeric || 0,
+      source_table: 'customers'
     }));
     
-    addLog('info', `從 ONLINE 數據庫查詢客戶成功，共 ${result.rows.length} 筆`);
-    res.json(cleanedRows);
+    const ciCustomersRows = ciCustomersResult.rows.map(row => ({
+      id: row.id + 10000,
+      customer_id: row.customer_id,
+      name: row.name,
+      initial_product: row.initial_product,
+      company_name: null,
+      price: null,
+      budget: null,
+      phone: null,
+      telephone: null,
+      order_status: null,
+      total_consumption: null,
+      annual_consumption: 0,
+      customer_rating: null,
+      customer_type: null,
+      source: 'CSV上傳',
+      capital_amount: null,
+      nfvp_score: null,
+      n_score: null,
+      f_score: null,
+      notes: null,
+      responsible_person: null,
+      last_contact_time: null,
+      ai_analysis_history: null,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      source_table: 'ci_customers'
+    }));
+    
+    const allCustomers = [...customersRows, ...ciCustomersRows];
+    
+    addLog('info', `從 ONLINE 數據庫查詢客戶成功，共 ${allCustomers.length} 筆（customers: ${customersRows.length}, ci_customers: ${ciCustomersRows.length}）`);
+    res.json(allCustomers);
   } catch (err) {
     addLog('error', '查詢客戶失敗', err.message);
     res.status(500).json({
