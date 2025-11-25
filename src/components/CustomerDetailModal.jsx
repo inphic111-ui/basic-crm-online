@@ -154,16 +154,21 @@ const CustomerDetailModal = ({
   const [activeTab, setActiveTab] = useState('info');
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
-  // --- 1. 雷達圖數據 ---
+  // --- 1. 雷達圖數據 (從 AI 分析欄位讀取) ---
   const radarData = useMemo(() => {
-    const n = parseInt(editFormData.n_score) || 0;
-    const f = parseInt(editFormData.f_score) || 0;
-    const v = calculateVScore(editFormData.price, editFormData.annual_consumption) || 0;
+    // 從 AI 分析欄位讀取雷達圖分數，如果不存在則使用預設值 0
+    const purchaseIntention = parseInt(editFormData.radar_purchase_intention) || 0;
+    const budgetCapacity = parseInt(editFormData.radar_budget_capacity) || 0;
+    const decisionUrgency = parseInt(editFormData.radar_decision_urgency) || 0;
+    const trustLevel = parseInt(editFormData.radar_trust_level) || 0;
+    const communicationQuality = parseInt(editFormData.radar_communication_quality) || 0;
+    const repeatPotential = parseInt(editFormData.radar_repeat_potential) || 0;
+    
     return {
-      labels: ['需求挖掘', '價值建立', '異議處理', '行動引導', '關係建立', '成交推進'],
+      labels: ['購買意圖', '預算能力', '決策急迫性', '信任程度', '溝通品質', '再購可能性'],
       datasets: [{
-          label: '銷售評估',
-          data: [n, 6, f, 5, v > 10 ? 10 : v, 7],
+          label: 'AI 消費者輪廟分析',
+          data: [purchaseIntention, budgetCapacity, decisionUrgency, trustLevel, communicationQuality, repeatPotential],
           backgroundColor: 'rgba(52, 152, 219, 0.2)',
           borderColor: 'rgba(52, 152, 219, 1)',
           borderWidth: 2,
@@ -171,7 +176,7 @@ const CustomerDetailModal = ({
           pointBorderColor: '#fff',
       }],
     };
-  }, [editFormData, calculateVScore]);
+  }, [editFormData]);
 
   const radarOptions = { scales: { r: { suggestedMin: 0, suggestedMax: 10, ticks: { display: false } } }, plugins: { legend: { display: false } } };
 
@@ -187,15 +192,21 @@ const CustomerDetailModal = ({
     return [];
   }, [editFormData.ai_analysis_history]);
 
-  // --- 3. 成交率連動 (讀取最新分析) ---
+  // --- 3. 成交率連動 (優先讀取 AI 分析的 closing_probability) ---
   const conversionRate = useMemo(() => {
+    // 優先讀取 AI 分析的成交機率
+    if (editFormData.closing_probability !== undefined && editFormData.closing_probability !== null) {
+      return `${editFormData.closing_probability}%`;
+    }
+    // 備用：從時間軸歷史讀取
     if (timelineHistory.length > 0) {
       const latestRecord = timelineHistory[0];
       if (latestRecord.conversion_rate !== undefined) return `${latestRecord.conversion_rate}%`;
       if (latestRecord.probability !== undefined) return `${latestRecord.probability}%`;
     }
-    return `${(parseInt(editFormData.n_score || 0) * 10)}%`;
-  }, [timelineHistory, editFormData.n_score]);
+    // 預設值
+    return '0%';
+  }, [editFormData.closing_probability, timelineHistory]);
 
   if (!selectedCustomer) return null;
 
@@ -277,14 +288,38 @@ const CustomerDetailModal = ({
                       <Bot size={20} color="#3498db"/>
                       <h4 style={{ margin: 0, color: '#3498db' }}>AI 洞察分析</h4>
                     </div>
-                    <p style={{ margin: 0, fontSize: '0.9rem', color: '#555' }}>客戶較關注氣積極，對售後服務表現出明顯興趣。在討論價格時略顯遲疑，但對產品功能持肯定態度。</p>
+                    <p style={{ margin: 0, fontSize: '0.9rem', color: '#555' }}>
+                      {(() => {
+                        try {
+                          const salesAnalysis = typeof editFormData.sales_analysis === 'string' 
+                            ? JSON.parse(editFormData.sales_analysis) 
+                            : editFormData.sales_analysis;
+                          if (salesAnalysis && salesAnalysis.advantages) {
+                            return salesAnalysis.advantages;
+                          }
+                        } catch (err) { console.error('Parse sales_analysis error:', err); }
+                        return '無 AI 分析數據';
+                      })()}
+                    </p>
                   </div>
                   <div style={{ flex: 1, background: '#fff9e6', borderLeft: '4px solid #f39c12', padding: '15px', borderRadius: '4px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
                       <Target size={20} color="#f39c12"/>
-                      <h4 style={{ margin: 0, color: '#f39c12' }}>關鍵需求識別</h4>
+                      <h4 style={{ margin: 0, color: '#f39c12' }}>關鍵關注點</h4>
                     </div>
-                    <p style={{ margin: 0, fontSize: '0.9rem', color: '#555' }}>客戶關注的三個需求：降低維護成本、減少停機時間、簡化操作流程。對價格敏感度中等。</p>
+                    <p style={{ margin: 0, fontSize: '0.9rem', color: '#555' }}>
+                      {(() => {
+                        try {
+                          const salesAnalysis = typeof editFormData.sales_analysis === 'string' 
+                            ? JSON.parse(editFormData.sales_analysis) 
+                            : editFormData.sales_analysis;
+                          if (salesAnalysis && salesAnalysis.key_concerns) {
+                            return salesAnalysis.key_concerns;
+                          }
+                        } catch (err) { console.error('Parse sales_analysis error:', err); }
+                        return '無 AI 分析數據';
+                      })()}
+                    </p>
                   </div>
                 </div>
               </div>

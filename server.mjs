@@ -445,6 +445,9 @@ async function initializeDatabase() {
         await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS radar_communication_quality INTEGER DEFAULT 0');
         await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS radar_repeat_potential INTEGER DEFAULT 0');
         
+        // 添加成交機率欄位
+        await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS closing_probability INTEGER DEFAULT 0');
+        
         // 添加 JSON 欄位
         await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS sales_analysis JSONB');
         await pool.query('ALTER TABLE ci_customers ADD COLUMN IF NOT EXISTS communication_timeline JSONB DEFAULT \'[]\' ::jsonb');
@@ -814,31 +817,7 @@ app.post('/api/customers', async (req, res) => {
   }
 });
 
-// API: 獲取單個客戶詳細信息
-app.get('/api/customers/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const pool = pools.online;
-    if (!pool) {
-      addLog('warn', '無法查詢客戶：ONLINE 數據庫未連接');
-      return res.status(500).json({ error: 'ONLINE 數據庫未連接' });
-    }
-
-    const result = await pool.query('SELECT * FROM customers WHERE id = $1', [id]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: '客戶不存在' });
-    }
-
-    res.json(result.rows[0]);
-  } catch (err) {
-    addLog('error', '查詢客戶詳細信息失敗', err.message);
-    res.status(500).json({
-      error: '查詢客戶詳細信息失敗',
-      message: err.message
-    });
-  }
-});
+// API: 獲取單個客戶詳細信息 (已移至第 2452 行，此處已刪除重複代碼)
 
 // API: 刪除客戶
 
@@ -2448,7 +2427,7 @@ app.post('/api/get-table-data', async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 });
-// 獲取單個客戶詳細信息
+// 獲取單個客戶詳細信息 (包含 AI 分析數據)
 app.get('/api/customers/:id', async (req, res) => {
   const pool = pools.online;
   if (!pool) {
@@ -2457,8 +2436,9 @@ app.get('/api/customers/:id', async (req, res) => {
 
   try {
     const { id } = req.params;
-    // 使用 PostgreSQL CAST 操作符 ::NUMERIC 將 money 類型轉換為 NUMERIC
-    const result = await pool.query(`
+    
+    // 查詢 customers 表
+    const customerResult = await pool.query(`
       SELECT *,
         CASE 
           WHEN annual_consumption IS NOT NULL THEN (annual_consumption)::NUMERIC
@@ -2468,14 +2448,47 @@ app.get('/api/customers/:id', async (req, res) => {
       WHERE id = $1
     `, [id]);
     
-    if (result.rows.length === 0) {
+    if (customerResult.rows.length === 0) {
       return res.status(404).json({ error: '客戶不存在' });
     }
 
-    // 將轉換後的 annual_consumption_numeric 值覆蓋原始的 annual_consumption
+    const customer = customerResult.rows[0];
+    
+    // 查詢 ci_customers 表的 AI 分析數據
+    const ciCustomerResult = await pool.query(`
+      SELECT 
+        radar_purchase_intention,
+        radar_budget_capacity,
+        radar_decision_urgency,
+        radar_trust_level,
+        radar_communication_quality,
+        radar_repeat_potential,
+        closing_probability,
+        sales_analysis,
+        decision_structure,
+        communication_timeline,
+        ai_analysis_status,
+        ai_analysis_date,
+        customer_company,
+        customer_title,
+        customer_phone,
+        customer_email,
+        customer_address,
+        product_category,
+        product_specs,
+        quote_amount,
+        quote_date,
+        quote_status
+      FROM ci_customers 
+      WHERE customer_id = $1
+    `, [customer.customer_id]);
+    
+    // 合併兩個表的數據
     const cleanedRow = {
-      ...result.rows[0],
-      annual_consumption: result.rows[0].annual_consumption_numeric || 0
+      ...customer,
+      annual_consumption: customer.annual_consumption_numeric || 0,
+      // 添加 AI 分析數據（如果存在）
+      ...(ciCustomerResult.rows.length > 0 ? ciCustomerResult.rows[0] : {})
     };
 
     res.json(cleanedRow);
@@ -3348,24 +3361,25 @@ async function generateAIAnalysisAsync(pool, customerId, customerName, productNa
         radar_trust_level = $4,
         radar_communication_quality = $5,
         radar_repeat_potential = $6,
-        sales_analysis = $7,
-        decision_structure = $8,
-        detailed_report = $9,
-        customer_company = $10,
-        customer_title = $11,
-        customer_phone = $12,
-        customer_email = $13,
-        customer_address = $14,
-        product_category = $15,
-        product_specs = $16,
-        quote_amount = $17,
-        quote_date = $18,
-        quote_status = $19,
-        total_interactions = $20,
+        closing_probability = $7,
+        sales_analysis = $8,
+        decision_structure = $9,
+        detailed_report = $10,
+        customer_company = $11,
+        customer_title = $12,
+        customer_phone = $13,
+        customer_email = $14,
+        customer_address = $15,
+        product_category = $16,
+        product_specs = $17,
+        quote_amount = $18,
+        quote_date = $19,
+        quote_status = $20,
+        total_interactions = $21,
         ai_analysis_status = 'completed',
         ai_analysis_date = NOW(),
         updated_at = NOW()
-      WHERE customer_id = $21
+      WHERE customer_id = $22
     `, [
       profile.radar_scores.purchase_intention,
       profile.radar_scores.budget_capacity,
@@ -3373,6 +3387,7 @@ async function generateAIAnalysisAsync(pool, customerId, customerName, productNa
       profile.radar_scores.trust_level,
       profile.radar_scores.communication_quality,
       profile.radar_scores.repeat_potential,
+      profile.sales_analysis.closing_probability || 0,
       JSON.stringify(profile.sales_analysis),
       JSON.stringify(profile.decision_structure),
       profile.detailed_report,
@@ -3497,6 +3512,9 @@ app.post('/api/migrate/add-ai-fields', async (req, res) => {
       { name: 'radar_trust_level', type: 'INTEGER DEFAULT 0', comment: '信任程度分數' },
       { name: 'radar_communication_quality', type: 'INTEGER DEFAULT 0', comment: '溝通品質分數' },
       { name: 'radar_repeat_potential', type: 'INTEGER DEFAULT 0', comment: '回購潛力分數' },
+      
+      // 成交機率
+      { name: 'closing_probability', type: 'INTEGER DEFAULT 0', comment: '成交機率（0-100）' },
       
       // 銷售分析 JSON
       { name: 'sales_analysis', type: 'JSONB', comment: '銷售分析（報價、成交機率、建議策略）' },
