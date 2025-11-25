@@ -1081,6 +1081,61 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
             ]
           );
           addLog("info", "✅ 數據庫更新成功", { recordingId });
+
+          // 4. 更新 communication_timeline
+          try {
+            // 獲取音檔的日期和時間
+            const audioResult = await pools.online.query(
+              'SELECT call_date, call_time, customer_id FROM audio_recordings WHERE id = $1',
+              [recordingId]
+            );
+
+            if (audioResult.rows.length > 0) {
+              const { call_date, call_time, customer_id } = audioResult.rows[0];
+              const audioDateTime = `${call_date}T${call_time}`;
+
+              // 獲取當前客戶的 communication_timeline
+              const timelineResult = await pools.online.query(
+                'SELECT communication_timeline FROM ci_customers WHERE customer_id = $1',
+                [customer_id]
+              );
+
+              let timeline = [];
+              if (timelineResult.rows.length > 0 && timelineResult.rows[0].communication_timeline) {
+                try {
+                  timeline = JSON.parse(timelineResult.rows[0].communication_timeline);
+                } catch (e) {
+                  timeline = [];
+                }
+              }
+
+              // 添加新的音檔記錄到時間軸
+              timeline.push({
+                date: audioDateTime,
+                type: 'audio',
+                source: 'audio_recording',
+                duration: duration,
+                transcription: separatedText,
+                analysis_summary: analysisResult.analysis_summary || "",
+                audio_url: audioUrl,
+                recording_id: recordingId,
+                created_at: new Date().toISOString()
+              });
+
+              // 按時間倒序排列（最新的在前）
+              timeline.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+              // 更新資料庫
+              await pools.online.query(
+                'UPDATE ci_customers SET communication_timeline = $1, updated_at = NOW() WHERE customer_id = $2',
+                [JSON.stringify(timeline), customer_id]
+              );
+
+              addLog("info", "溝通紀錄時間軸已更新（音檔）", { customer_id, recordingId, timelineLength: timeline.length });
+            }
+          } catch (timelineErr) {
+            addLog("error", "更新溝通紀錄時間軸失敗（音檔）", { message: timelineErr.message });
+          }
         }
       } catch (err) {
         addLog("error", "❌ Whisper/AI 处理失敗", { recordingId, error: err.message });
@@ -1192,6 +1247,48 @@ app.post('/api/csv/upload', upload.single('file'), async (req, res) => {
       );
 
       newRecords++;
+    }
+
+    // 更新 communication_timeline
+    try {
+      // 獲取當前客戶的 communication_timeline
+      const timelineResult = await pool.query(
+        'SELECT communication_timeline FROM ci_customers WHERE customer_id = $1',
+        [customerId]
+      );
+
+      let timeline = [];
+      if (timelineResult.rows.length > 0 && timelineResult.rows[0].communication_timeline) {
+        timeline = JSON.parse(timelineResult.rows[0].communication_timeline);
+      }
+
+      // 添加新的文本記錄到時間軸
+      for (const conv of conversations) {
+        if (!isCannedMessage(conv.content)) {
+          timeline.push({
+            date: conv.timestamp,
+            type: 'text',
+            source: 'csv',
+            sender_type: conv.senderType,
+            sender_name: conv.senderName,
+            content: conv.content,
+            created_at: new Date().toISOString()
+          });
+        }
+      }
+
+      // 按時間倒序排列（最新的在前）
+      timeline.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      // 更新資料庫
+      await pool.query(
+        'UPDATE ci_customers SET communication_timeline = $1, updated_at = NOW() WHERE customer_id = $2',
+        [JSON.stringify(timeline), customerId]
+      );
+
+      addLog("info", "溝通紀錄時間軸已更新", { customerId, timelineLength: timeline.length });
+    } catch (timelineErr) {
+      addLog("error", "更新溝通紀錄時間軸失敗", { message: timelineErr.message });
     }
 
     addLog("info", "CSV 匯入完成", { 
