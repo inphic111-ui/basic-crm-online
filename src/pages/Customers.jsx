@@ -490,25 +490,25 @@ function Customers() {
   }
 
   // 從 API 獲取客戶列表
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        setLoading(true)
-        const response = await fetch('/api/customers')
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-        const data = await response.json()
-        setCustomers(data)
-        setError(null)
-      } catch (err) {
-        console.error('獲取客戶數據失敗:', err)
-        setError(err.message)
-      } finally {
-        setLoading(false)
+  const fetchCustomers = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/customers')
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
+      const data = await response.json()
+      setCustomers(data)
+      setError(null)
+    } catch (err) {
+      console.error('獲取客戶數據失敗:', err)
+      setError(err.message)
+    } finally {
+      setLoading(false)
     }
+  }
 
+  useEffect(() => {
     fetchCustomers()
     generateResponsiblePersons()
   }, [])
