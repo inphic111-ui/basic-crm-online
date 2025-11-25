@@ -14,6 +14,7 @@ import { parseBuffer } from 'music-metadata';
 import axios from 'axios';
 import OpenAI from 'openai';
 import { File } from 'node:buffer';
+import { parseCSVFile, calculateMessageHash, isCannedMessage } from './csv-parser.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -97,7 +98,7 @@ const config = {
   },
   online: {
     name: 'ONLINE (正式)',
-    dbUrl: (process.env.ONLINE_DB_URL || process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL || ''),
+    dbUrl: (process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL || process.env.ONLINE_DB_URL || ''),
     logFile: '/tmp/online.log'
   }
 };
@@ -132,11 +133,11 @@ const upload = multer({
     fileSize: 50 * 1024 * 1024, // 50MB
   },
   fileFilter: (req, file, cb) => {
-    const allowedMimes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/webm'];
-    if (allowedMimes.includes(file.mimetype)) {
+    const allowedMimes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/webm', 'text/csv', 'application/vnd.ms-excel'];
+    if (allowedMimes.includes(file.mimetype) || file.originalname.endsWith('.csv')) {
       cb(null, true);
     } else {
-      cb(new Error('只允許上傳音檔'));
+      cb(new Error('只允許上傳音檔或 CSV 檔案'));
     }
   },
 });
@@ -153,7 +154,7 @@ function createPool(env) {
   try {
     // 根據 URL 判斷是否需要 SSL
     let sslConfig = false;
-    if (config[env].dbUrl.includes('railway.app') || config[env].dbUrl.includes('postgres')) {
+    if (config[env].dbUrl.includes('railway.app') || config[env].dbUrl.includes('postgres') || config[env].dbUrl.includes('proxy.rlwy.net')) {
       sslConfig = { rejectUnauthorized: false };
     }
     
@@ -393,6 +394,69 @@ async function initializeDatabase() {
         }
       }
       addLog('info', '10 筆新測試資料已插入 audio_recordings 表');
+    }
+
+    // 檢查 ci_customers 表是否存在
+    const ciCustomersCheckResult = await pool.query(`
+      SELECT COUNT(*) as count FROM information_schema.tables 
+      WHERE table_schema = 'public' AND table_name = 'ci_customers'
+    `);
+
+    if (ciCustomersCheckResult.rows[0].count === 0) {
+      addLog('info', '檢測到 ci_customers 表不存在，開始初始化...');
+      
+      // 創建 ci_customers 表
+      await pool.query(`
+        CREATE TABLE ci_customers (
+          id SERIAL PRIMARY KEY,
+          customer_id VARCHAR(20) UNIQUE NOT NULL,
+          customer_name VARCHAR(255),
+          product_name VARCHAR(255),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      addLog('info', 'ci_customers 表已創建');
+      
+      // 創建索引
+      await pool.query('CREATE INDEX idx_ci_customer_id ON ci_customers(customer_id)');
+      addLog('info', 'ci_customers 索引已創建');
+    } else {
+      addLog('info', 'ci_customers 表已存在，跳過初始化');
+    }
+
+    // 檢查 ci_interactions 表是否存在
+    const ciInteractionsCheckResult = await pool.query(`
+      SELECT COUNT(*) as count FROM information_schema.tables 
+      WHERE table_schema = 'public' AND table_name = 'ci_interactions'
+    `);
+
+    if (ciInteractionsCheckResult.rows[0].count === 0) {
+      addLog('info', '檢測到 ci_interactions 表不存在，開始初始化...');
+      
+      // 創建 ci_interactions 表
+      await pool.query(`
+        CREATE TABLE ci_interactions (
+          id SERIAL PRIMARY KEY,
+          ci_customer_id INT,
+          sender_type VARCHAR(50),
+          sender_name VARCHAR(255),
+          timestamp TIMESTAMP NULL,
+          content TEXT,
+          message_hash VARCHAR(64) UNIQUE NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (ci_customer_id) REFERENCES ci_customers(id) ON DELETE CASCADE
+        )
+      `);
+      addLog('info', 'ci_interactions 表已創建');
+      
+      // 創建索引
+      await pool.query('CREATE INDEX idx_ci_interactions_customer ON ci_interactions(ci_customer_id)');
+      await pool.query('CREATE INDEX idx_ci_interactions_hash ON ci_interactions(message_hash)');
+      await pool.query('CREATE INDEX idx_ci_interactions_timestamp ON ci_interactions(timestamp)');
+      addLog('info', 'ci_interactions 索引已創建');
+    } else {
+      addLog('info', 'ci_interactions 表已存在，跳過初始化');
     }
   } catch (err) {
     addLog('error', '初始化數據庫失敗', err.message);
@@ -991,6 +1055,124 @@ app.post('/api/audio/upload', upload.single('file'), async (req, res) => {
     });
   } catch (err) {
     addLog("error", "❌ 音檔上傳發生例外（原始檔名）", { message: err.message, stack: err.stack });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// CSV 上傳端點
+app.post('/api/csv/upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: '沒有選擇 CSV 檔案' });
+    }
+
+    const fileName = req.file.originalname;
+    const fileContent = req.file.buffer.toString('utf-8');
+
+    addLog("info", "開始處理 CSV 檔案", { fileName });
+
+    // 解析 CSV 檔案
+    const { metadata, conversations } = parseCSVFile(fileName, fileContent);
+    
+    const { customerId, customerName, productName } = metadata;
+
+    if (!customerId) {
+      return res.status(400).json({ error: '無法從檔案中提取客戶編號' });
+    }
+
+    addLog("info", "CSV 解析成功", { customerId, customerName, productName, totalConversations: conversations.length });
+
+    // 連接資料庫
+    const pool = pools.online;
+    if (!pool) {
+      return res.status(500).json({ error: '資料庫未連接' });
+    }
+
+    // 建立或取得客戶
+    let customerDbId;
+    const customerCheck = await pool.query(
+      'SELECT id FROM ci_customers WHERE customer_id = $1',
+      [customerId]
+    );
+
+    if (customerCheck.rows.length > 0) {
+      customerDbId = customerCheck.rows[0].id;
+      addLog("info", "客戶已存在", { customerId, customerDbId });
+    } else {
+      const customerInsert = await pool.query(
+        `INSERT INTO ci_customers (customer_id, customer_name, product_name, created_at, updated_at)
+         VALUES ($1, $2, $3, NOW(), NOW())
+         RETURNING id`,
+        [customerId, customerName, productName]
+      );
+      customerDbId = customerInsert.rows[0].id;
+      addLog("info", "新客戶已建立", { customerId, customerDbId, customerName, productName });
+    }
+
+    // 處理對話記錄
+    let newRecords = 0;
+    let duplicateRecords = 0;
+    let cannedMessages = 0;
+
+    for (const conv of conversations) {
+      const { senderType, senderName, timestamp, content } = conv;
+
+      // 過濾罐頭訊息
+      if (isCannedMessage(content)) {
+        cannedMessages++;
+        continue;
+      }
+
+      // 計算 SHA-256 hash
+      const messageHash = calculateMessageHash(customerId, timestamp, content);
+
+      // 檢查是否重複
+      const hashCheck = await pool.query(
+        'SELECT id FROM ci_interactions WHERE message_hash = $1',
+        [messageHash]
+      );
+
+      if (hashCheck.rows.length > 0) {
+        duplicateRecords++;
+        continue;
+      }
+
+      // 插入新記錄
+      await pool.query(
+        `INSERT INTO ci_interactions 
+         (customer_id, sender_type, sender_name, timestamp, raw_content, message_hash, is_canned, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, false, NOW(), NOW())`,
+        [customerId, senderType, senderName, timestamp, content, messageHash]
+      );
+
+      newRecords++;
+    }
+
+    addLog("info", "CSV 匯入完成", { 
+      fileName, 
+      customerId, 
+      totalRecords: conversations.length,
+      newRecords, 
+      duplicateRecords, 
+      cannedMessages 
+    });
+
+    res.json({
+      success: true,
+      message: 'CSV 檔案已成功匯入',
+      data: {
+        customerId,
+        customerName,
+        productName,
+        totalRecords: conversations.length,
+        newRecords,
+        duplicateRecords,
+        cannedMessages,
+      },
+    });
+
+  } catch (err) {
+    addLog("error", "CSV 上傳失敗", { message: err.message, stack: err.stack });
     res.status(500).json({ error: err.message });
   }
 });

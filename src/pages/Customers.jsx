@@ -326,6 +326,12 @@ function Customers() {
   const [audioUploadLoading, setAudioUploadLoading] = useState(false)
   const [audioUploadError, setAudioUploadError] = useState(null)
   const [audioUploadSuccess, setAudioUploadSuccess] = useState(false)
+  
+  // CSV 上傳的 state
+  const [showCSVUploadDialog, setShowCSVUploadDialog] = useState(false)
+  const [csvFile, setCSVFile] = useState(null)
+  const [csvUploading, setCSVUploading] = useState(false)
+  const [csvUploadResult, setCSVUploadResult] = useState(null)
 
   // 輔助函數：根據當前排序配置返回 Font Awesome 圖標
   const getSortIcon = (key) => {
@@ -820,9 +826,40 @@ function Customers() {
 
   return (
     <div className="customers-page">
-      <div className="page-header">
-        <h1>客戶資料管理</h1>
-        <p>管理和查看所有客戶信息</p>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1>客戶資料管理</h1>
+          <p>管理和查看所有客戶信息</p>
+        </div>
+        <button 
+          onClick={() => setShowCSVUploadDialog(true)}
+          style={{
+            padding: '12px 24px',
+            backgroundColor: '#0066FF',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '14px',
+            fontWeight: '500',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            boxShadow: '0 2px 4px rgba(0, 102, 255, 0.2)',
+            transition: 'all 0.3s ease'
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.backgroundColor = '#0052CC'
+            e.target.style.boxShadow = '0 4px 8px rgba(0, 102, 255, 0.3)'
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.backgroundColor = '#0066FF'
+            e.target.style.boxShadow = '0 2px 4px rgba(0, 102, 255, 0.2)'
+          }}
+        >
+          <span style={{ fontSize: '16px' }}>📄</span>
+          上傳 CSV
+        </button>
       </div>
 
       {error && (
@@ -1345,6 +1382,227 @@ function Customers() {
               <button className="btn btn-secondary" onClick={handleCloseAddModal}>
                 取消
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* CSV 上傳對話框 */}
+      {showCSVUploadDialog && (
+        <div className="modal-overlay" onClick={() => !csvUploading && setShowCSVUploadDialog(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+            <div className="modal-header">
+              <h2>📄 上傳 LINE CSV 檔案</h2>
+              <button className="close-button" onClick={() => !csvUploading && setShowCSVUploadDialog(false)}>×</button>
+            </div>
+            
+            <div className="modal-body">
+              {!csvUploadResult ? (
+                <div style={{ padding: '20px' }}>
+                  <div style={{
+                    border: '2px dashed #0066FF',
+                    borderRadius: '8px',
+                    padding: '40px',
+                    textAlign: 'center',
+                    backgroundColor: '#f8f9fa',
+                    marginBottom: '20px'
+                  }}>
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={(e) => setCSVFile(e.target.files[0])}
+                      style={{ display: 'none' }}
+                      id="csv-file-input"
+                      disabled={csvUploading}
+                    />
+                    <label htmlFor="csv-file-input" style={{
+                      cursor: csvUploading ? 'not-allowed' : 'pointer',
+                      display: 'block'
+                    }}>
+                      <div style={{ fontSize: '48px', marginBottom: '16px' }}>📄</div>
+                      <div style={{ fontSize: '16px', color: '#666', marginBottom: '8px' }}>
+                        {csvFile ? csvFile.name : '點擊選擇 CSV 檔案'}
+                      </div>
+                      <div style={{ fontSize: '14px', color: '#999' }}>
+                        支持 LINE 對話記錄 CSV 檔案
+                      </div>
+                    </label>
+                  </div>
+                  
+                  {csvFile && (
+                    <div style={{
+                      padding: '12px',
+                      backgroundColor: '#e3f2fd',
+                      borderRadius: '6px',
+                      marginBottom: '20px'
+                    }}>
+                      <div style={{ fontSize: '14px', color: '#1976d2', marginBottom: '4px' }}>
+                        ✅ 已選擇檔案
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#666' }}>
+                        {csvFile.name} ({(csvFile.size / 1024).toFixed(2)} KB)
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div style={{
+                    padding: '16px',
+                    backgroundColor: '#fff3cd',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    color: '#856404',
+                    lineHeight: '1.6'
+                  }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>ℹ️ 注意事項：</div>
+                    <ul style={{ marginLeft: '20px', marginBottom: '0' }}>
+                      <li>檔案名稱格式：<code>31_20250924_20251120_客戶編號客戶名稱產品名稱.csv</code></li>
+                      <li>系統會自動提取客戶資訊和產品名稱</li>
+                      <li>罐頭訊息會自動過濾，重複記錄會自動去重</li>
+                    </ul>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: '20px' }}>
+                  <div style={{
+                    padding: '20px',
+                    backgroundColor: '#d4edda',
+                    borderRadius: '8px',
+                    marginBottom: '20px'
+                  }}>
+                    <div style={{ fontSize: '18px', color: '#155724', fontWeight: 'bold', marginBottom: '16px' }}>
+                      ✅ 匯入成功！
+                    </div>
+                    <div style={{ fontSize: '14px', color: '#155724', lineHeight: '1.8' }}>
+                      <div>📁 檔案名稱：{csvUploadResult.fileName}</div>
+                      <div>👤 客戶編號：{csvUploadResult.data.customerId}</div>
+                      <div>📝 客戶名稱：{csvUploadResult.data.customerName}</div>
+                      <div>📦 產品名稱：{csvUploadResult.data.productName}</div>
+                    </div>
+                  </div>
+                  
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '12px',
+                    marginBottom: '20px'
+                  }}>
+                    <div style={{
+                      padding: '16px',
+                      backgroundColor: '#f8f9fa',
+                      borderRadius: '6px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#0066FF' }}>
+                        {csvUploadResult.data.totalRecords}
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#666', marginTop: '4px' }}>
+                        總記錄數
+                      </div>
+                    </div>
+                    <div style={{
+                      padding: '16px',
+                      backgroundColor: '#f8f9fa',
+                      borderRadius: '6px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#28a745' }}>
+                        {csvUploadResult.data.newRecords}
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#666', marginTop: '4px' }}>
+                        新增記錄
+                      </div>
+                    </div>
+                    <div style={{
+                      padding: '16px',
+                      backgroundColor: '#f8f9fa',
+                      borderRadius: '6px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ffc107' }}>
+                        {csvUploadResult.data.duplicateRecords}
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#666', marginTop: '4px' }}>
+                        重複記錄
+                      </div>
+                    </div>
+                    <div style={{
+                      padding: '16px',
+                      backgroundColor: '#f8f9fa',
+                      borderRadius: '6px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc3545' }}>
+                        {csvUploadResult.data.cannedMessages}
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#666', marginTop: '4px' }}>
+                        罐頭訊息
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="modal-footer">
+              {!csvUploadResult ? (
+                <>
+                  <button
+                    className="btn btn-primary"
+                    onClick={async () => {
+                      if (!csvFile) {
+                        alert('請選擇 CSV 檔案')
+                        return
+                      }
+                      
+                      setCSVUploading(true)
+                      const formData = new FormData()
+                      formData.append('file', csvFile)
+                      
+                      try {
+                        const response = await fetch('/api/csv/upload', {
+                          method: 'POST',
+                          body: formData
+                        })
+                        
+                        const result = await response.json()
+                        
+                        if (response.ok) {
+                          setCSVUploadResult({ ...result, fileName: csvFile.name })
+                          // 重新載入客戶清單
+                          fetchCustomers()
+                        } else {
+                          alert(`匯入失敗：${result.error}`)
+                        }
+                      } catch (err) {
+                        alert(`匯入失敗：${err.message}`)
+                      } finally {
+                        setCSVUploading(false)
+                      }
+                    }}
+                    disabled={!csvFile || csvUploading}
+                  >
+                    {csvUploading ? '匯入中...' : '開始匯入'}
+                  </button>
+                  <button 
+                    className="btn btn-secondary" 
+                    onClick={() => setShowCSVUploadDialog(false)}
+                    disabled={csvUploading}
+                  >
+                    取消
+                  </button>
+                </>
+              ) : (
+                <button 
+                  className="btn btn-primary" 
+                  onClick={() => {
+                    setShowCSVUploadDialog(false)
+                    setCSVFile(null)
+                    setCSVUploadResult(null)
+                  }}
+                >
+                  關閉
+                </button>
+              )}
             </div>
           </div>
         </div>
