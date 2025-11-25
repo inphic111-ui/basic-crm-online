@@ -38,10 +38,7 @@ export async function generateCustomerProfile({ customerName, productName, inter
     });
     
     // 調用 Gemini API 進行分析
-    const analysisResult = await callGeminiAPI(prompt, {
-      temperature: 0.7,
-      maxTokens: 4000
-    });
+    const analysisResult = await callGeminiAPI(prompt, 0.7, 4000);
     
     // 解析分析結果
     const profile = parseAnalysisResult(analysisResult);
@@ -101,12 +98,12 @@ function buildAnalysisPrompt({ customerName, productName, textInteractions, audi
 \`\`\`json
 {
   "radar_scores": {
-    "purchase_intention": 0-100,  // 購買意願分數
-    "budget_capacity": 0-100,     // 預算能力分數
-    "decision_urgency": 0-100,    // 決策急迫性分數
-    "trust_level": 0-100,         // 信任程度分數
-    "communication_quality": 0-100, // 溝通品質分數
-    "repeat_potential": 0-100     // 回購潛力分數
+    "purchase_intention": 0-10,  // 購買意願分數（整數）
+    "budget_capacity": 0-10,     // 預算能力分數（整數）
+    "decision_urgency": 0-10,    // 決策急迫性分數（整數）
+    "trust_level": 0-10,         // 信任程度分數（整數）
+    "communication_quality": 0-10, // 溝通品質分數（整數）
+    "repeat_potential": 0-10     // 回購潛力分數（整數）
   },
   "customer_info": {
     "company": "客戶公司名稱（如果提到）",
@@ -142,12 +139,14 @@ function buildAnalysisPrompt({ customerName, productName, textInteractions, audi
 \`\`\`
 
 **重要提示：**
-1. 所有分數都是 0-100 的整數
-2. 如果某些資訊未在對話中提到，請填 null 或空字串
-3. 雷達圖分數要基於實際對話內容，不要過度樂觀或悲觀
-4. 銷售分析要具體、可執行，避免空泛的建議
-5. 詳細報告要結構清晰，使用 markdown 格式
-6. 請只回覆 JSON，不要添加其他說明文字
+1. 雷達圖分數（radar_scores）都是 0-10 的整數，10 分為滿分
+2. 成交機率（closing_probability）是 0-100 的百分比
+3. 如果某些資訊未在對話中提到，請填 null 或空字串
+4. 雷達圖分數要基於實際對話內容，不要過度樂觀或悲觀
+5. 銷售分析要具體、可執行，避免空泛的建議
+6. 詳細報告要結構清晰，使用 markdown 格式
+7. detailed_report 欄位中的文字必須正確轉義所有換行符為 \\n
+8. 請只回覆 JSON，不要添加其他說明文字
 `;
 
   return prompt;
@@ -166,7 +165,31 @@ function parseAnalysisResult(rawText) {
       jsonText = jsonText.replace(/^```\s*/, '').replace(/\s*```$/, '');
     }
     
-    const parsed = JSON.parse(jsonText);
+    // 嘗試解析 JSON
+    let parsed;
+    try {
+      parsed = JSON.parse(jsonText);
+    } catch (firstError) {
+      // 如果解析失敗，嘗試使用正則表達式提取 JSON 內容
+      console.warn('❗ 第一次 JSON 解析失敗，嘗試使用備用方法...', firstError.message);
+      
+      // 嘗試找到第一個 { 和最後一個 }
+      const firstBrace = jsonText.indexOf('{');
+      const lastBrace = jsonText.lastIndexOf('}');
+      
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        const extractedJson = jsonText.substring(firstBrace, lastBrace + 1);
+        // 再次嘗試解析
+        try {
+          parsed = JSON.parse(extractedJson);
+          console.log('✅ 使用備用方法成功解析 JSON');
+        } catch (secondError) {
+          throw firstError; // 仍然失敗，拋出原始錯誤
+        }
+      } else {
+        throw firstError;
+      }
+    }
     
     // 驗證和標準化數據
     return {
@@ -192,12 +215,12 @@ function parseAnalysisResult(rawText) {
     // 返回默認值
     return {
       radar_scores: {
-        purchase_intention: 50,
-        budget_capacity: 50,
-        decision_urgency: 50,
-        trust_level: 50,
-        communication_quality: 50,
-        repeat_potential: 50
+        purchase_intention: 5,
+        budget_capacity: 5,
+        decision_urgency: 5,
+        trust_level: 5,
+        communication_quality: 5,
+        repeat_potential: 5
       },
       customer_info: {},
       product_info: {},
@@ -217,12 +240,12 @@ function parseAnalysisResult(rawText) {
 }
 
 /**
- * 驗證分數（確保在 0-100 範圍內）
+ * 驗證分數（確保在 0-10 範圍內）
  */
 function validateScore(score) {
   const num = parseInt(score);
-  if (isNaN(num)) return 50;  // 默認值
-  return Math.max(0, Math.min(100, num));
+  if (isNaN(num)) return 5;  // 預設值（5 分）
+  return Math.max(0, Math.min(10, num));
 }
 
 /**

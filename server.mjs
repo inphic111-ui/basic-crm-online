@@ -100,7 +100,8 @@ const config = {
   },
   online: {
     name: 'ONLINE (正式)',
-    dbUrl: (process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL || process.env.ONLINE_DB_URL || ''),
+    // 強制使用 Railway PostgreSQL 連接字串
+    dbUrl: 'postgresql://postgres:ogzTiXiZsfxqloDQwcjwVdIpQkgEGeEy@caboose.proxy.rlwy.net:40507/railway',
     logFile: '/tmp/online.log'
   }
 };
@@ -156,7 +157,8 @@ function createPool(env) {
   try {
     // 根據 URL 判斷是否需要 SSL
     let sslConfig = false;
-    if (config[env].dbUrl.includes('railway.app') || config[env].dbUrl.includes('postgres') || config[env].dbUrl.includes('proxy.rlwy.net')) {
+    if (config[env].dbUrl.includes('railway') || config[env].dbUrl.includes('postgres')) {
+      // Railway PostgreSQL 需要 SSL，但不驗證應用程式的憑證
       sslConfig = { rejectUnauthorized: false };
     }
     
