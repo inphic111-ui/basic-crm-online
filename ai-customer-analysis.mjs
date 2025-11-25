@@ -134,8 +134,7 @@ function buildAnalysisPrompt({ customerName, productName, textInteractions, audi
     "weaknesses": ["劣勢1", "劣勢2"],
     "recommended_strategy": "建議的銷售策略（詳細描述）",
     "next_steps": ["下一步行動1", "下一步行動2"]
-  },
-  "detailed_report": "完整的分析報告（markdown 格式，包含：客戶背景、需求分析、溝通歷程、決策因素、風險評估、策略建議等）"
+  }
 }
 \`\`\`
 

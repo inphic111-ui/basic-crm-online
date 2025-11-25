@@ -43,15 +43,21 @@ export async function callGeminiAPI(prompt, temperature = 0.7, maxTokens = 2048)
 
   const data = await response.json();
   
+  // 添加詳細日誌
+  console.log('🔍 Gemini API 回應結構:', JSON.stringify(data, null, 2));
+  
   // 提取回應文本
   if (data.candidates && data.candidates.length > 0) {
     const candidate = data.candidates[0];
     if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
-      return candidate.content.parts[0].text;
+      const responseText = candidate.content.parts[0].text;
+      console.log('✅ Gemini API 回應文本長度:', responseText.length);
+      return responseText;
     }
   }
 
-  throw new Error('Gemini API 返回的數據格式無效');
+  console.error('❌ Gemini API 返回的数据格式无效:', data);
+  throw new Error('Gemini API 返回的数据格式无效');
 }
 
 /**
