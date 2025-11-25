@@ -1316,7 +1316,20 @@ app.post('/api/csv/upload', upload.single('file'), async (req, res) => {
 
       let timeline = [];
       if (timelineResult.rows.length > 0 && timelineResult.rows[0].communication_timeline) {
-        timeline = JSON.parse(timelineResult.rows[0].communication_timeline);
+        try {
+          // 嘗試解析 JSON
+          const rawTimeline = timelineResult.rows[0].communication_timeline;
+          if (typeof rawTimeline === 'string') {
+            timeline = JSON.parse(rawTimeline);
+          } else if (Array.isArray(rawTimeline)) {
+            timeline = rawTimeline; // 已經是陣列，直接使用
+          } else {
+            timeline = []; // 不是預期的格式，使用空陣列
+          }
+        } catch (parseError) {
+          addLog('warn', '解析 communication_timeline 失敗，使用空陣列', { customerId, error: parseError.message });
+          timeline = [];
+        }
       }
 
       // 添加新的文本記錄到時間軸
